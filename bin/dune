@@ -1,0 +1,8 @@
+(executable
+ (public_name bfhoge)
+ (name main)
+ (libraries bfhoge batteries))
+
+(env
+ (dev
+   (flags (:standard -w -33))))
