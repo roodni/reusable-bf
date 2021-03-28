@@ -121,18 +121,18 @@ let dfn, program =
       loop (slst ~p arr @@ svar flg) [
         Shift (1, svar arr, p);
       ];
-      loop (slst ~p ~i:(-1) arr @@ svar p) [
+      LoopPtr (svar arr, p, [
         Shift (-1, svar arr, p);
         add ~n:(int_of_char '0') (slst ~p arr @@ svar n);
         Put (slst ~p arr @@ svar n);
-      ];
+      ]);
     ]
   in
   (dfn, program)
 
 let layout = Layout.of_dfn dfn
 
-let bf_code = Cmd.codegen layout program
+let bf_code = codegen layout program
 
 (* let bf_code =
   let open Bf.Cmd in [

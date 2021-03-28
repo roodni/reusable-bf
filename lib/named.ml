@@ -240,56 +240,60 @@ module Cmd = struct
     | Put of Sel.t
     | Get of Sel.t
     | Loop of Sel.t * t_list
+    | LoopPtr of (Sel.t * Var.t * t_list)
     | Shift of int * Sel.t * Var.t
     | Comment of string
     | Dump
   and t_list = t list
-
-  let codegen (layout: Layout.t) (cmd_list: t_list): Bf.Cmd.t list =
-    let rec codegen (pos_init: Pos.t) (cmd_list: t_list) =
-      let pos, bf_cmd_list_list = List.fold_left_map (fun pos cmd ->
-          match cmd with
-          | Add (n, sel) ->
-              let pos_dest = Pos.of_sel layout sel in
-              (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Add n ])
-          | Put sel ->
-              let pos_dest = Pos.of_sel layout sel in
-              (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Put ])
-          | Get sel ->
-              let pos_dest = Pos.of_sel layout sel in
-              (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Get ])
-          | Loop (sel, cmd_list) ->
-              let pos_cond = Pos.of_sel layout sel in
-              let code_move1 = Pos.codegen_move pos pos_cond in
-              let pos, code_loop = codegen pos_cond cmd_list in
-              let code_move2 = Pos.codegen_move pos pos_cond in
-              (pos_cond, code_move1 @ [ Bf.Cmd.Loop (code_loop @ code_move2) ])
-          | Shift (n, lst, p) -> begin
-              (* let pos_ptr = Pos.of_sel layout sel in
-              let pos_ptr_prev = Pos.shift (-layout_lst.elm_size) pos_ptr in *)
-              let pos_ptr = Sel.ptr_for_shift lst p 0 |> Pos.of_sel layout in
-              let pos_ptr_prev = Sel.ptr_for_shift lst p (-1) |> Pos.of_sel layout in
-              match n with
-              | 0 -> (pos, [])
-              | 1 ->
-                  let code_move = Pos.codegen_move pos pos_ptr in
-                  let code = code_move @ [ Bf.Cmd.Add 1 ] in
-                  (pos_ptr_prev, code)
-              | -1 ->
-                  let code_move = Pos.codegen_move pos pos_ptr_prev in
-                  let code = code_move @ [ Bf.Cmd.Add (-1) ] in
-                  (pos_ptr, code)
-              | _ -> failwith "not implemented"
-            end
-          | Comment s -> (pos, [ Bf.Cmd.Comment s ])
-          | Dump -> (pos, [ Bf.Cmd.Dump ])
-        ) pos_init cmd_list
-      in
-      (pos, List.flatten bf_cmd_list_list)
-    in
-    let _, code = codegen Pos.init cmd_list in
-    code
 end
+
+let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
+  let rec codegen (pos_init: Pos.t) (cmd_list: Cmd.t_list) =
+    let pos, bf_cmd_list_list = List.fold_left_map (fun pos cmd ->
+        match cmd with
+        | Cmd.Add (n, sel) ->
+            let pos_dest = Pos.of_sel layout sel in
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Add n ])
+        | Put sel ->
+            let pos_dest = Pos.of_sel layout sel in
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Put ])
+        | Get sel ->
+            let pos_dest = Pos.of_sel layout sel in
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Get ])
+        | Loop (sel, cmd_list) ->
+            let pos_cond = Pos.of_sel layout sel in
+            let code_move1 = Pos.codegen_move pos pos_cond in
+            let pos, code_loop = codegen pos_cond cmd_list in
+            let code_move2 = Pos.codegen_move pos pos_cond in
+            (pos_cond, code_move1 @ [ Bf.Cmd.Loop (code_loop @ code_move2) ])
+        | LoopPtr (lst, ptr, cmd_list) ->
+            let sel_cond = Sel.ptr_for_shift lst ptr (-1) in
+            codegen pos [ Cmd.Loop (sel_cond, cmd_list) ]
+        | Shift (n, lst, p) -> begin
+            (* let pos_ptr = Pos.of_sel layout sel in
+            let pos_ptr_prev = Pos.shift (-layout_lst.elm_size) pos_ptr in *)
+            let pos_ptr = Sel.ptr_for_shift lst p 0 |> Pos.of_sel layout in
+            let pos_ptr_prev = Sel.ptr_for_shift lst p (-1) |> Pos.of_sel layout in
+            match n with
+            | 0 -> (pos, [])
+            | 1 ->
+                let code_move = Pos.codegen_move pos pos_ptr in
+                let code = code_move @ [ Bf.Cmd.Add 1 ] in
+                (pos_ptr_prev, code)
+            | -1 ->
+                let code_move = Pos.codegen_move pos pos_ptr_prev in
+                let code = code_move @ [ Bf.Cmd.Add (-1) ] in
+                (pos_ptr, code)
+            | _ -> failwith "not implemented"
+          end
+        | Comment s -> (pos, [ Bf.Cmd.Comment s ])
+        | Dump -> (pos, [ Bf.Cmd.Dump ])
+      ) pos_init cmd_list
+    in
+    (pos, List.flatten bf_cmd_list_list)
+  in
+  let _, code = codegen Pos.init cmd_list in
+  code
 
 
 module Test = struct
