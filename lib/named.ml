@@ -41,10 +41,10 @@ module Dfn = struct
   let of_list t: (Var.t * kind) list = t
   let to_list (t: t): (Var.t * kind) list = t
 
-  let partition_ptr (t: t): Var.t list * t =
+  let partition_ptr (t: t): t * t =
     List.partition_map (fun (v, kind) ->
       match kind with
-      | Ptr -> Left v
+      | Ptr -> Left (v, kind)
       | kind -> Right (v, kind)
     ) t  
   let partition_inf_lst (t: t): (Var.t * lst) list * t =
@@ -53,7 +53,6 @@ module Dfn = struct
       | Lst ({ length = None; _ } as lst) -> Left (v, lst)
       | kind -> Right (v, kind)
     ) t
-  
 end
 
 
@@ -92,36 +91,49 @@ module Layout = struct
   (* 定義された変数をセルに割り当てる *)
   let of_dfn (dfn: Dfn.t): t =
     let dfn_inf_lst, dfn = Dfn.partition_inf_lst dfn in
-    assert (List.length dfn_inf_lst = 0);
-    let rec allocate (ofs_available: int) (dfn: Dfn.t) =
+    let rec allocate (ofs_available: int) (dfn: Dfn.t): t * int =
       (* 左から詰める *)
       List.fold_left (fun (layout, ofs_available) (var, kind) ->
         let loc, ofs_available =
           match kind with
           | Dfn.Cell -> ({offset = ofs_available; kind = Cell}, ofs_available + 1)
+          | Ptr -> ({offset = ofs_available; kind = Ptr}, ofs_available + 1)
           | CellIfable -> failwith "not implemented"
           | Lst {mem; length = Some length} ->
               let ptrs, mem = Dfn.partition_ptr mem in
               (* メンバを左から詰める *)
-              let mem, ptr_ofs_start = allocate 0 mem in
-              let header_start =  -ptr_ofs_start in
+              let mem, ofs_ptr_start = allocate 0 mem in
+              let header_start =  -ofs_ptr_start in
               (* ポインタを詰める *)
-              let mem, elm_size =
-                List.fold_left (fun (mem, lst_ofs_available) ptr ->
-                  ((ptr, { offset = lst_ofs_available; kind = Ptr }) :: mem, lst_ofs_available + 1)
-                ) (mem, ptr_ofs_start) ptrs
-              in
+              let mem_ptr, elm_size = allocate ofs_ptr_start ptrs in
+              let mem = mem @ mem_ptr in
               let lst = { mem; header_start; elm_size } in
               ( {offset = ofs_available; kind = Lst lst},
                 ofs_available + elm_size*(length + 1) + header_start )
           | Lst { length = None; _} -> assert false
-          | Ptr -> assert false
         in
         ((var, loc) :: layout, ofs_available)
       ) ([], ofs_available) dfn
     in
-    let layout, _ = allocate 0 dfn in
-    layout
+    let layout, ofs_inf_lst_start = allocate 0 dfn in
+    let elm_size_inf_lst, mem_inf_lst_list =
+      List.fold_left_map (fun ofs_available (v, lst) ->
+        let Dfn.{ mem; _ } = lst in
+        let mem, ofs_available = allocate ofs_available mem in
+        (ofs_available, (v, mem))
+      ) 0 dfn_inf_lst
+    in
+    let layout_inf_lst =
+      mem_inf_lst_list |> List.map (fun (v, mem) ->
+        let lst = {
+          mem;
+          header_start = 0;
+          elm_size =elm_size_inf_lst;
+        } in
+        (v, { offset = ofs_inf_lst_start; kind = Lst lst })
+      )
+    in
+    layout @ layout_inf_lst
   
   let loc_of_var (layout: t) (v: Var.t) = List.assoc v layout
 
@@ -301,30 +313,27 @@ module Test = struct
   let b = Var.gen_named "b"
   let x = Var.gen_named "x"
   let y = Var.gen_named "y"
-  let z = Var.gen_named "z"
   let p = Var.gen_named "p"
-  let p1 = Var.gen_named "p1"
-  let p2 = Var.gen_named "p2"
-  let c = Var.gen_named "c"
   let test =
     let dfn =
       let open Dfn in [
-        (a, Cell);
-        (b, Lst {
-          length = Some 3;
+        (x, Cell);
+        (a, Lst {
+          length = None;
           mem = [
             (x, Cell);
-            (y, Lst {
-              length = Some 2;
-              mem = [
-                (p, Ptr);
-                (z, Cell);
-              ]
-            });
-            (p1, Ptr); (p2, Ptr)
-          ];
+            (y, Cell);
+            (p, Ptr);
+          ]
         });
-        (c, Cell);
+        (b, Lst {
+          length = None;
+          mem = [
+            (p, Ptr);
+            (x, Cell);
+          ]
+        });
+        (y, Cell);
       ]
     in
     let layout = Layout.of_dfn dfn in
