@@ -96,10 +96,10 @@ module Layout = struct
       List.fold_left (fun (layout, ofs_available) (var, kind) ->
         let loc, ofs_available =
           match kind with
-          | Dfn.Cell -> ({offset = ofs_available; kind = Cell}, ofs_available + 1)
-          | Ptr -> ({offset = ofs_available; kind = Ptr}, ofs_available + 1)
-          | CellIfable -> failwith "not implemented"
-          | Lst {mem; length = Some length} ->
+          | Dfn.Cell -> ({ offset = ofs_available; kind = Cell }, ofs_available + 1)
+          | Ptr -> ({ offset = ofs_available; kind = Ptr }, ofs_available + 1)
+          | CellIfable -> ({ offset = ofs_available; kind = CellIfable }, ofs_available + 3)
+          | Lst { mem; length = Some length } ->
               let ptrs, mem = Dfn.partition_ptr mem in
               (* メンバを左から詰める *)
               let mem, ofs_ptr_start = allocate 0 mem in
@@ -108,7 +108,7 @@ module Layout = struct
               let mem_ptr, elm_size = allocate ofs_ptr_start ptrs in
               let mem = mem @ mem_ptr in
               let lst = { mem; header_start; elm_size } in
-              ( {offset = ofs_available; kind = Lst lst},
+              ( { offset = ofs_available; kind = Lst lst },
                 ofs_available + elm_size*(length + 1) + header_start )
           | Lst { length = None; _} -> assert false
         in
@@ -175,6 +175,11 @@ module Pos = struct
   let shift n = function
     | Cell offset -> Cell (offset + n)
     | Ptr ({ offset_of_head; _ } as ptr) -> Ptr { ptr with offset_of_head = offset_of_head + n; }
+  
+  let rec shift_last n pos =
+    match pos with
+    | Cell offset -> Cell (offset + n)
+    | Ptr ({ child_pos; _ } as ptr) -> Ptr { ptr with child_pos = shift_last n child_pos }
 
   let rec of_sel (layout: Layout.t) (sel: Sel.t) =
     match sel with
@@ -254,6 +259,7 @@ module Cmd = struct
     | Loop of Sel.t * t_list
     | LoopPtr of (Sel.t * Var.t * t_list)
     | Shift of int * Sel.t * Var.t
+    | If of Sel.t * t_list * t_list
     | Comment of string
     | Dump
   and t_list = t list
@@ -298,6 +304,31 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
                 (pos_ptr, code)
             | _ -> failwith "not implemented"
           end
+        | If (cond, cmd_list_then, cmd_list_else) ->
+            let pos_cond = Pos.of_sel layout cond in
+            let pos_flag = Pos.shift_last 1 pos_cond in
+            let pos_zero = Pos.shift_last 1 pos_flag in
+            let pos_then_end, code_then = codegen pos_flag cmd_list_then in
+            let pos_else_end, code_else = codegen pos_flag cmd_list_else in
+            let code =
+              Pos.codegen_move pos pos_flag @
+              [
+                Bf.Cmd.Add 1;
+                Bf.Cmd.Move (-1);
+                Bf.Cmd.Loop (
+                  [ Bf.Cmd.Move 1; Bf.Cmd.Add (-1); ] @
+                  code_then @
+                  Pos.codegen_move pos_then_end pos_flag
+                );
+                Bf.Cmd.Move 1;
+                Bf.Cmd.Loop (
+                  [ Bf.Cmd.Add (-1) ] @
+                  code_else @
+                  Pos.codegen_move pos_else_end pos_zero
+                );
+              ]
+            in
+            (pos_zero, code)
         | Comment s -> (pos, [ Bf.Cmd.Comment s ])
         | Dump -> (pos, [ Bf.Cmd.Dump ])
       ) pos_init cmd_list

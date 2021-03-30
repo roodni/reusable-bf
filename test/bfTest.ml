@@ -10,7 +10,7 @@ type case = {
   err: Err.t option
 }
 
-let test_run {name; program; input; output; err} =
+let test_run { name; program; input; output; err } =
   name >:: fun _ ->
     let input = input |> String.enum in
     let res = run program input in

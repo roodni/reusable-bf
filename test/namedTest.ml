@@ -98,7 +98,9 @@ module OutputTest = struct
         sub s_from;
         sub ~n:times s_dest
       ]
-    in [
+    in
+    let del s = loop s [ sub s ] in
+    [
       begin
         (* echo *)
         let var_list = (1--5) |> Enum.map (fun _ -> Var.gen ()) |> List.of_enum in
@@ -146,30 +148,6 @@ module OutputTest = struct
         }
       end; begin
         (* garden https://atcoder.jp/contests/abc106/tasks/abc106_a *)
-        let ipt_base10 ed ~dest ~tmp:(ipt, tmp) =
-          let open Cmd in
-            [
-              add ipt;
-              loop ipt [
-                Get ipt;
-                sub ~n:(int_of_char ed) ipt;
-                add tmp;
-                (* if *)
-                loop ipt [
-                  sub tmp;
-                  add2 dest tmp;
-                  sub ~n:(int_of_char '0' - int_of_char ed) ipt;
-                  add2 ipt dest;
-                  add2 ~times:10 tmp dest;
-                ];
-                add ipt;
-                (* else *)
-                loop tmp [ sub tmp;
-                  sub ipt;
-                ];
-              ];
-            ]  
-        in
         let ipt = Var.gen_named "ipt" in
         let tmp = Var.gen_named "tmp" in
         let a = Var.gen_named "a" in
@@ -202,6 +180,29 @@ module OutputTest = struct
           end;
           cmd_list = begin
             let open Cmd in
+            let ipt_base10 ed ~dest ~tmp:(ipt, tmp) =
+              [
+                add ipt;
+                loop ipt [
+                  Get ipt;
+                  sub ~n:(int_of_char ed) ipt;
+                  add tmp;
+                  (* if *)
+                  loop ipt [
+                    sub tmp;
+                    add2 dest tmp;
+                    sub ~n:(int_of_char '0' - int_of_char ed) ipt;
+                    add2 ipt dest;
+                    add2 ~times:10 tmp dest;
+                  ];
+                  add ipt;
+                  (* else *)
+                  loop tmp [ sub tmp;
+                    sub ipt;
+                  ];
+                ];
+              ]
+            in
             ipt_base10 ' ' ~dest:(svar a) ~tmp:(svar ipt, svar tmp) @
             ipt_base10 '\n' ~dest:(svar b) ~tmp:(svar ipt, svar tmp) @
             [
@@ -250,19 +251,20 @@ module OutputTest = struct
             ]
           end;
           io_list = [
-            ( "2 2\n", "1" );
-            ( "5 7\n", "24" );
-            ( "12 34\n", "363" );
-            ( "99 99\n", "9604" );
+            ("2 2\n", "1");
+            ("5 7\n", "24");
+            ("12 34\n", "363");
+            ("99 99\n", "9604");
           ];
         }
       end; begin
+        (* unlimited list *)
         let buf1 = Var.gen () in
         let buf2 = Var.gen () in
         let c = Var.gen () in
         let p = Var.gen () in
         {
-          name = "inf lst";
+          name = "unlimited list";
           dfn = begin
             let open Dfn in [
               (c, Cell);
@@ -320,9 +322,51 @@ module OutputTest = struct
               Shift (-1, svar buf2, p);
             ];
           ];
-          io_list = [ ( "hello\ntest\n", "olleh tset" ) ]
+          io_list = [ ("hello\ntest\n", "olleh tset") ]
         }
-      end
+      end; begin
+        (* echo2 *)
+        let flag = Var.gen_named "named" in
+        let ipt = Var.gen_named "ipt" in
+        let diff = Var.gen_named "diff" in
+        {
+          name = "echo2 (if)";
+          dfn = begin
+            let open Dfn in [
+              (flag, Cell);
+              (ipt, CellIfable);
+              (diff, Cell);
+            ]
+          end;
+          cmd_list = begin
+            let open Cmd in [
+              add (svar flag);
+              loop (svar flag) [
+                sub (svar flag);
+                Get (svar ipt);
+                Put (svar ipt);
+                add ~n:(int_of_char '#') (svar diff);
+                loop (svar diff) [
+                  sub (svar diff);
+                  If (svar ipt, [
+                    sub (svar ipt);
+                  ], [
+                    del (svar diff);
+                    add (svar flag);
+                  ]);
+                ];
+                If (svar ipt, [
+                  add (svar flag);
+                ], []);
+              ];
+            ]
+          end;
+          io_list = [
+            ( "How are you?\nI'm fine, thank you.# hoge",
+              "How are you?\nI'm fine, thank you.#" )
+          ]
+        }
+      end;
     ]
 
   let tests = "output" >::: List.map test_run cases
