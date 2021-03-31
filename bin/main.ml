@@ -1,7 +1,7 @@
 open Batteries
 open Printf
-open Bfhoge
-open Bfhoge.Named
+open Lib
+open Lib.Named
 
 let svar v = Sel.Cell v
 let slst ?p ?(i=0) lst sel =

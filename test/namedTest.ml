@@ -1,7 +1,7 @@
 open Batteries
 open OUnit2
-open Bfhoge
-open Bfhoge.Named
+open Lib
+open Lib.Named
 
 (* テープの状態を比較するテスト *)
 module TapeTest = struct

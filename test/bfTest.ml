@@ -1,6 +1,6 @@
 open Batteries
 open OUnit2
-open Bfhoge.Bf
+open Lib.Bf
 
 type case = {
   name: string;

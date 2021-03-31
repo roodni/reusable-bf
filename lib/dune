@@ -1,5 +1,5 @@
 (library
- (name bfhoge)
+ (name lib)
  (libraries batteries))
 
 (env

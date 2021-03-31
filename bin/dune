@@ -1,7 +1,7 @@
 (executable
- (public_name bfhoge)
+ (public_name main)
  (name main)
- (libraries bfhoge batteries))
+ (libraries lib batteries))
 
 (env
  (dev
