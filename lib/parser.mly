@@ -4,8 +4,7 @@ open Reusable
 %}
 
 %token END
-%token PLUS
-%token MINUS
+%token PLUS MINUS
 %token DOT
 %token COMMA
 %token RSHIFT LSHIFT  // > <
@@ -23,6 +22,8 @@ open Reusable
 %token <int> INT
 %token <char> CHAR
 %token <string> VAR
+%token ST_VAR
+%token IN
 
 %start program
 %type <Program.t> program
@@ -52,6 +53,7 @@ field_elm_kind:
 
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
+  | ST_VAR f=field IN sl=stmt_list { [ StVar (f, sl) ] }
   | { [] }
 
 stmt:
@@ -62,7 +64,8 @@ stmt:
   | RSHIFT ep=expr ei=expr_opt { StShift (1, ep, ei) }
   | LSHIFT ep=expr ei=expr_opt { StShift (-1, ep, ei) }
   | EXCL e=expr LBRACKET sl=stmt_list RBRACKET { StWhile (e, sl) }
-  | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET { StIf (e, sl_t, Some sl_e) }
+  | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET
+      { StIf (e, sl_t, Some sl_e) }
 
 expr:
   | v=VAR { ExVar v }

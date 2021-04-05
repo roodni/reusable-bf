@@ -19,9 +19,11 @@ end = struct
     Hashtbl.add nametable id name;
     id
   let to_string (t: t) =
-    match Hashtbl.find_option nametable t with
-    | None -> "$" ^ string_of_int t
-    | Some name -> "$" ^ name
+    let name = match Hashtbl.find_option nametable t with
+      | None -> ""
+      | Some name -> name
+    in
+    sprintf "%s#%d" name t
 
 end
 

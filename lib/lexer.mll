@@ -4,6 +4,7 @@ let reserved = [
   ("ptr", Parser.PTR);
   ("list", Parser.LIST);
   ("list_unlimited", Parser.LIST_UNLIMITED);
+  ("in", Parser.IN)
 ]
 }
 
@@ -42,3 +43,4 @@ rule main = parse
       try List.assoc id reserved
       with Not_found -> Parser.VAR id
     }
+  | "$var" { Parser.ST_VAR }

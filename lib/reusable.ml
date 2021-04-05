@@ -1,4 +1,5 @@
 open Batteries
+open Printf
 
 module Var = struct
   type t = string
@@ -92,13 +93,20 @@ module NVarEnv = struct
   and kind =
     | Cell
     | Ptr
-    | Lst of t
+    | Lst of lst
+  and lst = {
+    length: int option;
+    mem: t;
+  }
   
   let to_list (t: t): (Var.t * (Named.Var.t * kind)) list = t
 
-  let lookup (v: Var.t) (t: t) = List.assoc v t
+  let lookup (v: Var.t) (t: t) =
+    match List.assoc_opt v t with
+    | Some x -> x
+    | None -> failwith @@ sprintf "not found: %s" v
   
-  let rec gen_using_field (field: Field.t): Named.Dfn.t * t =
+  let rec gen_using_field (dfn: Named.Dfn.t) (field: Field.t): Named.Dfn.t * t =
     List.fold_left_map (fun dfn (var, f_kind) ->
       let nvar = Named.Var.gen_named var in
       match f_kind with
@@ -110,14 +118,23 @@ module NVarEnv = struct
           let dfn = Named.Dfn.extend [ nvar ] Named.Dfn.Ptr dfn in
           let env_elm = (var, (nvar, Ptr)) in
           (dfn, env_elm)
-      | Lst { length; mem; } ->
-          let dfn_mem, env = gen_using_field mem in
+      | Field.Lst { length; mem; } ->
+          let dfn_mem, env = gen_using_field Named.Dfn.empty mem in
           let dfn =
             Named.Dfn.extend [ nvar ] (Named.Dfn.Lst { length; mem=dfn_mem; }) dfn
           in
-          let env_elm = (var, (nvar, Lst env)) in
+          let env_elm = (var, (nvar, Lst { length; mem=env; })) in
           (dfn, env_elm)
-    ) Named.Dfn.empty field
+    ) dfn field
+  
+  let codegen_clean (t: t) =
+    t |> List.map (fun (_, (nv, kind)) ->
+      let nsel = Named.Sel.V nv in
+      match kind with
+      | Cell -> [ Named.Cmd.Loop (nsel, [ Named.Cmd.Add (-1, nsel) ]) ]
+      | Ptr | Lst _ -> failwith "not implemented"
+    ) |> List.flatten
+  
 end
 
 
@@ -129,43 +146,47 @@ and value =
 module VaEnv = struct
   type t = va_env
 
-  let of_nvar_env (nvar_env: NVarEnv.t): t =
+  let empty: t = []
+
+  let extend_with_nvar_env (nvar_env: NVarEnv.t) (t: t): t =
     NVarEnv.to_list nvar_env |>
-      List.map (fun (var, (nvar, kind)) ->
+      List.fold_left (fun t (var, (nvar, kind)) ->
         match kind with
         | NVarEnv.Cell ->
             let sel = Sel.Base nvar in
-            (var, VaSel (sel, None))
+            (var, VaSel (sel, None)) :: t
         | Ptr ->
             assert false
-        | Lst nvar_env_lst ->
+        | Lst { mem=nvar_env_lst; _ } ->
             let sel = Sel.Base nvar in
-            (var, VaSel (sel, Some nvar_env_lst))
-      )
+            (var, VaSel (sel, Some nvar_env_lst)) :: t
+      ) t
 
   let lookup (var: Var.t) (t: t) =
-    List.assoc var t
+    match List.assoc_opt var t with
+    | Some v -> v
+    | None -> failwith @@ sprintf "not found: %s" var
 end
 
 module Value = struct
   type t = value
 
   let to_int = function
-    | VaSel _ -> failwith "値が数値ではない"
+    | VaSel _ -> failwith "value is not int"
     | VaInt i -> i
   
   let to_nsel_or_nptr = function
-    | VaInt _ -> failwith "値がセレクタではない"
+    | VaInt _ -> failwith "value is not selector"
     | VaSel (sel, _) -> Sel.to_nsel_or_nptr sel
 
   let to_nsel v =
     match to_nsel_or_nptr v with
     | Sel.NSel nsel -> nsel
-    | Sel.NPtr _ -> failwith "セレクタがポインタを指している"
+    | Sel.NPtr _ -> failwith "selector is selecting pointer"
   
   let to_nptr v =
     match to_nsel_or_nptr v with
-    | Sel.NSel _ -> failwith "セレクタがポインタを指していない"
+    | Sel.NSel _ -> failwith "selector is not selecting pointer"
     | Sel.NPtr (nsel, ptr) -> (nsel, ptr)
 
   let rec eval (env: VaEnv.t) = function
@@ -179,16 +200,16 @@ module Value = struct
         in
         let parent = eval env ex_parent in
         match parent with
-        | VaInt _ -> failwith "parentがセレクタではない"
-        | VaSel (_, None) -> failwith "parentがリストを指していない"
+        | VaInt _ -> failwith "parent is not selector"
+        | VaSel (_, None) -> failwith "parent is not selecting list"
         | VaSel (sel, Some nvar_env) -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             let sel = Sel.LstMem (sel, index, nvar) in
             let nvar_env_opt =
                 match nvar_kind with
                 | NVarEnv.Cell -> None
-                | Ptr -> failwith "LstMemでポインタが選択された"
-                | Lst nvar_env -> Some nvar_env
+                | Ptr -> failwith "pointer is selected"
+                | Lst { mem=nvar_env; _ } -> Some nvar_env
             in
             VaSel (sel, nvar_env_opt)
           end
@@ -196,13 +217,13 @@ module Value = struct
     | ExSelPtr (ex_parent, var) -> begin
         let parent = eval env ex_parent in
         match parent with
-        | VaInt _ -> failwith "parentがセレクタではない"
-        | VaSel (_, None) -> failwith "parentがリストを指していない"
-        | VaSel (Sel.LstPtr _, _) -> failwith "parentがポインタを指している"
+        | VaInt _ -> failwith "parent is not selector"
+        | VaSel (_, None) -> failwith "parent is not selecting list"
+        | VaSel (Sel.LstPtr _, _) -> failwith "parent is selecting pointer"
         | VaSel (sel, Some nvar_env) -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             match nvar_kind with
-            | Cell | Lst _ -> failwith "LstPtrでポインタ以外が指定された"
+            | Cell | Lst _ -> failwith "pointer is not selected"
             | Ptr ->
                 let sel = Sel.LstPtr (sel, nvar) in
                 VaSel (sel, Some nvar_env)
@@ -216,8 +237,8 @@ module Program = struct
 
   let codegen (program: t) =
     let field, stmt_list = program in
-    let dfn, nvar_env = NVarEnv.gen_using_field field in
-    let va_env = VaEnv.of_nvar_env nvar_env in
+    let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty field in
+    let va_env = VaEnv.extend_with_nvar_env nvar_env VaEnv.empty in
     let rec codegen va_env states stmt_list =
       let states, code_list =
         List.fold_left_map (fun dfn stmt ->
@@ -258,7 +279,7 @@ module Program = struct
                 match Named.Dfn.lookup dfn_key dfn with
                 | Named.Dfn.CellIfable -> dfn
                 | Cell ->  Named.Dfn.extend dfn_key Named.Dfn.CellIfable dfn
-                | Lst _ | Ptr -> failwith "条件のセレクタがセルを指していない"
+                | Lst _ | Ptr -> failwith "condition selector is not selecting cell"
               in
               let dfn, code_then = codegen va_env dfn stmt_list_then in
               let dfn, code_else = match stmt_list_else with
@@ -275,7 +296,13 @@ module Program = struct
               in
               let code = [ Named.Cmd.Shift (sign * i, nsel, ptr) ] in
               (dfn, code)
-          | StVar _ -> failwith "not implemented"
+          | StVar (field, stmt_list) -> begin
+              let dfn, nvar_env = NVarEnv.gen_using_field dfn field in
+              let va_env = VaEnv.extend_with_nvar_env nvar_env va_env in
+              let dfn, code_child = codegen va_env dfn stmt_list in
+              let code_clean = NVarEnv.codegen_clean nvar_env in
+              (dfn, code_child @ code_clean)
+            end
         ) states stmt_list
       in
       (states, List.flatten code_list)

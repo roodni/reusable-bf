@@ -68,7 +68,7 @@ module OutputTest = struct
       io_list |> List.iter (fun (ipt, opt) ->
         let state = Bf.run bf (String.enum ipt) in
         let Bf.State.{ err; _ } = state in
-        if err != None then begin
+        if err <> None then begin
           bf |> Bf.Cmd.list_to_string |> print_endline;
           Bf.State.dump state;
           assert_bool "err" false;

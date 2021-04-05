@@ -223,6 +223,8 @@ module State = struct
     printf "--- state dump ---\n";
     print_endline "[tape]";
     Tape.dump state.tape;
+    print_endline "[output]";
+    output_to_string state |> print_endline;
     print_endline "[comments]";
     state.comments |> List.take 100 |> String.concat " <- " |> print_endline;
     print_endline "[error]";
