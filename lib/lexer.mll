@@ -4,13 +4,15 @@ let reserved = [
   ("ptr", Parser.PTR);
   ("list", Parser.LIST);
   ("list_unlimited", Parser.LIST_UNLIMITED);
-  ("in", Parser.IN)
+  ("in", Parser.IN);
+  ("fun", Parser.FUN);
 ]
 }
 
 rule main = parse
   | eof { Parser.END }
   | [' ' '\t' '\n' '\r']+ { main lexbuf }
+  | "#" [^'\n']* ("\n" | eof) { main lexbuf }
   | "+" { Parser.PLUS }
   | "-" { Parser.MINUS }
   | "." { Parser.DOT }
@@ -28,6 +30,11 @@ rule main = parse
   | ";" { Parser.SEMI }
   | "(" { Parser.LPAREN }
   | ")" { Parser.RPAREN }
+  | "=" { Parser.EQ }
+  | "*" { Parser.ASTER }
+  | "->" { Parser.ARROW }
+  | "$var" { Parser.ST_VAR }
+  | "$let" { Parser.ST_LET }
   | "0" | ['1'-'9'] ['0'-'9']* {
       Parser.INT (int_of_string @@ Lexing.lexeme lexbuf)
     }
@@ -43,4 +50,3 @@ rule main = parse
       try List.assoc id reserved
       with Not_found -> Parser.VAR id
     }
-  | "$var" { Parser.ST_VAR }

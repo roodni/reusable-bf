@@ -1,0 +1,39 @@
+# ! <- while
+# ? <- if (non-destructive)
+# * <- block expansion
+
+{}
+
+$let del = fun x -> [
+	! x [ - x ]
+] in
+
+$let if_eq = fun a -> fun b -> fun then -> [
+	! a [
+		- a
+		? b [ - b ] [
+			*del a
+			*then
+		]
+	]
+	! b [
+		*del b
+		*then
+	]
+] in
+
+$var {
+	cont: cell;
+} in
++ cont
+! cont [
+	- cont
+	$var {
+		input: cell;
+		diff: cell;
+	} in
+	, input
+	. input
+	+ diff '#'
+	*if_eq input diff [ + cont ]
+]

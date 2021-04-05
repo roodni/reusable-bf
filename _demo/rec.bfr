@@ -1,0 +1,4 @@
+{}
+
+$let f = fun g -> g g in
+*f f

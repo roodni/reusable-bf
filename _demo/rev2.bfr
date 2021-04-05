@@ -1,0 +1,30 @@
+{
+	buf: list_unlimited {
+		c: cell;
+		p: ptr;
+	};
+}
+
+$var {	# comment
+	f: cell;
+} in
+
+$let p = buf@p in
+$let c = p:c in
+
++ f
+! f [
+	, c
+	- c '\n'
+	? c [] [
+		- f
+	]
+	+ c '\n'
+	> p
+]
+
+< p
+! p [
+	< p
+	. c
+]

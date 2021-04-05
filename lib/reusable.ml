@@ -27,11 +27,16 @@ type stmt =
   | StIf of expr * stmt list * stmt list option
   | StShift of int * expr * expr option  (* sign, ptr, int *)
   | StVar of Field.t * stmt list
+  | StLet of Var.t * expr * stmt list
+  | StExpand of expr
 and expr =
   | ExVar of Var.t
   | ExInt of int
   | ExSelMem of expr * expr option * Var.t
   | ExSelPtr of expr * Var.t
+  | ExFun of Var.t * expr
+  | ExApp of expr * expr
+  | ExBlock of stmt list
 
 module Stmt = struct
   type t = stmt
@@ -142,11 +147,16 @@ type va_env = (Var.t * value) list
 and value =
   | VaInt of int
   | VaSel of Sel.t * NVarEnv.t option
+  | VaFun of va_env * Var.t * expr
+  | VaBlock of va_env * stmt list
 
 module VaEnv = struct
   type t = va_env
 
   let empty: t = []
+
+  let extend (var: Var.t) (value: value) (t: t): t =
+    (var, value) :: t
 
   let extend_with_nvar_env (nvar_env: NVarEnv.t) (t: t): t =
     NVarEnv.to_list nvar_env |>
@@ -172,22 +182,28 @@ module Value = struct
   type t = value
 
   let to_int = function
-    | VaSel _ -> failwith "value is not int"
     | VaInt i -> i
-  
-  let to_nsel_or_nptr = function
-    | VaInt _ -> failwith "value is not selector"
-    | VaSel (sel, _) -> Sel.to_nsel_or_nptr sel
-
+    | _ -> failwith "value is not int"
+  let to_sel_and_nvar_env = function
+    | VaSel (sel, nvar_env) -> (sel, nvar_env)
+    | _ -> failwith "value is not selector"
+  let to_nsel_or_nptr v =
+    let sel, _ = to_sel_and_nvar_env v in
+    Sel.to_nsel_or_nptr sel
   let to_nsel v =
     match to_nsel_or_nptr v with
     | Sel.NSel nsel -> nsel
     | Sel.NPtr _ -> failwith "selector is selecting pointer"
-  
   let to_nptr v =
     match to_nsel_or_nptr v with
     | Sel.NSel _ -> failwith "selector is not selecting pointer"
     | Sel.NPtr (nsel, ptr) -> (nsel, ptr)
+  let to_fun = function
+    | VaFun (env, v, e) -> (env, v, e)
+    | _ -> failwith "value is not function"
+  let to_block = function
+    | VaBlock (env, block) -> (env, block)
+    | _ -> failwith "value is not block"
 
   let rec eval (env: VaEnv.t) = function
     | ExVar v -> VaEnv.lookup v env
@@ -198,11 +214,10 @@ module Value = struct
           | None -> 0
           | Some ex_index -> eval env ex_index |> to_int
         in
-        let parent = eval env ex_parent in
+        let parent = eval env ex_parent |> to_sel_and_nvar_env in
         match parent with
-        | VaInt _ -> failwith "parent is not selector"
-        | VaSel (_, None) -> failwith "parent is not selecting list"
-        | VaSel (sel, Some nvar_env) -> begin
+        | _, None -> failwith "parent is not selecting list"
+        | sel, Some nvar_env -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             let sel = Sel.LstMem (sel, index, nvar) in
             let nvar_env_opt =
@@ -215,12 +230,11 @@ module Value = struct
           end
       end
     | ExSelPtr (ex_parent, var) -> begin
-        let parent = eval env ex_parent in
+        let parent = eval env ex_parent |> to_sel_and_nvar_env in
         match parent with
-        | VaInt _ -> failwith "parent is not selector"
-        | VaSel (_, None) -> failwith "parent is not selecting list"
-        | VaSel (Sel.LstPtr _, _) -> failwith "parent is selecting pointer"
-        | VaSel (sel, Some nvar_env) -> begin
+        | _, None -> failwith "parent is not selecting list"
+        | Sel.LstPtr _, _ -> failwith "parent is selecting pointer"
+        | sel, Some nvar_env -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             match nvar_kind with
             | Cell | Lst _ -> failwith "pointer is not selected"
@@ -229,6 +243,14 @@ module Value = struct
                 VaSel (sel, Some nvar_env)
           end
       end
+    | ExFun (var, ex) -> VaFun (env, var, ex)
+    | ExApp (ex_fn, ex_arg) ->
+        let env_fun, var_arg, ex_fun = eval env ex_fn |> to_fun in
+        let arg = eval env ex_arg in
+        let env_fun = VaEnv.extend var_arg arg env_fun in
+        eval env_fun ex_fun
+    | ExBlock st_list -> VaBlock (env, st_list)
+
 end
 
 
@@ -236,10 +258,10 @@ module Program = struct
   type t = Field.t * Stmt.t list
 
   let codegen (program: t) =
-    let field, stmt_list = program in
+    let field, st_list = program in
     let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty field in
     let va_env = VaEnv.extend_with_nvar_env nvar_env VaEnv.empty in
-    let rec codegen va_env states stmt_list =
+    let rec codegen va_env states st_list =
       let states, code_list =
         List.fold_left_map (fun dfn stmt ->
           match stmt with
@@ -261,18 +283,18 @@ module Program = struct
               let nsel = Value.eval va_env ex_sel |> Value.to_nsel in
               let code = [ Named.Cmd.Get nsel ] in
               (dfn, code)
-          | StWhile (ex_sel, stmt_list) -> begin
+          | StWhile (ex_sel, st_list) -> begin
               match Value.eval va_env ex_sel |> Value.to_nsel_or_nptr with
               | Sel.NSel nsel ->
-                  let envs, code_loop = codegen va_env dfn stmt_list in
+                  let envs, code_loop = codegen va_env dfn st_list in
                   let code = [ Named.Cmd.Loop (nsel, code_loop) ] in
                   (envs, code)
               | Sel.NPtr (nsel, ptr) ->
-                  let envs, code_loop = codegen va_env dfn stmt_list in
+                  let envs, code_loop = codegen va_env dfn st_list in
                   let code = [ Named.Cmd.LoopPtr (nsel, ptr, code_loop) ] in
                   (envs, code)
             end
-          | StIf (ex_sel, stmt_list_then, stmt_list_else) ->
+          | StIf (ex_sel, st_list_then, st_list_else) ->
               let nsel = Value.eval va_env ex_sel |> Value.to_nsel in
               let dfn_key = Named.Sel.to_dfn_key nsel in
               let dfn =
@@ -281,10 +303,10 @@ module Program = struct
                 | Cell ->  Named.Dfn.extend dfn_key Named.Dfn.CellIfable dfn
                 | Lst _ | Ptr -> failwith "condition selector is not selecting cell"
               in
-              let dfn, code_then = codegen va_env dfn stmt_list_then in
-              let dfn, code_else = match stmt_list_else with
+              let dfn, code_then = codegen va_env dfn st_list_then in
+              let dfn, code_else = match st_list_else with
                 | None -> (dfn, [])
-                | Some stmt_list_else -> codegen va_env dfn stmt_list_else
+                | Some st_list_else -> codegen va_env dfn st_list_else
               in
               let code = [ Named.Cmd.If (nsel, code_then, code_else) ] in
               (dfn, code)
@@ -296,16 +318,22 @@ module Program = struct
               in
               let code = [ Named.Cmd.Shift (sign * i, nsel, ptr) ] in
               (dfn, code)
-          | StVar (field, stmt_list) -> begin
+          | StVar (field, st_list) ->
               let dfn, nvar_env = NVarEnv.gen_using_field dfn field in
               let va_env = VaEnv.extend_with_nvar_env nvar_env va_env in
-              let dfn, code_child = codegen va_env dfn stmt_list in
+              let dfn, code_child = codegen va_env dfn st_list in
               let code_clean = NVarEnv.codegen_clean nvar_env in
               (dfn, code_child @ code_clean)
-            end
-        ) states stmt_list
+          | StLet (var, ex, st_list) ->
+              let value = Value.eval va_env ex in
+              let va_env = VaEnv.extend var value va_env in
+              codegen va_env dfn st_list
+          | StExpand ex_block ->
+              let va_env, st_list = Value.eval va_env ex_block |> Value.to_block in
+              codegen va_env dfn st_list
+        ) states st_list
       in
       (states, List.flatten code_list)
     in
-    codegen va_env dfn stmt_list
+    codegen va_env dfn st_list
 end

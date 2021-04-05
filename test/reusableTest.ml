@@ -29,8 +29,8 @@ let test_run { name; code; io_list; } =
     )
   )
 
-let tests =
-  test_run {
+let cases = [
+  {
     name = "rev";
     io_list = [ ("hello\n", "olleh") ];
     code = "\
@@ -54,4 +54,82 @@ let tests =
   . buf@p:c
   < buf@p
 ]";
+  };
+  {
+    name = "rev2";
+    io_list = [ ("hello\na", "olleh") ];
+    code = "\
+{
+	buf: list_unlimited {
+		c: cell;
+		p: ptr;
+	};
+}
+
+$var {	# comment
+	f: cell;
+} in
+
+$let p = buf@p in
+$let c = p:c in
+
++ f
+! f [
+	, c
+	- c '\\n'
+	? c [] [
+		- f
+	]
+	+ c '\\n'
+	> p
+]
+
+< p
+! p [
+	< p
+	. c
+]";
+  };
+  {
+    name = "echo";
+    io_list = [ ("Hello, world!#test", "Hello, world!#") ];
+    code = "\
+{}
+
+$let del = fun x -> [
+	! x [ - x ]
+] in
+
+$let if_eq = fun a -> fun b -> fun then -> [
+	! a [
+		- a
+		? b [ - b ] [
+			*del a
+			*then
+		]
+	]
+	! b [
+		*del b
+		*then
+	]
+] in
+
+$var {
+	cont: cell;
+} in
++ cont
+! cont [
+	- cont
+	$var {
+		input: cell;
+		diff: cell;
+	} in
+	, input
+	. input
+	+ diff '#'
+	*if_eq input diff [ + cont ]
+]"
   }
+]
+
+let tests = "reusable" >::: List.map test_run cases
