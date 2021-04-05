@@ -22,8 +22,8 @@ module TapeTest = struct
       });
     ]
   let program =
-    let ap_a = Sel.LstPtr (a, p, 0, Sel.Cell a) in
-    let a = Sel.Cell a in
+    let ap_a = Sel.LstPtr (a, p, 0, Sel.V a) in
+    let a = Sel.V a in
     let open Cmd in [
       Add (3, ap_a);
       Shift (1, a, p);
@@ -78,7 +78,7 @@ module OutputTest = struct
     )
 
   let cases = 
-    let svar v = Sel.Cell v in
+    let svar v = Sel.V v in
     let slst ?p ?(i=0) lst sel =
       match p with
       | None -> Sel.Lst (lst, i, sel)
@@ -109,7 +109,7 @@ module OutputTest = struct
           dfn = var_list |> List.map (fun v -> (v, Dfn.Cell));
           cmd_list = begin
             let flag, input, diff, hoge, els =
-              match var_list |> List.map (fun v -> Sel.Cell v) with
+              match var_list |> List.map (fun v -> Sel.V v) with
               | [a; b; c; d; e] -> (a, b, c, d, e)
               | _ -> assert false
             in

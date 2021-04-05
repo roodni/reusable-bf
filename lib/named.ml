@@ -46,28 +46,65 @@ module Dfn = struct
       match kind with
       | Ptr -> Left (v, kind)
       | kind -> Right (v, kind)
-    ) t  
+    ) t
   let partition_inf_lst (t: t): (Var.t * lst) list * t =
     List.partition_map (fun (v, kind) ->
       match kind with
       | Lst ({ length = None; _ } as lst) -> Left (v, lst)
       | kind -> Right (v, kind)
     ) t
+  
+  let empty: t = []
+
+  let rec lookup (key: Var.t list) (dfn: t): kind =
+    match key with
+    | [] -> assert false
+    | v :: [] -> List.assoc v dfn
+    | v :: key ->
+        let lst =
+          match List.assoc v dfn with
+          | Cell | CellIfable | Ptr -> raise Not_found
+          | Lst lst -> lst
+        in
+        lookup key lst.mem
+  
+  let rec extend (key: Var.t list) (kind: kind) (dfn: t): t =
+    match key with
+    | [] -> assert false
+    | v :: [] ->
+        let dfn = List.remove_assoc v dfn in
+        (v, kind) :: dfn
+    | v :: key -> begin
+        let lst =
+          match List.assoc v dfn with
+          | Cell | CellIfable | Ptr -> raise Not_found
+          | Lst lst -> lst
+        in
+        let mem = extend key kind lst.mem in
+        let dfn = List.remove_assoc v dfn in
+        (v, Lst { lst with mem }) :: dfn
+      end
+
 end
 
 
 module Sel = struct
   type t =
-    | Cell of Var.t
+    | V of Var.t
     | Lst of Var.t * int * t
     | LstPtr of Var.t * Var.t * int * t
   
   (* Cmd.Shift用 リストへのセレクタとポインタ名からポインタへのセレクタを得る *)
   let rec ptr_for_shift lst ptr index =
     match lst with
-    | Cell lst -> LstPtr (lst, ptr, index, Cell ptr)
+    | V lst -> LstPtr (lst, ptr, index, V ptr)
     | Lst (v, i, lst) -> Lst (v, i, ptr_for_shift lst ptr index)
     | LstPtr (v, p, i, lst) -> LstPtr (v, p, i, ptr_for_shift lst ptr index)
+  
+  let rec to_dfn_key = function
+    | V v -> [ v ]
+    | Lst (v, _, sel)
+    | LstPtr (v, _, _, sel) -> v :: (to_dfn_key sel)
 end
 
 
@@ -183,7 +220,7 @@ module Pos = struct
 
   let rec of_sel (layout: Layout.t) (sel: Sel.t) =
     match sel with
-    | Sel.Cell cell ->
+    | Sel.V cell ->
         let loc = Layout.loc_of_var layout cell in
         Cell loc.offset
     | Sel.Lst (lst, i, sel) ->
