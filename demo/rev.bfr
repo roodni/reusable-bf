@@ -1,9 +1,9 @@
-{
+main {
 	buf: list_unlimited {
 		c: cell;
 		p: ptr;
 	};
-}
+} in
 
 + buf:c
 ! buf@p:c [

@@ -3,7 +3,7 @@ module Lib = struct end (* おまじない *)
 open Reusable
 %}
 
-%token END
+%token EOF
 %token PLUS MINUS
 %token DOT COMMA
 %token RSHIFT LSHIFT  // > <
@@ -13,18 +13,23 @@ open Reusable
 %token COLON
 %token AT
 %token SEMI
-%token CELL PTR LIST LIST_UNLIMITED
 %token LPAREN RPAREN
-%token <int> INT
-%token <char> CHAR
-%token <string> VAR
-%token IN
+%token EQ
+%token ASTER
+%token ARROW  // ->
+
 %token ST_VAR
 %token ST_LET
 %token ST_DIVE
-%token EQ
-%token ASTER
-%token FUN ARROW
+
+%token CELL PTR LIST LIST_UNLIMITED
+%token FUN
+%token IN
+%token MAIN
+
+%token <int> INT
+%token <char> CHAR
+%token <string> VAR
 
 %start program
 %type <Program.t> program
@@ -32,7 +37,7 @@ open Reusable
 %%
 
 program:
-  | f=field sl=stmt_list END { (f, sl) }
+  | MAIN f=field IN sl=stmt_list EOF { (f, sl) }
 
 
 field:

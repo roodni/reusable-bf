@@ -2,7 +2,7 @@
 # ? <- if (non-destructive)
 # * <- block expansion
 
-{}
+main {} in
 
 $let del = fun x -> [
 	! x [ - x ]

@@ -1,4 +1,4 @@
-{}
+main {} in
 
 $let f = fun block -> [
 	$var { evil: cell; } in

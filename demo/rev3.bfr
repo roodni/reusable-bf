@@ -1,9 +1,9 @@
-{
+main {
 	buf: list_unlimited {
 		c: cell;
 		p: ptr;
 	};
-}
+} in
 
 $let input_end = '\n' in
 $let p = buf@p in

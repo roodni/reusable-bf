@@ -1,4 +1,4 @@
-{
+main {
 	l: list_unlimited {
 		p1: ptr;
 		p2: ptr;
@@ -7,7 +7,7 @@
 			x: cell;
 		};
 	};
-}
+} in
 
 # ok
 $dive l@p1 [

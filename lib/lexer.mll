@@ -6,13 +6,14 @@ let reserved = [
   ("list_unlimited", Parser.LIST_UNLIMITED);
   ("in", Parser.IN);
   ("fun", Parser.FUN);
+  ("main", Parser.MAIN);
 ]
 }
 
 rule main = parse
-  | eof { Parser.END }
+  | eof { Parser.EOF }
   | [' ' '\t' '\n' '\r']+ { main lexbuf }
-  | "#" [^'\n']* ("\n" | eof) { main lexbuf }
+  | "#" [^'\n']* { main lexbuf }
   | "+" { Parser.PLUS }
   | "-" { Parser.MINUS }
   | "." { Parser.DOT }

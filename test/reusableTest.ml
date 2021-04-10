@@ -9,6 +9,12 @@ type case = {
   code: string;
 }
 
+let load_code path =
+	let input = open_in path in
+	let code = BatIO.read_all input in
+	close_in input;
+	code
+
 let test_run { name; code; io_list; } =
   name >:: (fun _ ->
     let program = Lexing.from_string code |> Parser.program Lexer.main in
@@ -29,141 +35,28 @@ let test_run { name; code; io_list; } =
     )
   )
 
+let _ = print_string @@ Sys.getcwd ()
+
 let cases = [
   {
     name = "rev";
     io_list = [ ("hello\n", "olleh") ];
-    code = "\
-{
-  buf: list_unlimited {
-    c: cell;
-    p: ptr;
-  };
-}
-
-+ buf:c
-! buf@p:c [
-  > buf@p
-  , buf@p:c
-  - buf@p:c '\\n'
-]
-- buf:c
-< buf@p
-! buf@p:c [
-  + buf@p:c '\\n'
-  . buf@p:c
-  < buf@p
-]";
+		code = load_code "../demo/rev.bfr";
   };
   {
     name = "rev2";
     io_list = [ ("hello\na", "olleh") ];
-    code = "\
-{
-	buf: list_unlimited {
-		c: cell;
-		p: ptr;
-	};
-}
-
-$var {	# comment
-	f: cell;
-} in
-
-$let p = buf@p in
-$let c = p:c in
-
-+ f
-! f [
-	, c
-	- c '\\n'
-	? c [] [
-		- f
-	]
-	+ c '\\n'
-	> p
-]
-
-< p
-! p [
-	< p
-	. c
-]";
+    code = load_code "../demo/rev2.bfr";
   };
   {
     name = "echo";
     io_list = [ ("Hello, world!#test", "Hello, world!#") ];
-    code = "\
-{}
-
-$let del = fun x -> [
-	! x [ - x ]
-] in
-
-$let if_eq = fun a -> fun b -> fun then -> [
-	! a [
-		- a
-		? b [ - b ] [
-			*del a
-			*then
-		]
-	]
-	! b [
-		*del b
-		*then
-	]
-] in
-
-$var {
-	cont: cell;
-} in
-+ cont
-! cont [
-	- cont
-	$var {
-		input: cell;
-		diff: cell;
-	} in
-	, input
-	. input
-	+ diff '#'
-	*if_eq input diff [ + cont ]
-]"
+    code = load_code "../demo/echo.bfr"
   };
   {
     name = "rev3";
     io_list = [ ("hello\na", "olleh") ];
-    code = "\
-{
-	buf: list_unlimited {
-		c: cell;
-		p: ptr;
-	};
-}
-
-$let input_end = '\\n' in
-$let p = buf@p in
-$let c = p:c in
-
-$dive p [
-	$var {
-		f: cell;
-	} in
-	+ f
-	! f [
-		, c
-		- c input_end
-		? c [] [ - f ]
-		+ c input_end
-		> p
-	]
-]
-
-< p
-! p [
-	< p
-	. c
-]";
+    code = load_code "../demo/rev3.bfr";
   }
 ]
 
