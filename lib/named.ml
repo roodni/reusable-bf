@@ -55,21 +55,20 @@ module Dfn = struct
       | Lst ({ length = None; _ } as lst) -> Left (v, lst)
       | kind -> Right (v, kind)
     ) t
-  
+
   let empty: t = []
 
-  let rec lookup (key: Var.t list) (dfn: t): kind =
+  let rec lookup (key: Var.t list) (dfn: t): kind option =
     match key with
     | [] -> assert false
-    | v :: [] -> List.assoc v dfn
-    | v :: key ->
-        let lst =
-          match List.assoc v dfn with
-          | Cell | CellIfable | Ptr -> raise Not_found
-          | Lst lst -> lst
-        in
-        lookup key lst.mem
-  
+    | v :: [] -> List.assoc_opt v dfn
+    | v :: key -> begin
+        match List.assoc_opt v dfn with
+        | None -> None
+        | Some (Cell | CellIfable | Ptr) -> None
+        | Some (Lst lst) -> lookup key lst.mem
+      end
+
   let rec extend (key: Var.t list) (kind: kind) (dfn: t): t =
     match key with
     | [] -> assert false
@@ -78,9 +77,10 @@ module Dfn = struct
         (v, kind) :: dfn
     | v :: key -> begin
         let lst =
-          match List.assoc v dfn with
-          | Cell | CellIfable | Ptr -> raise Not_found
-          | Lst lst -> lst
+          match List.assoc_opt v dfn with
+          | None -> assert false
+          | Some (Cell | CellIfable | Ptr) -> assert false
+          | Some (Lst lst) -> lst
         in
         let mem = extend key kind lst.mem in
         let dfn = List.remove_assoc v dfn in
@@ -95,18 +95,23 @@ module Sel = struct
     | V of Var.t
     | Lst of Var.t * int * t
     | LstPtr of Var.t * Var.t * int * t
-  
+
   (* Cmd.Shift用 リストへのセレクタとポインタ名からポインタへのセレクタを得る *)
   let rec ptr_for_shift lst ptr index =
     match lst with
     | V lst -> LstPtr (lst, ptr, index, V ptr)
     | Lst (v, i, lst) -> Lst (v, i, ptr_for_shift lst ptr index)
     | LstPtr (v, p, i, lst) -> LstPtr (v, p, i, ptr_for_shift lst ptr index)
-  
+
   let rec to_dfn_key = function
     | V v -> [ v ]
     | Lst (v, _, sel)
     | LstPtr (v, _, _, sel) -> v :: (to_dfn_key sel)
+
+  let rec pretty = function
+    | V v -> Var.to_string v
+    | Lst (v, i, sel) -> sprintf "%s:(%d)%s" (Var.to_string v) i (pretty sel)
+    | LstPtr (v, p, i, sel) -> sprintf "%s@%s:(%d)%s" (Var.to_string v) (Var.to_string p) i (pretty sel)
 end
 
 
@@ -127,7 +132,7 @@ module Layout = struct
     elm_size: int;
   }
 
-  (* 定義された変数をセルに割り当てる *)
+  (** 定義された変数をセルに割り当てる *)
   let of_dfn (dfn: Dfn.t): t =
     let dfn_inf_lst, dfn = Dfn.partition_inf_lst dfn in
     let rec allocate (ofs_available: int) (dfn: Dfn.t): t * int =
@@ -173,8 +178,8 @@ module Layout = struct
       )
     in
     layout @ layout_inf_lst
-  
-  let loc_of_var (layout: t) (v: Var.t) = List.assoc v layout
+
+  let loc_of_var (layout: t) (v: Var.t) = List.assoc_opt v layout
 
   let rec print ?(d=0) t =
     let indent = String.repeat "      " d in
@@ -214,49 +219,61 @@ module Pos = struct
   let shift n = function
     | Cell offset -> Cell (offset + n)
     | Ptr ({ offset_of_head; _ } as ptr) -> Ptr { ptr with offset_of_head = offset_of_head + n; }
-  
+
   let rec shift_last n pos =
     match pos with
     | Cell offset -> Cell (offset + n)
     | Ptr ({ child_pos; _ } as ptr) -> Ptr { ptr with child_pos = shift_last n child_pos }
 
-  let rec of_sel (layout: Layout.t) (sel: Sel.t) =
-    match sel with
-    | Sel.V cell ->
-        let loc = Layout.loc_of_var layout cell in
-        Cell loc.offset
-    | Sel.Lst (lst, i, sel) ->
-        let loc = Layout.loc_of_var layout lst in
-        let mem, header_start, elm_size =
-          match loc.kind with
-          | Layout.Lst { mem; header_start; elm_size; _ } ->
-              (mem, header_start, elm_size)
-          | _ -> assert false
-        in
-        let offset = loc.offset + header_start + (1 + i) * elm_size in
-        of_sel mem sel |> shift offset
-    | Sel.LstPtr (lst, ptr, i, sel) ->
-        let loc = Layout.loc_of_var layout lst in
-        let lst =
-          match loc.kind with
-          | Layout.Lst lst -> lst
-          | _ -> assert false
-        in
-        let ptr_offset_in_lst =
-          match Layout.loc_of_var lst.mem ptr with
-          | { offset; kind = Ptr } -> offset
-          | _ -> assert false
-        in
-        let index = i * lst.elm_size in
-        let child_pos = of_sel lst.mem sel |> shift index in 
-        Ptr {
-          offset_of_head = loc.offset + lst.header_start + ptr_offset_in_lst;
-          offset_in_lst = ptr_offset_in_lst;
-          size = lst.elm_size;
-          child_pos;
-        }
-        
-  (* リストのポインタを遡って根本のoffset_of_headまで戻るコードを生成する *)
+  let of_sel (layout: Layout.t) (sel: Sel.t) =
+    let raise_not_found () =
+      failwith @@ sprintf "not found: %s" (Sel.pretty sel)
+    in
+    let rec of_sel layout sel =
+      match sel with
+      | Sel.V cell -> begin
+          match Layout.loc_of_var layout cell with
+          | None -> raise_not_found ()
+          | Some loc -> Cell loc.offset
+        end
+      | Sel.Lst (lst, i, sel) ->
+          let loc = match Layout.loc_of_var layout lst with
+            | None -> raise_not_found ()
+            | Some loc -> loc
+          in
+          let mem, header_start, elm_size =
+            match loc.kind with
+            | Layout.Lst { mem; header_start; elm_size; _ } ->
+                (mem, header_start, elm_size)
+            | _ -> assert false
+          in
+          let offset = loc.offset + header_start + (1 + i) * elm_size in
+          of_sel mem sel |> shift offset
+      | Sel.LstPtr (lst, ptr, i, sel) ->
+          let loc, lst =
+            match Layout.loc_of_var layout lst with
+            | None -> raise_not_found ()
+            | Some ({ kind = Layout.Lst lst; _ } as loc) -> (loc, lst)
+            | Some _ -> assert false
+          in
+          let ptr_offset_in_lst =
+            match Layout.loc_of_var lst.mem ptr with
+            | None -> raise_not_found ()
+            | Some { offset; kind = Ptr } -> offset
+            | Some _ -> assert false
+          in
+          let index = i * lst.elm_size in
+          let child_pos = of_sel lst.mem sel |> shift index in
+          Ptr {
+            offset_of_head = loc.offset + lst.header_start + ptr_offset_in_lst;
+            offset_in_lst = ptr_offset_in_lst;
+            size = lst.elm_size;
+            child_pos;
+          }
+    in
+    of_sel layout sel
+
+  (** リストのポインタを遡って根本のoffset_of_headまで戻るコードを生成する *)
   let rec codegen_root { offset_in_lst; size; child_pos; _ }: Bf.Cmd.t list =
     let origin_offset = match child_pos with
       | Cell offset -> offset
@@ -271,7 +288,8 @@ module Pos = struct
     match child_pos with
     | Cell _ -> code
     | Ptr ptr -> codegen_root ptr @ code
-  (* codegen_move origin dest *)
+
+  (** [codegen_move origin dest]  [origin]から[dest]に移動するコードを生成する *)
   let rec codegen_move (origin: t) (dest: t): Bf.Cmd.t list =
     match origin, dest with
     | Ptr origin, Ptr dest when origin.offset_of_head = dest.offset_of_head ->
@@ -291,7 +309,7 @@ end
 
 
 module Cmd = struct
-  type t = 
+  type t =
     | Add of int * Sel.t
     | Put of Sel.t
     | Get of Sel.t
@@ -376,38 +394,3 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
   in
   let _, code = codegen Pos.init cmd_list in
   code
-
-
-module Test = struct
-  let a = Var.gen_named "a"
-  let b = Var.gen_named "b"
-  let x = Var.gen_named "x"
-  let y = Var.gen_named "y"
-  let p = Var.gen_named "p"
-  let test =
-    let dfn =
-      let open Dfn in [
-        (x, Cell);
-        (a, Lst {
-          length = None;
-          mem = [
-            (x, Cell);
-            (y, Cell);
-            (p, Ptr);
-          ]
-        });
-        (b, Lst {
-          length = None;
-          mem = [
-            (p, Ptr);
-            (x, Cell);
-          ]
-        });
-        (y, Cell);
-      ]
-    in
-    let layout = Layout.of_dfn dfn in
-    (dfn, layout)
-  
-  let dfn, layout = test
-end

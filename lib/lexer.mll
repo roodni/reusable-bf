@@ -35,6 +35,7 @@ rule main = parse
   | "->" { Parser.ARROW }
   | "$var" { Parser.ST_VAR }
   | "$let" { Parser.ST_LET }
+  | "$dive" { Parser.ST_DIVE }
   | "0" | ['1'-'9'] ['0'-'9']* {
       Parser.INT (int_of_string @@ Lexing.lexeme lexbuf)
     }

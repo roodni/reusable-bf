@@ -5,14 +5,14 @@ open Reusable
 
 type case = {
   name: string;
+  io_list: (string * string) list;
   code: string;
-  io_list: (string * string) list
 }
 
 let test_run { name; code; io_list; } =
   name >:: (fun _ ->
     let program = Lexing.from_string code |> Parser.program Lexer.main in
-    let dfn, cmd_list = Program.codegen program in
+    let dfn, cmd_list = Codegen.codegen program in
     let layout = Named.Layout.of_dfn dfn in
     let bf_code = Named.codegen layout cmd_list in
     io_list |> List.iter (fun (ipt, opt) ->
@@ -129,6 +129,41 @@ $var {
 	+ diff '#'
 	*if_eq input diff [ + cont ]
 ]"
+  };
+  {
+    name = "rev3";
+    io_list = [ ("hello\na", "olleh") ];
+    code = "\
+{
+	buf: list_unlimited {
+		c: cell;
+		p: ptr;
+	};
+}
+
+$let input_end = '\\n' in
+$let p = buf@p in
+$let c = p:c in
+
+$dive p [
+	$var {
+		f: cell;
+	} in
+	+ f
+	! f [
+		, c
+		- c input_end
+		? c [] [ - f ]
+		+ c input_end
+		> p
+	]
+]
+
+< p
+! p [
+	< p
+	. c
+]";
   }
 ]
 

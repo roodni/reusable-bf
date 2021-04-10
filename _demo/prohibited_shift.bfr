@@ -1,0 +1,28 @@
+{
+	l: list_unlimited {
+		p1: ptr;
+		p2: ptr;
+		buf: list(3) {
+			i: ptr;
+			x: cell;
+		};
+	};
+}
+
+# ok
+$dive l@p1 [
+	$var { t: cell; } in
+	> l@p1:buf@i
+]
+
+# ng
+$dive l@p1:buf@i [
+	$var { t: cell; } in
+	> l@p1
+]
+
+# ng
+$dive l@p1:buf@i [
+	$var { t: cell; } in
+	> l@p2:buf@i
+]

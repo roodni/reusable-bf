@@ -21,6 +21,7 @@ open Reusable
 %token IN
 %token ST_VAR
 %token ST_LET
+%token ST_DIVE
 %token EQ
 %token ASTER
 %token FUN ARROW
@@ -68,6 +69,7 @@ stmt:
   | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET
       { StIf (e, sl_t, Some sl_e) }
   | ASTER e=expr_full { StExpand e }
+  | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
 
 expr:
   | v=VAR { ExVar v }
