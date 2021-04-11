@@ -35,8 +35,6 @@ let test_run { name; code; io_list; } =
     )
   )
 
-let _ = print_string @@ Sys.getcwd ()
-
 let cases = [
   {
     name = "rev";
@@ -62,6 +60,11 @@ let cases = [
     name = "prime";
     io_list = [ ("", "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 ")];
     code = load_code "../demo/prime.bfr";
+  };
+  {
+    name = "prime2";
+    io_list = [ ("", "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 ")];
+    code = load_code "../demo/prime2.bfr";
   }
 ]
 

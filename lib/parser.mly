@@ -67,6 +67,11 @@ field_elm_kind:
   | LIST_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
 
 
+var_list:
+  | v=VAR vl=var_list { v :: vl }
+  | { [] }
+
+
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | ST_VAR f=field IN sl=stmt_list { [ StVar (f, sl) ] }
@@ -81,8 +86,9 @@ stmt:
   | RSHIFT ep=expr ei=expr_opt { StShift (1, ep, ei) }
   | LSHIFT ep=expr ei=expr_opt { StShift (-1, ep, ei) }
   | EXCL e=expr LBRACKET sl=stmt_list RBRACKET { StWhile (e, sl) }
-  | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET
-      { StIf (e, sl_t, Some sl_e) }
+  | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
+      StIf (e, sl_t, Some sl_e)
+    }
   | ASTER e=expr_appable { StExpand e }
   | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
 
@@ -104,7 +110,10 @@ expr_opt:
 
 expr_full:
   | e=expr_appable { e }
-  | FUN v=VAR ARROW e=expr_full { ExFun (v, e) }  %prec prec_fun
+  | FUN v=VAR vl=var_list ARROW e=expr_full {
+      let e = List.fold_right (fun v e -> ExFun (v, e)) vl e in
+      ExFun (v, e)
+    } %prec prec_fun
   | IF ec=expr_full THEN et=expr_full ELSE ee=expr_full { ExIf (ec, et, ee) } %prec prec_if
   | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(v, e1, e2) } %prec prec_let
   | MINUS e=expr_full { ExMinus e }
