@@ -4,9 +4,16 @@ let reserved = [
   ("ptr", Parser.PTR);
   ("list", Parser.LIST);
   ("list_unlimited", Parser.LIST_UNLIMITED);
-  ("in", Parser.IN);
-  ("fun", Parser.FUN);
   ("main", Parser.MAIN);
+  ("fun", Parser.FUN);
+  ("if", Parser.IF);
+  ("then", Parser.THEN);
+  ("else", Parser.ELSE);
+  ("let", Parser.LET);
+  ("in", Parser.IN);
+  ("mod", Parser.MOD);
+  ("true", Parser.TRUE);
+  ("false", Parser.FALSE);
 ]
 }
 
@@ -33,7 +40,9 @@ rule main = parse
   | ")" { Parser.RPAREN }
   | "=" { Parser.EQ }
   | "*" { Parser.ASTER }
+  | "/" { Parser.SLASH }
   | "->" { Parser.ARROW }
+  | "<=" { Parser.LEQ }
   | "$var" { Parser.ST_VAR }
   | "$let" { Parser.ST_LET }
   | "$dive" { Parser.ST_DIVE }

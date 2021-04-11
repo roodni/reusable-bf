@@ -18,6 +18,9 @@ module Field = struct
   }
 end
 
+module BOpInt = struct
+  type t = Add | Sub | Mul | Div | Mod | Lt | Leq
+end
 
 type stmt =
   | StAdd of int * expr * expr option  (* sign, sel, int *)
@@ -33,11 +36,17 @@ type stmt =
 and expr =
   | ExVar of Var.t
   | ExInt of int
+  | ExBool of bool
   | ExSelMem of expr * expr option * Var.t
   | ExSelPtr of expr * Var.t
   | ExFun of Var.t * expr
   | ExApp of expr * expr
   | ExBlock of stmt list
+  | ExBOpInt of expr * BOpInt.t * expr
+  | ExMinus of expr
+  | ExEqual of expr * expr
+  | ExIf of expr * expr * expr
+  | ExLet of Var.t * expr * expr
 
 module Stmt = struct
   type t = stmt
@@ -165,6 +174,7 @@ end
 type va_env = (Var.t * value) list
 and value =
   | VaInt of int
+  | VaBool of bool
   | VaSel of Sel.t * NVarEnv.t option
   | VaFun of va_env * Var.t * expr
   | VaBlock of va_env * stmt list
@@ -203,6 +213,9 @@ module Value = struct
   let to_int = function
     | VaInt i -> i
     | _ -> failwith "value is not a integer"
+  let to_bool = function
+    | VaBool b -> b
+    | _ -> failwith "value is not a boolean"
   let to_sel_and_nvar_env = function
     | VaSel (sel, nvar_env) -> (sel, nvar_env)
     | _ -> failwith "value is not a selector"
@@ -219,6 +232,12 @@ module Value = struct
     | VaBlock (env, block) -> (env, block)
     | _ -> failwith "value is not a block"
 
+  let equal x y =
+    match x, y with
+    | VaInt x, VaInt y -> x = y
+    | VaBool x, VaBool y -> x = y
+    | VaSel (x, _), VaSel (y, _) -> x = y
+    | _ -> failwith "type error: ="
 end
 
 
@@ -240,6 +259,7 @@ module Codegen = struct
     match expr with
     | ExVar v -> VaEnv.lookup v env
     | ExInt i -> VaInt i
+    | ExBool b -> VaBool b
     | ExSelMem (ex_parent, ex_index_opt, var) -> begin
         let index =
           match ex_index_opt with
@@ -282,6 +302,32 @@ module Codegen = struct
         let env_fun = VaEnv.extend var_arg arg env_fun in
         eval { envs with va_env = env_fun } ex_fun
     | ExBlock st_list -> VaBlock (env, st_list)
+    | ExBOpInt (ex_left, bop, ex_right) -> begin
+        let left = eval envs ex_left |> to_int in
+        let right = eval envs ex_right |> to_int in
+        match bop with
+        | Add -> VaInt (left + right)
+        | Sub -> VaInt (left - right)
+        | Mul -> VaInt (left * right)
+        | Div -> VaInt (left / right)
+        | Mod -> VaInt (left mod right)
+        | Lt -> VaBool (left < right)
+        | Leq -> VaBool (left <= right)
+      end
+    | ExMinus ex_int ->
+        let i = eval envs ex_int |> to_int in
+        VaInt (-i)
+    | ExEqual (ex_left, ex_right) ->
+        let left = eval envs ex_left in
+        let right = eval envs ex_right in
+        VaBool (Value.equal left right)
+    | ExIf (ex_cond, ex_then, ex_else) ->
+        let cond = eval envs ex_cond |> to_bool in
+        eval envs (if cond then ex_then else ex_else)
+    | ExLet (var, ex_var, ex_child) ->
+        let value_var = eval envs ex_var in
+        let va_env = VaEnv.extend var value_var envs.va_env in
+        eval { envs with va_env; } ex_child
 
   let codegen (program: Program.t) =
     let field, st_list = program in

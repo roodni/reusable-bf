@@ -16,7 +16,9 @@ open Reusable
 %token LPAREN RPAREN
 %token EQ
 %token ASTER
+%token SLASH
 %token ARROW  // ->
+%token LEQ
 
 %token ST_VAR
 %token ST_LET
@@ -24,12 +26,20 @@ open Reusable
 
 %token CELL PTR LIST LIST_UNLIMITED
 %token FUN
-%token IN
+%token LET IN
+%token IF THEN ELSE
 %token MAIN
+%token MOD
 
 %token <int> INT
 %token <char> CHAR
 %token <string> VAR
+%token TRUE FALSE
+
+%nonassoc prec_if prec_fun prec_let
+%left LSHIFT LEQ EQ
+%left PLUS MINUS
+%left ASTER SLASH MOD
 
 %start program
 %type <Program.t> program
@@ -73,13 +83,15 @@ stmt:
   | EXCL e=expr LBRACKET sl=stmt_list RBRACKET { StWhile (e, sl) }
   | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET
       { StIf (e, sl_t, Some sl_e) }
-  | ASTER e=expr_full { StExpand e }
+  | ASTER e=expr_appable { StExpand e }
   | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
 
 expr:
   | v=VAR { ExVar v }
   | i=INT { ExInt i }
   | c=CHAR { ExInt (int_of_char c) }
+  | TRUE { ExBool true }
+  | FALSE { ExBool false }
   | e=expr COLON v=VAR { ExSelMem (e, None, v) }
   | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR { ExSelMem (es, Some ei, v) }
   | e=expr AT v=VAR { ExSelPtr (e, v) }
@@ -92,7 +104,21 @@ expr_opt:
 
 expr_full:
   | e=expr_appable { e }
-  | FUN v=VAR ARROW e=expr_full { ExFun (v, e) }
+  | FUN v=VAR ARROW e=expr_full { ExFun (v, e) }  %prec prec_fun
+  | IF ec=expr_full THEN et=expr_full ELSE ee=expr_full { ExIf (ec, et, ee) } %prec prec_if
+  | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(v, e1, e2) } %prec prec_let
+  | MINUS e=expr_full { ExMinus e }
+  | el=expr_full bop=bop_int er=expr_full { ExBOpInt (el, bop, er) }
+  | el=expr_full EQ er=expr_full { ExEqual (el, er) }
+
+%inline bop_int:
+  | PLUS { BOpInt.Add }
+  | MINUS { BOpInt.Sub }
+  | ASTER { BOpInt.Mul }
+  | SLASH { BOpInt.Div }
+  | MOD { BOpInt.Mod }
+  | LSHIFT { BOpInt.Lt }
+  | LEQ { BOpInt.Leq }
 
 expr_appable:
   | e=expr { e }
