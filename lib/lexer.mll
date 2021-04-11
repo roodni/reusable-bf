@@ -19,7 +19,8 @@ let reserved = [
 
 rule main = parse
   | eof { Parser.EOF }
-  | [' ' '\t' '\n' '\r']+ { main lexbuf }
+  | [' ' '\t' '\r']+ { main lexbuf }
+  | "\n" { Lexing.new_line lexbuf; main lexbuf }
   | "#" [^'\n']* { main lexbuf }
   | "+" { Parser.PLUS }
   | "-" { Parser.MINUS }
