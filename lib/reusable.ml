@@ -47,6 +47,9 @@ and expr =
   | ExEqual of expr * expr
   | ExIf of expr * expr * expr
   | ExLet of Var.t * expr * expr
+  | ExNil
+  | ExCons of expr * expr
+  | ExMatch of expr * expr * Var.t * Var.t * expr
 
 module Stmt = struct
   type t = stmt
@@ -178,6 +181,7 @@ and value =
   | VaSel of Sel.t * NVarEnv.t option
   | VaFun of va_env * Var.t * expr
   | VaBlock of va_env * stmt list
+  | VaList of value list
 
 module VaEnv = struct
   type t = va_env
@@ -212,7 +216,7 @@ module Value = struct
 
   let to_int = function
     | VaInt i -> i
-    | _ -> failwith "value is not a integer"
+    | _ -> failwith "value is not an integer"
   let to_bool = function
     | VaBool b -> b
     | _ -> failwith "value is not a boolean"
@@ -231,12 +235,24 @@ module Value = struct
   let to_block = function
     | VaBlock (env, block) -> (env, block)
     | _ -> failwith "value is not a block"
+  let to_list = function
+    | VaList l -> l
+    | _ -> failwith "value is not a list"
 
-  let equal x y =
+  let rec equal x y =
     match x, y with
     | VaInt x, VaInt y -> x = y
     | VaBool x, VaBool y -> x = y
     | VaSel (x, _), VaSel (y, _) -> x = y
+    | VaList x, VaList y -> begin
+        let rec loop x y =
+          match x, y with
+          | [], [] -> true
+          | x :: xl, y :: yl when equal x y -> loop xl yl
+          | _ -> false
+        in
+        loop x y
+      end
     | _ -> failwith "type error: ="
 end
 
@@ -328,6 +344,22 @@ module Codegen = struct
         let value_var = eval envs ex_var in
         let va_env = VaEnv.extend var value_var envs.va_env in
         eval { envs with va_env; } ex_child
+    | ExNil -> VaList []
+    | ExCons (ex_head, ex_tail) ->
+        let head = eval envs ex_head in
+        let tail = eval envs ex_tail |> Value.to_list in
+        VaList (head :: tail)
+    | ExMatch (ex_matched, ex_nil, v_head, v_tail, ex_cons) -> begin
+        let matched = eval envs ex_matched |> to_list in
+        match matched with
+        | [] -> eval envs ex_nil
+        | head :: tail ->
+            let va_env = envs.va_env |>
+              VaEnv.extend v_head head |>
+              VaEnv.extend v_tail (VaList tail)
+            in
+            eval { envs with va_env } ex_cons
+      end
 
   let codegen (program: Program.t) =
     let field, st_list = program in

@@ -1,0 +1,48 @@
+main {
+  a: cell;
+  b: cell;
+  c: cell;
+  x: cell;
+} in
+
++ a 'A'
++ b 'B'
++ c 'C'
+
+$let fix = fun f x ->
+  let fix = fun self f x ->
+    f (self self f) x
+  in
+  fix fix f x
+in
+
+$let switch = fun sel blocks default -> [
+  $let loop = fix (fun loop blocks ->
+    match blocks with
+    | nil -> default
+    | block :: rest -> [
+        ? sel [
+          - sel
+          *loop rest
+          + sel
+        ] [
+          *block
+        ]
+      ]
+    end
+  ) in
+  *loop blocks
+] in
+
+, x
+- x '0'
+
+*switch x ([ # case 0
+  . a
+] :: [ # case 1
+  . b
+] :: [ # case 2
+  . c
+] :: nil) [ # default
+  . a . b . c
+]

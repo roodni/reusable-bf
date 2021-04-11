@@ -18,7 +18,9 @@ open Reusable
 %token ASTER
 %token SLASH
 %token ARROW  // ->
-%token LEQ
+%token LEQ  // <=
+%token CONS
+%token BAR
 
 %token ST_VAR
 %token ST_LET
@@ -28,6 +30,7 @@ open Reusable
 %token FUN
 %token LET IN
 %token IF THEN ELSE
+%token MATCH WITH END
 %token MAIN
 %token MOD
 
@@ -35,9 +38,11 @@ open Reusable
 %token <char> CHAR
 %token <string> VAR
 %token TRUE FALSE
+%token NIL
 
 %nonassoc prec_if prec_fun prec_let
 %left LSHIFT LEQ EQ
+%right CONS
 %left PLUS MINUS
 %left ASTER SLASH MOD
 
@@ -98,6 +103,7 @@ expr:
   | c=CHAR { ExInt (int_of_char c) }
   | TRUE { ExBool true }
   | FALSE { ExBool false }
+  | NIL { ExNil }
   | e=expr COLON v=VAR { ExSelMem (e, None, v) }
   | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR { ExSelMem (es, Some ei, v) }
   | e=expr AT v=VAR { ExSelPtr (e, v) }
@@ -119,6 +125,10 @@ expr_full:
   | MINUS e=expr_full { ExMinus e }
   | el=expr_full bop=bop_int er=expr_full { ExBOpInt (el, bop, er) }
   | el=expr_full EQ er=expr_full { ExEqual (el, er) }
+  | el=expr_full CONS er=expr_full { ExCons (el, er) }
+  | MATCH em=expr_full WITH BAR? NIL ARROW en=expr_full BAR vh=VAR CONS vt=VAR ARROW ec=expr_full END {
+      ExMatch (em, en, vh, vt, ec)
+    }
 
 %inline bop_int:
   | PLUS { BOpInt.Add }
