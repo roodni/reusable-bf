@@ -1,20 +1,20 @@
 main {
-	buf: list_unlimited {
-		c: cell;
-		p: ptr;
-	};
+  buf: list_unlimited {
+    c: cell;
+    p: ptr;
+  };
 } in
 
 + buf:c
 ! buf@p:c [
-	> buf@p
-	, buf@p:c
-	- buf@p:c '\n'
+  > buf@p
+  , buf@p:c
+  - buf@p:c '\n'
 ]
 - buf:c
 < buf@p
 ! buf@p:c [
-	+ buf@p:c '\n'
-	. buf@p:c
-	< buf@p
+  + buf@p:c '\n'
+  . buf@p:c
+  < buf@p
 ]

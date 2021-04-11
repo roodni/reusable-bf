@@ -1,8 +1,8 @@
 main {
-	buf: list_unlimited {
-		c: cell;
-		p: ptr;
-	};
+  buf: list_unlimited {
+    c: cell;
+    p: ptr;
+  };
 } in
 
 $let input_end = '\n' in
@@ -10,21 +10,21 @@ $let p = buf@p in
 $let c = p:c in
 
 $dive p [
-	$var {
-		f: cell;
-	} in
-	+ f
-	! f [
-		, c
-		- c input_end
-		? c [] [ - f ]
-		+ c input_end
-		> p
-	]
+  $var {
+    f: cell;
+  } in
+  + f
+  ! f [
+    , c
+    - c input_end
+    ? c [] [ - f ]
+    + c input_end
+    > p
+  ]
 ]
 
 < p
 ! p [
-	< p
-	. c
+  < p
+  . c
 ]

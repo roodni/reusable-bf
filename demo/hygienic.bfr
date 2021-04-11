@@ -1,8 +1,8 @@
 main {} in
 
 $let f = fun block -> [
-	$var { evil: cell; } in
-	*block
+  $var { evil: cell; } in
+  *block
 ] in
 
 *f [ + evil ]

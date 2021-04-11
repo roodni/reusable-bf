@@ -5,35 +5,35 @@
 main {} in
 
 $let del = fun x -> [
-	! x [ - x ]
+  ! x [ - x ]
 ] in
 
 $let if_eq = fun a -> fun b -> fun thn -> [
-	! a [
-		- a
-		? b [ - b ] [
-			*del a
-			*thn
-		]
-	]
-	! b [
-		*del b
-		*thn
-	]
+  ! a [
+    - a
+    ? b [ - b ] [
+      *del a
+      *thn
+    ]
+  ]
+  ! b [
+    *del b
+    *thn
+  ]
 ] in
 
 $var {
-	cont: cell;
+  cont: cell;
 } in
 + cont
 ! cont [
-	- cont
-	$var {
-		input: cell;
-		diff: cell;
-	} in
-	, input
-	. input
-	+ diff '#'
-	*if_eq input diff [ + cont ]
+  - cont
+  $var {
+    input: cell;
+    diff: cell;
+  } in
+  , input
+  . input
+  + diff '#'
+  *if_eq input diff [ + cont ]
 ]
