@@ -53,7 +53,14 @@ let main () =
     if !flag_verbose then begin
       print_newline ();
       Bf.State.dump state;
+    end else begin
+      match state.err with
+      | None -> ()
+      | Some e -> begin
+          eprintf "execution error: %s" (Bf.Err.to_string e);
+        end
     end;
+    if state.err <> None then exit 1;
   end
 
 let () = main ()
