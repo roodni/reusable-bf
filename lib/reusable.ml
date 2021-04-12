@@ -37,6 +37,7 @@ and expr =
   | ExVar of Var.t
   | ExInt of int
   | ExBool of bool
+  | ExStr of char list
   | ExSelMem of expr * expr option * Var.t
   | ExSelPtr of expr * Var.t
   | ExFun of Var.t * expr
@@ -276,6 +277,7 @@ module Codegen = struct
     | ExVar v -> VaEnv.lookup v env
     | ExInt i -> VaInt i
     | ExBool b -> VaBool b
+    | ExStr cl -> VaList (List.map (fun c -> VaInt (int_of_char c)) cl)
     | ExSelMem (ex_parent, ex_index_opt, var) -> begin
         let index =
           match ex_index_opt with
