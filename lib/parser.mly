@@ -85,12 +85,12 @@ stmt_list:
   | { [] }
 
 stmt:
-  | PLUS es=expr ei=expr_opt { StAdd (1, es, ei) }
-  | MINUS es=expr ei=expr_opt { StAdd (-1, es, ei) }
+  | PLUS es=expr ei=expr? { StAdd (1, es, ei) }
+  | MINUS es=expr ei=expr? { StAdd (-1, es, ei) }
   | DOT e=expr { StPut e }
   | COMMA e=expr { StGet e }
-  | RSHIFT ep=expr ei=expr_opt { StShift (1, ep, ei) }
-  | LSHIFT ep=expr ei=expr_opt { StShift (-1, ep, ei) }
+  | RSHIFT ep=expr ei=expr? { StShift (1, ep, ei) }
+  | LSHIFT ep=expr ei=expr? { StShift (-1, ep, ei) }
   | EXCL e=expr LBRACKET sl=stmt_list RBRACKET { StWhile (e, sl) }
   | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
       StIf (e, sl_t, Some sl_e)
@@ -111,10 +111,6 @@ expr:
   | e=expr AT v=VAR { ExSelPtr (e, v) }
   | LBRACKET sl=stmt_list RBRACKET { ExBlock sl }
   | LPAREN e=expr_full RPAREN { e }
-
-expr_opt:
-  | e=expr { Some e }
-  | { None }
 
 expr_full:
   | e=expr_appable { e }
