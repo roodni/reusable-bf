@@ -51,6 +51,7 @@ and expr =
   | ExNil
   | ExCons of expr * expr
   | ExMatch of expr * expr * Var.t * Var.t * expr
+  | ExPair of expr * expr
 
 module Stmt = struct
   type t = stmt
@@ -175,14 +176,29 @@ module NVarEnv = struct
 end
 
 
+module Builtin = struct
+  type t =
+    | Fst
+    | Snd
+
+  let of_var (v: Var.t) =
+    match v with
+    | "fst" -> Some Fst
+    | "snd" -> Some Snd
+    | _ -> None
+end
+
+
 type va_env = (Var.t * value) list
 and value =
   | VaInt of int
   | VaBool of bool
   | VaSel of Sel.t * NVarEnv.t option
   | VaFun of va_env * Var.t * expr
+  | VaBuiltin of Builtin.t
   | VaBlock of va_env * stmt list
   | VaList of value list
+  | VaPair of value * value
 
 module VaEnv = struct
   type t = va_env
@@ -206,10 +222,7 @@ module VaEnv = struct
             (var, VaSel (sel, Some nvar_env_lst)) :: t
       ) t
 
-  let lookup (var: Var.t) (t: t) =
-    match List.assoc_opt var t with
-    | Some v -> v
-    | None -> failwith @@ sprintf "not found: %s" var
+  let lookup (var: Var.t) (t: t) = List.assoc_opt var t
 end
 
 module Value = struct
@@ -230,15 +243,15 @@ module Value = struct
   let to_nsel v =
     let sel, _ = to_sel_and_nvar_env v in
     Sel.to_nsel sel
-  let to_fun = function
-    | VaFun (env, v, e) -> (env, v, e)
-    | _ -> failwith "value is not a function"
   let to_block = function
     | VaBlock (env, block) -> (env, block)
     | _ -> failwith "value is not a block"
   let to_list = function
     | VaList l -> l
     | _ -> failwith "value is not a list"
+  let to_pair = function
+    | VaPair (v1, v2) -> (v1, v2)
+    | _ -> failwith "value is not a pair"
 
   let rec equal x y =
     match x, y with
@@ -254,6 +267,7 @@ module Value = struct
         in
         loop x y
       end
+    | VaPair (x1, x2), VaPair (y1, y2) -> equal x1 y1 && equal x2 y2
     | _ -> failwith "type error: ="
 end
 
@@ -274,7 +288,15 @@ module Codegen = struct
     let open Value in
     let { va_env = env; _ } = envs in
     match expr with
-    | ExVar v -> VaEnv.lookup v env
+    | ExVar v -> begin
+        match VaEnv.lookup v env with
+        | Some va -> va
+        | None -> begin
+            match Builtin.of_var v with
+            | Some b -> VaBuiltin b
+            | None -> failwith @@ sprintf "not found: %s" v
+          end
+      end
     | ExInt i -> VaInt i
     | ExBool b -> VaBool b
     | ExStr cl -> VaList (List.map (fun c -> VaInt (int_of_char c)) cl)
@@ -314,11 +336,17 @@ module Codegen = struct
           end
       end
     | ExFun (var, ex) -> VaFun (env, var, ex)
-    | ExApp (ex_fn, ex_arg) ->
-        let env_fun, var_arg, ex_fun = eval envs ex_fn |> to_fun in
-        let arg = eval envs ex_arg in
-        let env_fun = VaEnv.extend var_arg arg env_fun in
-        eval { envs with va_env = env_fun } ex_fun
+    | ExApp (ex_fn, ex_arg) -> begin
+        let va_fn = eval envs ex_fn in
+        let va_arg = eval envs ex_arg in
+        match va_fn with
+        | VaFun (env_fun, var_arg, ex_fun) ->
+            let env_fun = VaEnv.extend var_arg va_arg env_fun in
+            eval { envs with va_env = env_fun } ex_fun
+        | VaBuiltin Fst -> to_pair va_arg |> fst
+        | VaBuiltin Snd -> to_pair va_arg |> snd
+        | _ -> failwith "value is not a function"
+      end
     | ExBlock st_list -> VaBlock (env, st_list)
     | ExBOpInt (ex_left, bop, ex_right) -> begin
         let left = eval envs ex_left |> to_int in
@@ -362,6 +390,10 @@ module Codegen = struct
             in
             eval { envs with va_env } ex_cons
       end
+    | ExPair (ex1, ex2) ->
+        let v1 = eval envs ex1 in
+        let v2 = eval envs ex2 in
+        VaPair (v1, v2)
 
   let codegen (program: Program.t) =
     let field, st_list = program in

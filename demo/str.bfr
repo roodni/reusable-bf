@@ -9,18 +9,16 @@ in
 
 $let puts = fun l -> [
   $var { c: cell; } in
-  *(
-    fix (fun loop prev l ->
-      match l with
-      | nil -> []
-      | hd :: tl -> [
-          + c (hd - prev)
-          . c
-          *loop hd tl
-        ]
-      end
-    ) 0 l
-  )
+  *fix (fun loop prev l ->
+    match l with
+    | nil -> []
+    | hd :: tl -> [
+        + c (hd - prev)
+        . c
+        *loop hd tl
+      ]
+    end
+  ) 0 l
 ] in
 
 *puts "hello

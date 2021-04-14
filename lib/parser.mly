@@ -42,6 +42,7 @@ open Reusable
 %token NIL
 
 %nonassoc prec_if prec_fun prec_let
+%left COMMA
 %left LSHIFT LEQ EQ
 %right CONS
 %left PLUS MINUS
@@ -120,13 +121,14 @@ expr_full:
     } %prec prec_fun
   | IF ec=expr_full THEN et=expr_full ELSE ee=expr_full { ExIf (ec, et, ee) } %prec prec_if
   | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(v, e1, e2) } %prec prec_let
-  | MINUS e=expr_full { ExMinus e }
-  | el=expr_full bop=bop_int er=expr_full { ExBOpInt (el, bop, er) }
-  | el=expr_full EQ er=expr_full { ExEqual (el, er) }
-  | el=expr_full CONS er=expr_full { ExCons (el, er) }
   | MATCH em=expr_full WITH BAR? NIL ARROW en=expr_full BAR vh=VAR CONS vt=VAR ARROW ec=expr_full END {
       ExMatch (em, en, vh, vt, ec)
     }
+  | MINUS e=expr_full { ExMinus e }
+  | e1=expr_full bop=bop_int e2=expr_full { ExBOpInt (e1, bop, e2) }
+  | e1=expr_full EQ e2=expr_full { ExEqual (e1, e2) }
+  | e1=expr_full CONS e2=expr_full { ExCons (e1, e2) }
+  | e1=expr_full COMMA e2=expr_full { ExPair (e1, e2) }
 
 %inline bop_int:
   | PLUS { BOpInt.Add }

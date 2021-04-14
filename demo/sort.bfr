@@ -1,0 +1,55 @@
+main {} in
+
+$let fix = fun f x ->
+  let fix = fun self f x ->
+    f (self self f) x
+  in
+  fix fix f x
+in
+
+$let sort = fun compare l ->
+  fix (fun sort -> fun rest sorted ->
+    match rest with
+    | nil -> sorted
+    | pivot :: rest ->
+        fix (fun partition -> fun left right l ->
+          match l with
+          | nil -> sort left (pivot :: sort right sorted)
+          | hd :: tl ->
+              if compare hd pivot < 0
+              then partition (hd :: left) right tl
+              else partition left (hd :: right) tl
+          end
+        ) nil nil rest
+    end
+  ) l nil
+in
+
+$let puti = fun n -> [
+  $var { x: cell; } in
+  + x '0'
+  *fix (fun loop n -> [
+    $let rest = n / 10 in
+    $let digit = n mod 10 in
+    *(if rest = 0 then []
+      else loop rest )
+    + x (digit - rest mod 10)
+    . x
+  ]) n
+] in
+
+$let dump_ilist = fun l ->
+  fix (fun iter l ->
+    match l with
+    | nil -> []
+    | hd :: tl -> [
+        *puti hd
+        *iter tl
+      ]
+    end
+  ) l
+in
+
+$let compare = fun x y -> x - y in
+$let l = sort compare (3 :: 7 :: 5 :: 6 :: 4 :: nil) in
+*dump_ilist l
