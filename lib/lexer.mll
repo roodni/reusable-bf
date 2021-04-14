@@ -21,9 +21,33 @@ let reserved = [
   ("false", P.FALSE);
   ("nil", P.NIL);
 ]
+
+let string_to_char = function
+  | "\\n" -> '\n'
+  | "\\t" -> '\t'
+  | "\\\\" -> '\\'
+  | "\\\'" -> '\''
+  | "\\\"" -> '\"'
+  | s when String.length s = 1 -> s.[0]
+  | _ -> assert false
+
 }
 
-rule main = parse
+let character =
+  [' '-'!' '#'-'[' ']'-'~'] |
+  "\\" ['n' 't' '\\' '\'' '\"']
+
+
+rule str l = parse
+  | character | "\'" {
+      let c = Lexing.lexeme lexbuf |> string_to_char in
+      str (c :: l) lexbuf
+    }
+  | "\n" { Lexing.new_line lexbuf; str ('\n' :: l) lexbuf }
+  | "\\\n" { Lexing.new_line lexbuf; str l lexbuf }
+  | "\"" { P.STRING (List.rev l) }
+
+and main = parse
   | eof { P.EOF }
   | [' ' '\t' '\r']+ { main lexbuf }
   | "\n" { Lexing.new_line lexbuf; main lexbuf }
@@ -58,13 +82,12 @@ rule main = parse
   | "0" | ['1'-'9'] ['0'-'9']* {
       P.INT (int_of_string @@ Lexing.lexeme lexbuf)
     }
-  | "'\\n'" { P.CHAR '\n' }
-  | "'\\''" { P.CHAR '\'' }
-  | "'\\\\'" { P.CHAR '\\' }
-  | "'" [' '-'&' '('-'~'] "'" {
-      let c = (Lexing.lexeme lexbuf).[1] in
-      P.CHAR c
+  | "\'" (character | "\"") "\'" {
+      let s = Lexing.lexeme lexbuf in
+      let s = String.sub s 1 (String.length s - 2) in
+      P.CHAR (string_to_char s)
     }
+  | "\"" { str [] lexbuf }
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
       let id = Lexing.lexeme lexbuf in
       try List.assoc id reserved

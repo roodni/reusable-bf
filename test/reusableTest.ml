@@ -52,6 +52,11 @@ let cases = [
     code = load_code "../demo/echo.bfr"
   };
   {
+    name = "hygienic";
+    io_list = [ ("", "O") ];
+    code = load_code "../demo/hygienic.bfr";
+  };
+  {
     name = "rev3";
     io_list = [ ("hello\na", "olleh") ];
     code = load_code "../demo/rev3.bfr";
@@ -70,6 +75,11 @@ let cases = [
     name = "switch";
     io_list = [ ("0", "A"); ("1", "B"); ("2", "C"); ("3", "ABC"); ("7", "ABC") ];
     code = load_code "../demo/switch.bfr";
+  };
+  {
+    name = "str";
+    io_list = [ ("", "hello\nworld\n") ];
+    code = load_code "../demo/str.bfr";
   }
 ]
 

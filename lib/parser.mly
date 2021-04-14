@@ -36,6 +36,7 @@ open Reusable
 
 %token <int> INT
 %token <char> CHAR
+%token <char list> STRING
 %token <string> VAR
 %token TRUE FALSE
 %token NIL
@@ -101,6 +102,7 @@ expr:
   | v=VAR { ExVar v }
   | i=INT { ExInt i }
   | c=CHAR { ExInt (int_of_char c) }
+  | s=STRING { ExStr s }
   | TRUE { ExBool true }
   | FALSE { ExBool false }
   | NIL { ExNil }
