@@ -326,6 +326,7 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
   let rec codegen (pos_init: Pos.t) (cmd_list: Cmd.t_list) =
     let pos, bf_cmd_list_list = List.fold_left_map (fun pos cmd ->
         match cmd with
+        | Cmd.Add (0, _) -> (pos, [])
         | Cmd.Add (n, sel) ->
             let pos_dest = Pos.of_sel layout sel in
             (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Add n ])
