@@ -26,7 +26,7 @@ open Reusable
 %token ST_LET
 %token ST_DIVE
 
-%token CELL PTR LIST LIST_UNLIMITED
+%token CELL PTR ARRAY ARRAY_UNLIMITED
 %token FUN
 %token LET IN
 %token IF THEN ELSE
@@ -70,8 +70,8 @@ field_elm:
 field_elm_kind:
   | CELL { Field.Cell }
   | PTR { Field.Ptr }
-  | LIST LPAREN l=INT RPAREN f=field { Field.Lst { length=Some l; mem=f; } }
-  | LIST_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
+  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some l; mem=f; } }
+  | ARRAY_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
 
 
 var_list:

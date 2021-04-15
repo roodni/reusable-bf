@@ -11,7 +11,7 @@ module Field = struct
   and kind =
     | Cell
     | Ptr
-    | Lst of lst
+    | Lst of lst  (* 表層は "array" という名前に変わった *)
   and lst = {
     length: int option;
     mem: t;

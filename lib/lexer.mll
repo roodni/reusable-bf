@@ -4,8 +4,8 @@ module P = Parser
 let reserved = [
   ("cell", P.CELL);
   ("ptr", P.PTR);
-  ("list", P.LIST);
-  ("list_unlimited", P.LIST_UNLIMITED);
+  ("array", P.ARRAY);
+  ("array_unlimited", P.ARRAY_UNLIMITED);
   ("main", P.MAIN);
   ("fun", P.FUN);
   ("if", P.IF);

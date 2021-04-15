@@ -1,8 +1,8 @@
 main {
-  l: list_unlimited {
+  l: array_unlimited {
     p1: ptr;
     p2: ptr;
-    buf: list(3) {
+    buf: array(3) {
       i: ptr;
       x: cell;
     };

@@ -1,10 +1,10 @@
 main {
-  code: list_unlimited {
+  code: array_unlimited {
     inst: cell;
     depth: cell;
     p: ptr;
   };
-  tape: list_unlimited {
+  tape: array_unlimited {
     v: cell;
     p: ptr;
   };
