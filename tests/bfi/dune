@@ -1,0 +1,3 @@
+(test
+ (name bfiTest)
+ (libraries lib testLib batteries ounit2))

@@ -33,10 +33,10 @@ module TapeTest = struct
       Shift (-1, a, p);
       Add (-1, ap_a);
     ]
-  
+
   let expected = [0; 0; 3; 1; 4; 0; 7]
 
-  let tests = "shift" >:: (fun _ ->
+  let test = "shift" >:: (fun _ ->
       let bf = codegen layout program in
       let state = Bf.run bf (Enum.empty ()) in
       let Bf.State.{ tape; _ } = state in
@@ -77,7 +77,7 @@ module OutputTest = struct
       )
     )
 
-  let cases = 
+  let cases =
     let svar v = Sel.V v in
     let slst ?p ?(i=0) lst sel =
       match p with
@@ -293,7 +293,7 @@ module OutputTest = struct
               sub ~n:10 (slst ~p buf1 @@ svar c);
             ];
             sub (slst ~i:0 buf1 @@ svar c);
-            
+
             Comment "input2";
             add (slst ~i:0 buf2 @@ svar c);
             loop (slst ~p buf2 @@ svar c) [
@@ -369,7 +369,9 @@ module OutputTest = struct
       end;
     ]
 
-  let tests = "output" >::: List.map test_run cases
+  let test = "output" >::: List.map test_run cases
 end
 
-let tests = "named" >::: [ OutputTest.tests; TapeTest.tests ]
+let test = "named" >::: [ OutputTest.test; TapeTest.test ]
+
+let () = run_test_tt_main test

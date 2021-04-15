@@ -44,7 +44,7 @@ let cases = [
             Move (-3); Loop [ Add (-1) ];
             Move (-1); Add 1;
             Move 4;
-          ];  
+          ];
           Move (-1); Loop [
             Add (-1);
             Move (-1); Add 1;
@@ -87,5 +87,6 @@ let cases = [
   }
 ]
 
-let tests =
-  "bf" >::: List.map test_run cases
+let test = "bf" >::: List.map test_run cases
+
+let () = run_test_tt_main test
