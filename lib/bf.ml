@@ -3,7 +3,7 @@ open Printf
 
 
 module Cmd = struct
-  type t = 
+  type t =
     | Add of int
     | Put
     | Get
@@ -11,11 +11,11 @@ module Cmd = struct
     | Loop of t list
     | Dump
     | Comment of string
-  
+
   let rec list_to_string program =
     program
     |> List.map (function
-      | Add n -> 
+      | Add n ->
           if n > 0 then
             String.repeat "+" n
           else if n < 0 then
@@ -48,12 +48,12 @@ module Err = struct
     | End_of_input
     | Overflow
     | Ptr_out_of_range
-  
+
   let to_string = function
     | End_of_input -> "end of input"
     | Overflow -> "overflow"
     | Ptr_out_of_range -> "pointer out of range"
-  
+
   let opt_to_string = function
     | None -> "ok"
     | Some e -> to_string e
@@ -70,7 +70,7 @@ module Tape = struct
   let init () = {
     ptr = 0;
     ptr_max = 0;
-    array = Array.make 10000 0;
+    array = Array.make 100000 0;
   }
 
   let move n tape =
@@ -81,7 +81,7 @@ module Tape = struct
       Ok { tape with ptr; ptr_max }
     else
       Error Err.Ptr_out_of_range
-  
+
   let set n tape =
     if 0 <= n && n < 256 then
       let { ptr; array; _ } = tape in
@@ -89,15 +89,15 @@ module Tape = struct
       Ok tape
     else
       Error Err.Overflow
-  
+
   let get tape =
     let { ptr; array; _ } = tape in
     array.(ptr)
-  
+
   let geti i tape =
     let { array; _ } = tape in
     array.(i)
-  
+
   let dump tape =
     let cols_n = 20 in
     let len =
@@ -112,12 +112,12 @@ module Tape = struct
     let rec loop i_left =
       let i_right = min tape.ptr_max (i_left + cols_n - 1) in
       let is_ptr_disp i =
-        i = i_left || i = i_right || i = tape.ptr
+        i = i_left || i = i_right || i mod 5 = 0 || i = tape.ptr
       in
       (* インデックスの出力 *)
       let emph_l, emph_r = '{', '}' in
       (i_left -- i_right) |> iter (fun i ->
-        let s_of_i = 
+        let s_of_i =
           if is_ptr_disp i then sprintf "%*d" len i
           else String.repeat " " len
         in
@@ -165,10 +165,10 @@ module State = struct
 
   let output_to_string { output; _ } =
     output |> List.rev_map (fun i -> char_of_int i) |> String.of_list
-  
+
   let is_finished { stack; err; _ } =
     err <> None || List.is_empty stack
-  
+
   let step ?(printer=fun (_: char) -> ()) ({ stack; tape; input; output; comments; _; } as state) =
     if is_finished state then state
     else
@@ -218,7 +218,7 @@ module State = struct
           | Comment s ->
               { state with stack; comments = s :: comments; }
         end
-  
+
   let dump state =
     printf "--- state dump ---\n";
     print_endline "[output]";
@@ -232,9 +232,13 @@ module State = struct
     flush stdout
 end
 
+let cnt = ref 0
 
 let run ?printer program input =
+  cnt := 0;
   let rec loop state =
+    incr cnt;
+    (* assert (!cnt < 100000); *)
     if State.is_finished state then
       state
     else

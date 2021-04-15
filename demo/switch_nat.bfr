@@ -1,0 +1,57 @@
+main {
+  a: cell;
+  b: cell;
+  c: cell;
+  x: cell;
+} in
+
++ a 'A'
++ b 'B'
++ c 'C'
+
+$let fix = fun f x ->
+  let fix = fun self f x ->
+    f (self self f) x
+  in
+  fix fix f x
+in
+
+$let gen_switch_nat = fun sel blocks default -> [
+  *fix (fun loop i blocks ->
+    match blocks with
+    | nil -> [
+        + sel i
+        *default
+      ]
+    | block :: rest -> [
+        ? sel [
+          - sel
+          *loop (i + 1) rest
+        ] [
+          + sel i
+          *block
+        ]
+      ]
+    end
+  ) 0 blocks
+] in
+
+, x
+- x '0'
+
+*gen_switch_nat x (
+  [ # case 0
+    . a
+  ] ::
+  [ # case 1
+    + x '0'
+    . x
+    . b
+  ] ::
+  [ # case 2
+    . c
+  ] :: nil
+) [ # default
+  + x '0'
+  . x
+]

@@ -67,9 +67,9 @@ let cases = [
     code = load_code "../demo/prime.bfr";
   };
   {
-    name = "switch";
-    io_list = [ ("0", "A"); ("1", "B"); ("2", "C"); ("3", "ABC"); ("7", "ABC") ];
-    code = load_code "../demo/switch.bfr";
+    name = "switch_nat";
+    io_list = [ ("0", "A"); ("1", "1B"); ("2", "C"); ("3", "3"); ("7", "7") ];
+    code = load_code "../demo/switch_nat.bfr";
   };
   {
     name = "str";
@@ -82,7 +82,7 @@ let cases = [
     code = load_code "../demo/sort.bfr"
   };
   {
-    name = "switch2";
+    name = "switch";
     io_list = [
       ("+", "INC"); ("-", "DEC");
       (".", "PUT"); (",", "GET");
@@ -90,7 +90,7 @@ let cases = [
       (">", "SHR"); ("<", "SHL");
       ("a", "OTHER"); ("\n", "OTHER");
     ];
-    code = load_code "../demo/switch2.bfr"
+    code = load_code "../demo/switch.bfr"
   }
 ]
 
