@@ -18,6 +18,7 @@ $let fix = fun f x ->
   fix fix f x
 in
 
+# リスト l を比較関数 compare でソートする
 $let sort = fun compare l ->
   fix (fun sort -> fun rest sorted ->
     match rest with
@@ -36,13 +37,14 @@ $let sort = fun compare l ->
   ) l nil
 in
 
+# セル x をゼロにする
 $let gen_del = fun x -> [
   ! x [ - x ]
 ] in
 
-# セル src からセル dest の値だけ引く
-# src は破壊される
-# オーバーフローするときブロック overflow が実行される
+# セル dest からセル src の値だけ引く
+# src はゼロになる
+# オーバーフローするときブロック overflow を実行する
 $let gen_sub_safe = fun src dest overflow -> [
   ! src [
     - src
@@ -55,9 +57,10 @@ $let gen_sub_safe = fun src dest overflow -> [
 
 # セル sel の値で分岐する
 # sel は破壊される
-# 整数とブロックのペアのリスト cases の各要素のペアの第1要素の整数を小さい順に見て
-# sel の値と同じであれば第2要素のブロックを実行する
-# 該当するものがなければブロック default が実行される
+# 整数とブロックのペアのリスト cases の各要素のペアの整数を小さい順に見て
+# sel の値と同じであればブロックを実行する
+# 該当するものがなければブロック default を実行する
+# ブロック中で sel の値が変化しても良い
 $let gen_switch = fun sel cases default -> [
   $let cases = sort (fun c1 c2 -> fst c1 - fst c2) cases in
   $var {
@@ -90,10 +93,15 @@ $let gen_switch = fun sel cases default -> [
   ) 0 cases
 ] in
 
+# セル dest にセル src の値を足す
+# srcはゼロになる
 $let gen_add = fun src dest -> [
   ! src [ - src + dest ]
 ] in
 
+# セルと係数のペアのリスト dest_and_coef_list の各要素のセルに対して
+# セル src の値に係数をかけた数を足す
+# セル src はゼロになる
 $let gen_add_multi = fun src dest_and_coef_list -> [
   ! src [
     - src
@@ -111,6 +119,8 @@ $let gen_add_multi = fun src dest_and_coef_list -> [
   ]
 ] in
 
+# gen_add_multi と同様
+# ただしセル src は復元される
 $let gen_add_multi_restore = fun src dest_and_coef_list -> [
   $var { backup: cell; } in
   *gen_add_multi src ((backup, 1) :: dest_and_coef_list)
@@ -120,23 +130,21 @@ $let gen_add_multi_restore = fun src dest_and_coef_list -> [
 # セル dest にセル src の値を足す
 # src は復元される
 $let gen_add_restore = fun src dest -> [
-  $var { backup: cell; } in
-  ! src [
-    - src
-    + backup
-    + dest
-  ]
-  ! backup [
-    - backup
-    + src
-  ]
+  *gen_add_multi_restore src ((dest, 1) :: nil)
 ] in
 
+# セル x の値を数値 n にする
 $let gen_set = fun x n -> [
   *gen_del x
   + x n
 ] in
 
+# セル sel の値で分岐する
+# sel は分岐の前に復元される
+# sel の値を i とする。ブロックのリスト blocks の
+#  第 i 要素が存在する場合それを実行する
+#  第 i 要素が存在しない場合ブロック default を実行する
+# ブロック中で sel の値が変化しても良い
 $let gen_switch_nat = fun sel blocks default -> [
   *fix (fun loop i blocks ->
     match blocks with
