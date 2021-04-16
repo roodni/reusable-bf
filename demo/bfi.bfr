@@ -1,3 +1,7 @@
+# brainfuckインタプリタ
+# 入力の形式は以下の通り:
+# brainfuckのコード \(バックスラッシュ) 入力
+
 main {
   code: array_unlimited {
     inst: cell;
