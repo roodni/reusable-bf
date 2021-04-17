@@ -11,14 +11,14 @@ let reusable_to_bf_code code =
   Named.codegen layout code
 
 module BfI = struct
-  let code = ReusableCases.load_code "../../demo/bfi.bfr"
+  let code = ReusableCases.load_code "demo/bfi.bfr" ()
 
   let bf_code = reusable_to_bf_code code
 end
 
 let test_run ReusableCases.{ name; code; io_list; } =
   name >:: (fun _ ->
-    let bf_code = reusable_to_bf_code code |> Bf.Cmd.list_to_string in
+    let bf_code = reusable_to_bf_code (code ()) |> Bf.Cmd.list_to_string in
     io_list |> List.iter (fun (ipt, opt) ->
       let ipt = bf_code ^ "\\" ^ ipt in
       let state = Bf.run BfI.bf_code (String.enum ipt) in

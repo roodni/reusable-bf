@@ -6,7 +6,7 @@ open TestLib
 
 let test_run ReusableCases.{ name; code; io_list; } =
   name >:: (fun _ ->
-    let program = Lexing.from_string code |> Parser.program Lexer.main in
+    let program = Lexing.from_string (code ()) |> Parser.program Lexer.main in
     let dfn, cmd_list = Codegen.codegen program in
     let layout = Named.Layout.of_dfn dfn in
     let bf_code = Named.codegen layout cmd_list in
