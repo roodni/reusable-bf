@@ -32,47 +32,47 @@ let cases = [
   {
     name = "rev";
     io_list = [ ("hello\n", "olleh") ];
-		code = load_code "demo/rev.bfr";
+		code = load_code "sample/rev.bfr";
   };
   {
     name = "rev2";
     io_list = [ ("hello\na", "olleh") ];
-    code = load_code "demo/rev2.bfr";
+    code = load_code "sample/rev2.bfr";
   };
   {
     name = "echo";
     io_list = [ ("Hello, world!#test", "Hello, world!#") ];
-    code = load_code "demo/echo.bfr"
+    code = load_code "sample/echo.bfr"
   };
   {
     name = "hygienic";
     io_list = [ ("", "O") ];
-    code = load_code "demo/hygienic.bfr";
+    code = load_code "sample/hygienic.bfr";
   };
   {
     name = "rev3";
     io_list = [ ("hello\na", "olleh") ];
-    code = load_code "demo/rev3.bfr";
+    code = load_code "sample/rev3.bfr";
   };
   {
     name = "prime";
     io_list = [ ("", "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 ")];
-    code = load_code "demo/prime.bfr";
+    code = load_code "sample/prime.bfr";
   };
   {
     name = "switch_nat";
     io_list = [ ("0", "A"); ("1", "1B"); ("2", "C"); ("3", "3"); ("7", "7") ];
-    code = load_code "demo/switch_nat.bfr";
+    code = load_code "sample/switch_nat.bfr";
   };
   {
     name = "str";
     io_list = [ ("", "hello\nworld\n") ];
-    code = load_code "demo/str.bfr";
+    code = load_code "sample/str.bfr";
   };
   {
     name = "sort";
     io_list = [ ("", "34567") ];
-    code = load_code "demo/sort.bfr"
+    code = load_code "sample/sort.bfr"
   };
   {
     name = "switch";
@@ -83,6 +83,6 @@ let cases = [
       (">", "SHR"); ("<", "SHL");
       ("a", "OTHER"); ("\n", "OTHER");
     ];
-    code = load_code "demo/switch.bfr"
+    code = load_code "sample/switch.bfr"
   }
 ]

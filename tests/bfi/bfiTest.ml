@@ -11,7 +11,7 @@ let reusable_to_bf_code code =
   Named.codegen layout code
 
 module BfI = struct
-  let code = ReusableCases.load_code "demo/bfi.bfr" ()
+  let code = ReusableCases.load_code "sample/bfi.bfr" ()
 
   let bf_code = reusable_to_bf_code code
 end

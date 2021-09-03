@@ -24,16 +24,16 @@ dune exec main -- -r file
 
 ## 実行例
 
-* `demo/rev.bfr`: 改行が入力されるまでの入力を逆順に出力するプログラム
+* `sample/rev.bfr`: 改行が入力されるまでの入力を逆順に出力するプログラム
 ```
-dune exec main -- -r demo/rev.bfr
+dune exec main -- -r sample/rev.bfr
 ```
 
-* `demo/bfi.bfr`: brainfuckインタプリタ
+* `sample/bfi.bfr`: brainfuckインタプリタ
 
 ```
 mkdir _sandbox
-dune exec main -- demo/rev.bfr > _sandbox/rev.txt
+dune exec main -- sample/rev.bfr > _sandbox/rev.txt
 echo '\hello' >> _sandbox/rev.txt
-dune exec main -- -r demo/bfi.bfr < _sandbox/rev.txt
+dune exec main -- -r sample/bfi.bfr < _sandbox/rev.txt
 ```
