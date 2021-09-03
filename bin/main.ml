@@ -20,10 +20,9 @@ let main () =
       try Parser.program Lexer.main lexbuf with
       | Lexer.Error info -> error_at info "syntax error"
       | Parser.Error -> begin
-          let s = Lexing.lexeme lexbuf in
           let p = Lexing.lexeme_start_p lexbuf in
-          eprintf "line %d: col %d: unexpected token: %s\n" p.pos_lnum (1 + p.pos_cnum - p.pos_bol) s;
-          exit 1
+          let info = info_of_position p in
+          error_at info "unexpected token"
         end
   in
   close_in file_in;

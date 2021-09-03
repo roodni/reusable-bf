@@ -6,6 +6,8 @@ module Error : sig
   val create_info : string -> int -> int -> info
   val unknown_info : info
 
+  val info_of_position : Lexing.position -> info
+
   (** [output_info out_channel info] *)
   val output_info : out_channel -> info -> unit
 

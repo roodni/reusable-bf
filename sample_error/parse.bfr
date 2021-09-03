@@ -1,0 +1,4 @@
+main {
+  hoge: cell;
+} in
++ hoge if in end

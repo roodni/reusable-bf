@@ -10,6 +10,9 @@ module Error = struct
 
   let unknown_info = Unknown
 
+  let info_of_position Lexing.{ pos_fname; pos_lnum; pos_cnum; pos_bol } =
+    create_info pos_fname pos_lnum (1 + pos_cnum - pos_bol)
+
   let output_info channel = function
     | Loc { file; line; col; } ->
         fprintf channel "%s: line %d, col %d: " file line col

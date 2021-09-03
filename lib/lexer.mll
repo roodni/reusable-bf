@@ -34,7 +34,7 @@ let string_to_char = function
 
 let info lexbuf =
   let p = Lexing.lexeme_start_p lexbuf in
-  create_info p.pos_fname p.pos_lnum (1 + p.pos_cnum - p.pos_bol)
+  info_of_position p
 
 exception Error of info
 
