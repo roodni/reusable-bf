@@ -1,45 +1,46 @@
 %{
 module Lib = struct end (* おまじない *)
+(* open Support.Error *)
 open Reusable
 %}
 
-%token EOF
-%token PLUS MINUS
-%token DOT COMMA
-%token RSHIFT LSHIFT  // > <
-%token LBRACKET RBRACKET  // [ ]
-%token EXCL QUES  // ！ ？
-%token LBRACE RBRACE // { }
-%token COLON
-%token AT
-%token SEMI
-%token LPAREN RPAREN
-%token EQ
-%token ASTER
-%token SLASH
-%token ARROW  // ->
-%token LEQ  // <=
-%token CONS
-%token BAR
+%token <Support.Error.info> EOF
+%token <Support.Error.info> PLUS MINUS
+%token <Support.Error.info> DOT COMMA
+%token <Support.Error.info> RSHIFT LSHIFT  // > <
+%token <Support.Error.info> LBRACKET RBRACKET  // [ ]
+%token <Support.Error.info> EXCL QUES  // ！ ？
+%token <Support.Error.info> LBRACE RBRACE // { }
+%token <Support.Error.info> COLON
+%token <Support.Error.info> AT
+%token <Support.Error.info> SEMI
+%token <Support.Error.info> LPAREN RPAREN
+%token <Support.Error.info> EQ
+%token <Support.Error.info> ASTER
+%token <Support.Error.info> SLASH
+%token <Support.Error.info> ARROW  // ->
+%token <Support.Error.info> LEQ  // <=
+%token <Support.Error.info> CONS
+%token <Support.Error.info> BAR
 
-%token ST_VAR
-%token ST_LET
-%token ST_DIVE
+%token <Support.Error.info> ST_VAR
+%token <Support.Error.info> ST_LET
+%token <Support.Error.info> ST_DIVE
 
-%token CELL PTR ARRAY ARRAY_UNLIMITED
-%token FUN
-%token LET IN
-%token IF THEN ELSE
-%token MATCH WITH END
-%token MAIN
-%token MOD
+%token <Support.Error.info> CELL PTR ARRAY ARRAY_UNLIMITED
+%token <Support.Error.info> FUN
+%token <Support.Error.info> LET IN
+%token <Support.Error.info> IF THEN ELSE
+%token <Support.Error.info> MATCH WITH END
+%token <Support.Error.info> MAIN
+%token <Support.Error.info> MOD
 
-%token <int> INT
-%token <char> CHAR
-%token <char list> STRING
-%token <string> VAR
-%token TRUE FALSE
-%token NIL
+%token <Support.Error.info * int> INT
+%token <Support.Error.info * char> CHAR
+%token <Support.Error.info * char list> STRING
+%token <Support.Error.info * string> VAR
+%token <Support.Error.info> TRUE FALSE
+%token <Support.Error.info> NIL
 
 %nonassoc prec_if prec_fun prec_let
 %left COMMA
@@ -65,12 +66,12 @@ field_elm_list:
   | { [] }
 
 field_elm:
-  | v=VAR COLON ek=field_elm_kind { (v, ek) }
+  | v=VAR COLON ek=field_elm_kind { (snd v, ek) }
 
 field_elm_kind:
   | CELL { Field.Cell }
   | PTR { Field.Ptr }
-  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some l; mem=f; } }
+  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some (snd l); mem=f; } }
   | ARRAY_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
 
 
@@ -82,7 +83,7 @@ var_list:
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | ST_VAR f=field IN sl=stmt_list { [ StVar (f, sl) ] }
-  | ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ StLet (v, e, sl) ] }
+  | ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ StLet (snd v, e, sl) ] }
   | { [] }
 
 stmt:
@@ -100,29 +101,29 @@ stmt:
   | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
 
 expr:
-  | v=VAR { ExVar v }
-  | i=INT { ExInt i }
-  | c=CHAR { ExInt (int_of_char c) }
-  | s=STRING { ExStr s }
+  | v=VAR { ExVar (snd v) }
+  | i=INT { ExInt (snd i) }
+  | c=CHAR { ExInt (int_of_char @@ snd c) }
+  | s=STRING { ExStr (snd s) }
   | TRUE { ExBool true }
   | FALSE { ExBool false }
   | NIL { ExNil }
-  | e=expr COLON v=VAR { ExSelMem (e, None, v) }
-  | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR { ExSelMem (es, Some ei, v) }
-  | e=expr AT v=VAR { ExSelPtr (e, v) }
+  | e=expr COLON v=VAR { ExSelMem (e, None, snd v) }
+  | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR { ExSelMem (es, Some ei, snd v) }
+  | e=expr AT v=VAR { ExSelPtr (e, snd v) }
   | LBRACKET sl=stmt_list RBRACKET { ExBlock sl }
   | LPAREN e=expr_full RPAREN { e }
 
 expr_full:
   | e=expr_appable { e }
   | FUN v=VAR vl=var_list ARROW e=expr_full {
-      let e = List.fold_right (fun v e -> ExFun (v, e)) vl e in
-      ExFun (v, e)
+      let e = List.fold_right (fun v e -> ExFun (snd v, e)) vl e in
+      ExFun (snd v, e)
     } %prec prec_fun
   | IF ec=expr_full THEN et=expr_full ELSE ee=expr_full { ExIf (ec, et, ee) } %prec prec_if
-  | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(v, e1, e2) } %prec prec_let
+  | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(snd v, e1, e2) } %prec prec_let
   | MATCH em=expr_full WITH BAR? NIL ARROW en=expr_full BAR vh=VAR CONS vt=VAR ARROW ec=expr_full END {
-      ExMatch (em, en, vh, vt, ec)
+      ExMatch (em, en, snd vh, snd vt, ec)
     }
   | MINUS e=expr_full { ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { ExBOpInt (e1, bop, e2) }

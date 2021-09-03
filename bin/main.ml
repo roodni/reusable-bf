@@ -1,6 +1,6 @@
-open Batteries
 open Printf
 open Lib
+open Support.Error
 
 let main () =
   let flag_run = ref false in
@@ -15,14 +15,10 @@ let main () =
     if !filename = "-" then stdin
     else open_in !filename
   in
-  let lexbuf = Lexing.from_channel file_in in
+  let lexbuf = Lexer.create !filename file_in in
   let program =
       try Parser.program Lexer.main lexbuf with
-      | Failure _ -> begin
-          let p = Lexing.lexeme_end_p lexbuf in
-          eprintf "line %d: col %d: syntax error" p.pos_lnum (1 + p.pos_cnum - p.pos_bol);
-          exit 1
-        end
+      | Lexer.Error info -> error_at info "syntax error"
       | Parser.Error -> begin
           let s = Lexing.lexeme lexbuf in
           let p = Lexing.lexeme_start_p lexbuf in

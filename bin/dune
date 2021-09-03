@@ -1,7 +1,7 @@
 (executable
  (public_name main)
  (name main)
- (libraries lib batteries))
+ (libraries lib))
 
 (env
  (dev
