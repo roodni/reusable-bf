@@ -1,4 +1,3 @@
-main {
-  hoge: cell;
-} in
-+ hoge if in end
+
+
+  if in end

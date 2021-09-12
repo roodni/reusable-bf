@@ -20,8 +20,7 @@ let main () =
       try Parser.program Lexer.main lexbuf with
       | Lexer.Error info -> error_at info "syntax error"
       | Parser.Error -> begin
-          let p = Lexing.lexeme_start_p lexbuf in
-          let info = info_of_position p in
+          let info = !Lexer.curr_info in
           error_at info "unexpected token"
         end
   in

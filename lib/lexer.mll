@@ -32,9 +32,20 @@ let string_to_char = function
   | s when String.length s = 1 -> s.[0]
   | _ -> assert false
 
+
+let curr_info = ref unknown_info
+
+(** [Support.Error]の[create_info]を隠蔽
+    info作成と同時にcurr_infoを書きかえる *)
+let create_info p1 p2 =
+  let i = Support.Error.create_info p1 p2 in
+  curr_info := i;
+  i
+
 let info lexbuf =
-  let p = Lexing.lexeme_start_p lexbuf in
-  info_of_position p
+  let p1 = Lexing.lexeme_start_p lexbuf in
+  let p2 = Lexing.lexeme_end_p lexbuf in
+  create_info p1 p2
 
 exception Error of info
 
@@ -50,15 +61,19 @@ let character =
   "\\" ['n' 't' '\\' '\'' '\"']
 
 
-rule str i l = parse
+rule str p1 l = parse
   | character | "\'" {
       let c = Lexing.lexeme lexbuf |> string_to_char in
-      str i (c :: l) lexbuf
+      str p1 (c :: l) lexbuf
     }
-  | "\n" { Lexing.new_line lexbuf; str i ('\n' :: l) lexbuf }
-  | "\\\n" { Lexing.new_line lexbuf; str i l lexbuf }
-  | "\"" { P.STRING (i, List.rev l) }
-  | _ { raise @@ Error (info lexbuf) }
+  | "\n" { Lexing.new_line lexbuf; str p1 ('\n' :: l) lexbuf }
+  | "\\\n" { Lexing.new_line lexbuf; str p1 l lexbuf }
+  | "\"" {
+      let p2 = Lexing.lexeme_end_p lexbuf in
+      let i = create_info p1 p2 in
+      P.STRING (withinfo i @@ List.rev l)
+    }
+  | eof | _ { raise @@ Error (info lexbuf) }
 
 and main = parse
   | [' ' '\t' '\r']+ { main lexbuf }
@@ -93,17 +108,21 @@ and main = parse
   | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {
-      P.INT (info lexbuf, int_of_string @@ Lexing.lexeme lexbuf)
+      let i = int_of_string @@ Lexing.lexeme lexbuf in
+      P.INT (withinfo (info lexbuf) i)
     }
   | "\'" (character | "\"") "\'" {
       let s = Lexing.lexeme lexbuf in
-      let s = String.sub s 1 (String.length s - 2) in
-      P.CHAR (info lexbuf, string_to_char s)
+      let c = String.sub s 1 (String.length s - 2) |> string_to_char in
+      P.CHAR (withinfo (info lexbuf) c)
     }
-  | "\"" { str (info lexbuf) [] lexbuf }
+  | "\"" {
+      let p1 = Lexing.lexeme_start_p lexbuf in
+      str p1 [] lexbuf
+    }
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
       let id = Lexing.lexeme lexbuf in
       try (List.assoc id reserved) (info lexbuf)
-      with Not_found -> P.VAR (info lexbuf, id)
+      with Not_found -> P.VAR (withinfo (info lexbuf) id)
     }
   | _ { raise @@ Error (info lexbuf) }

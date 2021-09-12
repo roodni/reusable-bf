@@ -1,6 +1,6 @@
 %{
 module Lib = struct end (* おまじない *)
-(* open Support.Error *)
+open Support.Error
 open Reusable
 %}
 
@@ -35,10 +35,10 @@ open Reusable
 %token <Support.Error.info> MAIN
 %token <Support.Error.info> MOD
 
-%token <Support.Error.info * int> INT
-%token <Support.Error.info * char> CHAR
-%token <Support.Error.info * char list> STRING
-%token <Support.Error.info * string> VAR
+%token <int Support.Error.withinfo> INT
+%token <char Support.Error.withinfo> CHAR
+%token <char list Support.Error.withinfo> STRING
+%token <string Support.Error.withinfo> VAR
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
@@ -66,12 +66,12 @@ field_elm_list:
   | { [] }
 
 field_elm:
-  | v=VAR COLON ek=field_elm_kind { (snd v, ek) }
+  | v=VAR COLON ek=field_elm_kind { (v.v, ek) }
 
 field_elm_kind:
   | CELL { Field.Cell }
   | PTR { Field.Ptr }
-  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some (snd l); mem=f; } }
+  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some l.v; mem=f; } }
   | ARRAY_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
 
 
@@ -83,7 +83,7 @@ var_list:
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | ST_VAR f=field IN sl=stmt_list { [ StVar (f, sl) ] }
-  | ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ StLet (snd v, e, sl) ] }
+  | ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ StLet (v.v, e, sl) ] }
   | { [] }
 
 stmt:
@@ -101,35 +101,45 @@ stmt:
   | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
 
 expr:
-  | v=VAR { ExVar (snd v) }
-  | i=INT { ExInt (snd i) }
-  | c=CHAR { ExInt (int_of_char @@ snd c) }
-  | s=STRING { ExStr (snd s) }
-  | TRUE { ExBool true }
-  | FALSE { ExBool false }
-  | NIL { ExNil }
-  | e=expr COLON v=VAR { ExSelMem (e, None, snd v) }
-  | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR { ExSelMem (es, Some ei, snd v) }
-  | e=expr AT v=VAR { ExSelPtr (e, snd v) }
-  | LBRACKET sl=stmt_list RBRACKET { ExBlock sl }
-  | LPAREN e=expr_full RPAREN { e }
+  | v=VAR { withinfo v.i @@ ExVar v.v }
+  | i=INT { withinfo i.i @@ ExInt i.v }
+  | c=CHAR { withinfo c.i @@ ExInt (int_of_char c.v) }
+  | s=STRING { withinfo s.i @@ ExStr s.v }
+  | i=TRUE { withinfo i @@ ExBool true }
+  | i=FALSE { withinfo i @@ ExBool false }
+  | i=NIL { withinfo i ExNil }
+  | e=expr COLON v=VAR { withinfo2 e.i v.i @@ ExSelMem (e, None, v.v) }
+  | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR {
+      withinfo2 es.i v.i @@ ExSelMem (es, Some ei, v.v)
+    }
+  | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelPtr (e, v.v) }
+  | i1=LBRACKET sl=stmt_list i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
+  | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
 
 expr_full:
   | e=expr_appable { e }
-  | FUN v=VAR vl=var_list ARROW e=expr_full {
-      let e = List.fold_right (fun v e -> ExFun (snd v, e)) vl e in
-      ExFun (snd v, e)
+  | i=FUN v=VAR vl=var_list ARROW e=expr_full {
+      List.fold_right
+        (fun arg body -> withinfo2 i e.i @@ ExFun (arg.v, body))
+        (v :: vl) e
     } %prec prec_fun
-  | IF ec=expr_full THEN et=expr_full ELSE ee=expr_full { ExIf (ec, et, ee) } %prec prec_if
-  | LET v=VAR EQ e1=expr_full IN e2=expr_full { ExLet(snd v, e1, e2) } %prec prec_let
-  | MATCH em=expr_full WITH BAR? NIL ARROW en=expr_full BAR vh=VAR CONS vt=VAR ARROW ec=expr_full END {
-      ExMatch (em, en, snd vh, snd vt, ec)
+  | i=IF ec=expr_full THEN et=expr_full ELSE ee=expr_full {
+      withinfo2 i ee.i @@ ExIf (ec, et, ee)
+    } %prec prec_if
+  | i=LET v=VAR EQ e1=expr_full IN e2=expr_full {
+      withinfo2 i e2.i @@ ExLet(v.v, e1, e2)
+    } %prec prec_let
+  | i1=MATCH em=expr_full WITH
+    BAR? NIL ARROW en=expr_full
+    BAR vh=VAR CONS vt=VAR ARROW ec=expr_full
+    i2=END {
+      withinfo2 i1 i2 @@ ExMatch (em, en, vh.v, vt.v, ec)
     }
-  | MINUS e=expr_full { ExMinus e }
-  | e1=expr_full bop=bop_int e2=expr_full { ExBOpInt (e1, bop, e2) }
-  | e1=expr_full EQ e2=expr_full { ExEqual (e1, e2) }
-  | e1=expr_full CONS e2=expr_full { ExCons (e1, e2) }
-  | e1=expr_full COMMA e2=expr_full { ExPair (e1, e2) }
+  | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
+  | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
+  | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
+  | e1=expr_full CONS e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
+  | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
 
 %inline bop_int:
   | PLUS { BOpInt.Add }
@@ -142,4 +152,4 @@ expr_full:
 
 expr_appable:
   | e=expr { e }
-  | ef=expr_appable ea=expr { ExApp (ef, ea) }
+  | ef=expr_appable ea=expr { withinfo2 ef.i ea.i @@ ExApp (ef, ea) }

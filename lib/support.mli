@@ -1,12 +1,15 @@
 module Error : sig
   (** ソースコード中の位置 *)
   type info
+  type 'a withinfo = { i : info; v : 'a }
 
-  (** [create_info file line col] *)
-  val create_info : string -> int -> int -> info
+  val create_info : Lexing.position -> Lexing.position -> info
   val unknown_info : info
 
-  val info_of_position : Lexing.position -> info
+  val withinfo : info -> 'a -> 'a withinfo
+
+  (** [withinfo2 info_start info_end value] *)
+  val withinfo2 : info -> info -> 'a -> 'a withinfo
 
   (** [output_info out_channel info] *)
   val output_info : out_channel -> info -> unit

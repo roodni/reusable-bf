@@ -1,5 +1,6 @@
 open Batteries
 open Printf
+open Support.Error
 
 module Var = struct
   type t = string
@@ -33,7 +34,8 @@ type stmt =
   | StLet of Var.t * expr * stmt list
   | StExpand of expr
   | StDive of expr * stmt list
-and expr =
+and expr = expr' withinfo
+and expr' =
   | ExVar of Var.t
   | ExInt of int
   | ExBool of bool
@@ -287,6 +289,7 @@ module Codegen = struct
   let rec eval (envs: envs) (expr: Expr.t) =
     let open Value in
     let { va_env = env; _ } = envs in
+    let { i = info; v = expr } = expr in
     match expr with
     | ExVar v -> begin
         match VaEnv.lookup v env with
