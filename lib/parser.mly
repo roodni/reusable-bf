@@ -56,6 +56,7 @@ open Reusable
 
 program:
   | MAIN f=field IN sl=stmt_list EOF { (f, sl) }
+  | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f, sl) }
 
 
 field:
@@ -82,23 +83,23 @@ var_list:
 
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
-  | ST_VAR f=field IN sl=stmt_list { [ StVar (f, sl) ] }
-  | ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ StLet (v.v, e, sl) ] }
+  | i=ST_VAR f=field IN sl=stmt_list { [ withinfo i @@ StVar (f, sl) ] }
+  | i=ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ withinfo i @@ StLet (v.v, e, sl) ] }
   | { [] }
 
 stmt:
-  | PLUS es=expr ei=expr? { StAdd (1, es, ei) }
-  | MINUS es=expr ei=expr? { StAdd (-1, es, ei) }
-  | DOT e=expr { StPut e }
-  | COMMA e=expr { StGet e }
-  | RSHIFT ep=expr ei=expr? { StShift (1, ep, ei) }
-  | LSHIFT ep=expr ei=expr? { StShift (-1, ep, ei) }
-  | EXCL e=expr LBRACKET sl=stmt_list RBRACKET { StWhile (e, sl) }
-  | QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
-      StIf (e, sl_t, Some sl_e)
+  | i=PLUS es=expr ei=expr? { withinfo i @@ StAdd (1, es, ei) }
+  | i=MINUS es=expr ei=expr? { withinfo i @@ StAdd (-1, es, ei) }
+  | i=DOT e=expr { withinfo i @@ StPut e }
+  | i=COMMA e=expr { withinfo i @@ StGet e }
+  | i=RSHIFT ep=expr ei=expr? { withinfo i @@ StShift (1, ep, ei) }
+  | i=LSHIFT ep=expr ei=expr? { withinfo i @@ StShift (-1, ep, ei) }
+  | i=EXCL e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StWhile (e, sl) }
+  | i=QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
+      withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
-  | ASTER e=expr_appable { StExpand e }
-  | ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { StDive (e, sl) }
+  | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
+  | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
   | v=VAR { withinfo v.i @@ ExVar v.v }

@@ -1,0 +1,6 @@
+# assertion failed
+main {
+  i: index;
+} [
+  > i
+]

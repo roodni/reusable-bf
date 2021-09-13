@@ -1,0 +1,8 @@
+main {} [
+  $alloc {
+    a: array(3) {
+      x: cell;
+    };
+  } in
+  + a:x
+]

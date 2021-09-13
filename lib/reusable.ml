@@ -23,7 +23,8 @@ module BOpInt = struct
   type t = Add | Sub | Mul | Div | Mod | Lt | Leq
 end
 
-type stmt =
+type stmt = stmt' withinfo
+and stmt' =
   | StAdd of int * expr * expr option  (* sign, sel, int *)
   | StPut of expr
   | StGet of expr
@@ -125,6 +126,8 @@ module Sel = struct
     | NSel _ -> failwith "selector is not selecting a pointer"
     | NPtr (nsel, ptr) -> (nsel, ptr)
 
+  (** ポインタ[ptr]をセレクタ[sel]が経由するかどうか
+      [has_ptr ptr sel] *)
   let rec has_ptr ptr sel =
     match sel with
     | Base _ -> false
@@ -255,22 +258,21 @@ module Value = struct
     | VaPair (v1, v2) -> (v1, v2)
     | _ -> failwith "value is not a pair"
 
-  let rec equal x y =
-    match x, y with
-    | VaInt x, VaInt y -> x = y
-    | VaBool x, VaBool y -> x = y
-    | VaSel (x, _), VaSel (y, _) -> x = y
-    | VaList x, VaList y -> begin
-        let rec loop x y =
-          match x, y with
-          | [], [] -> true
-          | x :: xl, y :: yl when equal x y -> loop xl yl
-          | _ -> false
-        in
-        loop x y
-      end
-    | VaPair (x1, x2), VaPair (y1, y2) -> equal x1 y1 && equal x2 y2
-    | _ -> failwith "type error: ="
+  let equal x y =
+    let rec equal x y =
+      match x, y with
+      | VaInt x, VaInt y -> x = y
+      | VaBool x, VaBool y -> x = y
+      | VaSel (x, _), VaSel (y, _) -> x = y
+      | VaList x, VaList y -> begin
+          try List.for_all2 equal x y with
+          | Invalid_argument _ -> false
+        end
+      | VaPair (x1, x2), VaPair (y1, y2) -> equal x1 y1 && equal x2 y2
+      | _ -> raise Exit
+    in
+    try Some (equal x y) with
+    | Exit -> None
 end
 
 
@@ -297,7 +299,7 @@ module Codegen = struct
         | None -> begin
             match Builtin.of_var v with
             | Some b -> VaBuiltin b
-            | None -> failwith @@ sprintf "not found: %s" v
+            | None -> error_at info @@ sprintf "Unbound value '%s'" v
           end
       end
     | ExInt i -> VaInt i
@@ -311,14 +313,14 @@ module Codegen = struct
         in
         let parent = eval envs ex_parent |> to_sel_and_nvar_env in
         match parent with
-        | _, None -> failwith "parent is not selecting a list"
+        | _, None -> error_at ex_parent.i "selector(array) or selector(index) expected"
         | sel, Some nvar_env -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             let sel = Sel.LstMem (sel, index, nvar) in
             let nvar_env_opt =
                 match nvar_kind with
                 | NVarEnv.Cell -> None
-                | Ptr -> failwith "child is a pointer"
+                | Ptr -> error_at info "Selecting an index (Use '@' instead of ':')"
                 | Lst { mem=nvar_env; _ } -> Some nvar_env
             in
             VaSel (sel, nvar_env_opt)
@@ -327,12 +329,12 @@ module Codegen = struct
     | ExSelPtr (ex_parent, var) -> begin
         let parent = eval envs ex_parent |> to_sel_and_nvar_env in
         match parent with
-        | _, None -> failwith "parent is not selecting a list"
-        | Sel.LstPtr _, _ -> failwith "parent is selecting a pointer"
+        | _, None | Sel.LstPtr _, _ ->
+            error_at ex_parent.i "selector(array) expected"
         | sel, Some nvar_env -> begin
             let nvar, nvar_kind = NVarEnv.lookup var nvar_env in
             match nvar_kind with
-            | Cell | Lst _ -> failwith "child is not a pointer"
+            | Cell | Lst _ -> error_at info "Not selecting an index (Use ':' instead of '@')"
             | Ptr ->
                 let sel = Sel.LstPtr (sel, nvar) in
                 VaSel (sel, Some nvar_env)
@@ -348,7 +350,7 @@ module Codegen = struct
             eval { envs with va_env = env_fun } ex_fun
         | VaBuiltin Fst -> to_pair va_arg |> fst
         | VaBuiltin Snd -> to_pair va_arg |> snd
-        | _ -> failwith "value is not a function"
+        | _ -> error_at ex_fn.i "function expected"
       end
     | ExBlock st_list -> VaBlock (env, st_list)
     | ExBOpInt (ex_left, bop, ex_right) -> begin
@@ -366,10 +368,13 @@ module Codegen = struct
     | ExMinus ex_int ->
         let i = eval envs ex_int |> to_int in
         VaInt (-i)
-    | ExEqual (ex_left, ex_right) ->
+    | ExEqual (ex_left, ex_right) -> begin
         let left = eval envs ex_left in
         let right = eval envs ex_right in
-        VaBool (Value.equal left right)
+        match Value.equal left right with
+        | Some b -> VaBool b
+        | None -> error_at info "Cannot test equality"
+      end
     | ExIf (ex_cond, ex_then, ex_else) ->
         let cond = eval envs ex_cond |> to_bool in
         eval envs (if cond then ex_then else ex_else)
@@ -406,6 +411,7 @@ module Codegen = struct
       let { va_env; diving; diving_vars } = envs in
       let states, code_list =
         List.fold_left_map (fun dfn stmt ->
+          let { i = info; v = stmt } = stmt in
           match stmt with
           | StAdd (sign, ex_sel, ex_i_opt) -> begin
               let nsel = eval envs ex_sel |> Value.to_nsel in
@@ -441,10 +447,10 @@ module Codegen = struct
               let dfn_key = Named.Sel.to_dfn_key nsel in
               let dfn =
                 match Named.Dfn.lookup dfn_key dfn with
-                | None -> failwith @@ sprintf "not found: %s" (Named.Sel.pretty nsel)
+                | None -> assert false (* evalが成功するセレクタ式ならば登録されているはず *)
                 | Some Named.Dfn.CellIfable -> dfn
                 | Some Cell ->  Named.Dfn.extend dfn_key Named.Dfn.CellIfable dfn
-                | Some (Lst _ | Ptr) -> failwith "condition selector is not selecting a cell"
+                | Some (Lst _ | Ptr) -> error_at ex_sel.i "selector(cell) expected"
               in
               let dfn, code_then = codegen envs dfn st_list_then in
               let dfn, code_else = match st_list_else with
@@ -466,7 +472,9 @@ module Codegen = struct
                     NVarEnv.to_list nvar_env |>
                     List.map (fun (_, (nvar, kind)) ->
                       match kind with
-                      | NVarEnv.Lst _ | Ptr -> failwith "not implemented (shift local list)"
+                      | NVarEnv.Lst _ | Ptr ->
+                          (* varの時点で弾かれるので到達できないはず *)
+                          error_at info "Shifting local array is not implemented"
                       | NVarEnv.Cell ->
                           let nsel_origin = Sel.LstMem (sel, 0, nvar) |> Sel.to_nsel in
                           let nsel_dest = Sel.LstMem (sel, i, nvar) |> Sel.to_nsel in
@@ -475,7 +483,7 @@ module Codegen = struct
                               Add (1, nsel_dest); ]) ]
                     ) |> List.flatten |> Option.some
                   else if Sel.has_ptr ptr sel_diving then
-                      failwith "shift is prohibited because interfering local variables exist"
+                      error_at info "Shift is prohibited because a local cell interferes"
                   else None
                 ) |> List.flatten
               in
@@ -499,7 +507,10 @@ module Codegen = struct
                 NVarEnv.to_list nvar_env |>
                 List.map (fun (_, (nvar, kind)) ->
                   match kind with
-                  | NVarEnv.Lst _ | Ptr -> failwith "not implemented (local list)"
+                  | NVarEnv.Lst _ -> error_at info "Allocating local arrays is not implemented"
+                  | NVarEnv.Ptr ->
+                      assert false
+                      (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
                   | NVarEnv.Cell ->
                       let sel = Sel.base_or_mem diving nvar in
                       let nsel = Sel.to_nsel sel in

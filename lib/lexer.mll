@@ -5,6 +5,7 @@ module P = Parser
 let reserved = [
   ("cell", fun i -> P.CELL i);
   ("ptr", fun i -> P.PTR i);
+  ("index", fun i -> P.PTR i);
   ("array", fun i -> P.ARRAY i);
   ("array_unlimited", fun i -> P.ARRAY_UNLIMITED i);
   ("main", fun i -> P.MAIN i);
@@ -104,7 +105,7 @@ and main = parse
   | "<=" { P.LEQ (info lexbuf) }
   | "::" { P.CONS (info lexbuf) }
   | "|" { P.BAR (info lexbuf) }
-  | "$var" { P.ST_VAR (info lexbuf) }
+  | "$var" | "$alloc" { P.ST_VAR (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {

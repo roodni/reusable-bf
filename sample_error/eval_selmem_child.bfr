@@ -1,0 +1,11 @@
+# parent:child のchildがindexである
+# : と @ は統合するかもしれない
+#   統合するとエラーではなくなる
+
+main {
+  a: array(3) {
+    i: index;
+  };
+} [
+  + a:i
+]

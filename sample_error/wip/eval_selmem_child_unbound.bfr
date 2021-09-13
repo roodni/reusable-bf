@@ -1,0 +1,10 @@
+# parent:child のchildが定義されていない
+# todo: NVarEnv.lookupの戻り値の型をOptionにする
+
+main {
+  a: array(3) {
+    i: index;
+  };
+} [
+  + a:x
+]

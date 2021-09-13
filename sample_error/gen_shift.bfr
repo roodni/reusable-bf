@@ -1,0 +1,16 @@
+main {
+  a: array(3) {
+    i: index;
+    b: array(2) {
+      i: index;
+    };
+  };
+} [
+  $dive a@i [
+    $alloc { x: cell; } in
+    $dive a@i:b@i [
+      $alloc { y: cell; } in
+      > a@i
+    ]
+  ]
+]
