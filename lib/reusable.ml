@@ -8,15 +8,14 @@ end
 
 
 module Field = struct
-  type t = (Var.t * kind) list
-  and kind =
+  type t = (Var.t * mtype) withinfo list
+  and mtype =
     | Cell
-    | Ptr
-    | Lst of lst  (* 表層は "array" という名前に変わった *)
-  and lst = {
-    length: int option;
-    mem: t;
-  }
+    | Index
+    | Array of {
+        length : int option;
+        mem : t;
+      }
 end
 
 module BOpInt = struct
@@ -139,42 +138,58 @@ module Sel = struct
 end
 
 (** VarとNamed.Varの対応 *)
-module NVarEnv = struct
-  type t = (Var.t * (Named.Var.t * kind)) list
-  and kind =
+module NVarEnv : sig
+  type t
+  and binded = (Named.Var.t * mtype) withinfo
+  and mtype =
     | Cell
-    | Ptr
-    | Lst of lst
-  and lst = {
-    length: int option;
-    mem: t;
-  }
+    | Index
+    | Array of {
+        length: int option;
+        mem: t;
+      }
 
-  let to_list (t: t): (Var.t * (Named.Var.t * kind)) list = t
-
-  let lookup (v: Var.t) (t: t) = List.assoc_opt v t
+  val to_list : t -> (Var.t * binded) list
+  val lookup : Var.t -> t -> binded option
 
   (** [gen_using_field dfn parent field]
       [parent]は[field]を展開する位置を[Named.Var.t]のlistで表す *)
+  val gen_using_field : Named.Dfn.t -> Named.Var.t list -> Field.t -> Named.Dfn.t * t
+
+end = struct
+  type t = (Var.t * binded) list
+  and binded = (Named.Var.t * mtype) withinfo
+  and mtype =
+    | Cell
+    | Index
+    | Array of {
+        length: int option;
+        mem: t;
+      }
+
+  let to_list (t: t) = t
+  let lookup (v: Var.t) (t: t) = List.assoc_opt v t
+
   let rec gen_using_field (dfn: Named.Dfn.t) (parent: Named.Var.t list) (field: Field.t)
       : Named.Dfn.t * t =
-    List.fold_left_map (fun dfn (var, f_kind) ->
+    List.fold_left_map (fun dfn field_mem ->
+      let var, mtype = field_mem.v in
       let nvar = Named.Var.gen_named var in
       let key = parent @ [ nvar ] in
-      match f_kind with
+      match mtype with
       | Field.Cell ->
           let dfn = Named.Dfn.extend key Named.Dfn.Cell dfn in
-          let env_elm = (var, (nvar, Cell)) in
+          let env_elm = (var, withinfo field_mem.i (nvar, Cell)) in
           (dfn, env_elm)
-      | Field.Ptr ->
+      | Field.Index ->
           let dfn = Named.Dfn.extend key Named.Dfn.Ptr dfn in
-          let env_elm = (var, (nvar, Ptr)) in
+          let env_elm = (var, withinfo field_mem.i (nvar, Index)) in
           (dfn, env_elm)
-      | Field.Lst { length; mem; } ->
+      | Field.Array { length; mem; } ->
           let nlst = Named.Dfn.Lst { length; mem = Named.Dfn.empty; } in
           let dfn = Named.Dfn.extend key nlst dfn in
           let dfn, mem = gen_using_field dfn key mem in
-          let env_elm = (var, (nvar, Lst { length; mem })) in
+          let env_elm = (var, withinfo field_mem.i (nvar, Array { length; mem })) in
           (dfn, env_elm)
     ) dfn field
 
@@ -215,14 +230,14 @@ module VaEnv = struct
 
   let extend_with_nvar_env (diving: Sel.t option) (nvar_env: NVarEnv.t) (t: t): t =
     NVarEnv.to_list nvar_env |>
-      List.fold_left (fun t (var, (nvar, kind)) ->
-        match kind with
+      List.fold_left (fun t (var, { v = (nvar, mtype); i }) ->
+        match mtype with
         | NVarEnv.Cell ->
             let sel = Sel.base_or_mem diving nvar in
             (var, VaSel (sel, None)) :: t
-        | Ptr ->
-            assert false
-        | Lst { mem=nvar_env_lst; _ } ->
+        | Index ->
+            error_at i "Index must be declared as a member of an array"
+        | Array { mem=nvar_env_lst; _ } ->
             let sel = Sel.base_or_mem diving nvar in
             (var, VaSel (sel, Some nvar_env_lst)) :: t
       ) t
@@ -317,13 +332,13 @@ module Codegen = struct
         | sel, Some nvar_env -> begin
             match NVarEnv.lookup var nvar_env with
             | None -> error_at info @@ sprintf "Unbound member '%s'" var
-            | Some (nvar, nvar_kind) ->
+            | Some { v = (nvar, nvar_mtype); i = _ } ->
                 let sel = Sel.LstMem (sel, index, nvar) in
                 let nvar_env_opt =
-                    match nvar_kind with
+                    match nvar_mtype with
                     | NVarEnv.Cell -> None
-                    | Ptr -> error_at info "Selecting an index (Use '@' instead of ':')"
-                    | Lst { mem=nvar_env; _ } -> Some nvar_env
+                    | Index -> error_at info "Selecting an index (Use '@' instead of ':')"
+                    | Array { mem=nvar_env; _ } -> Some nvar_env
                 in
                 VaSel (sel, nvar_env_opt)
           end
@@ -336,10 +351,10 @@ module Codegen = struct
         | sel, Some nvar_env -> begin
             match NVarEnv.lookup var nvar_env with
             | None -> error_at info @@ sprintf "Unbound member '%s'" var
-            | Some (nvar, nvar_kind) -> begin
-                match nvar_kind with
-                | Cell | Lst _ -> error_at info "Not selecting an index (Use ':' instead of '@')"
-                | Ptr ->
+            | Some { v = (nvar, nvar_mtype); i = _ } -> begin
+                match nvar_mtype with
+                | Cell | Array _ -> error_at info "Not selecting an index (Use ':' instead of '@')"
+                | Index ->
                     let sel = Sel.LstPtr (sel, nvar) in
                     VaSel (sel, Some nvar_env)
               end
@@ -476,9 +491,9 @@ module Codegen = struct
                 List.filter_map (fun (sel_diving, nvar_env) ->
                   if sel = sel_diving then (* 変数をコピーする *)
                     NVarEnv.to_list nvar_env |>
-                    List.map (fun (_, (nvar, kind)) ->
-                      match kind with
-                      | NVarEnv.Lst _ | Ptr ->
+                    List.map (fun (_, { v = (nvar, mtype); i = _ }) ->
+                      match mtype with
+                      | NVarEnv.Array _ | Index ->
                           (* varの時点で弾かれるので到達できないはず *)
                           error_at info "Shifting local array is not implemented"
                       | NVarEnv.Cell ->
@@ -511,10 +526,10 @@ module Codegen = struct
               (* 変数が使用したセルをゼロにする *)
               let code_clean =
                 NVarEnv.to_list nvar_env |>
-                List.map (fun (_, (nvar, kind)) ->
-                  match kind with
-                  | NVarEnv.Lst _ -> error_at info "Allocating local arrays is not implemented"
-                  | NVarEnv.Ptr ->
+                List.map (fun (_, { v = (nvar, mtype); i }) ->
+                  match mtype with
+                  | NVarEnv.Array _ -> error_at i "Allocating local arrays is not implemented"
+                  | NVarEnv.Index ->
                       assert false
                       (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
                   | NVarEnv.Cell ->

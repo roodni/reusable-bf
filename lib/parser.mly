@@ -63,17 +63,17 @@ field:
   | LBRACE el=field_elm_list RBRACE { el }
 
 field_elm_list:
-  | e=field_elm SEMI el=field_elm_list { e :: el }
+  | e=field_elm el=field_elm_list { e :: el }
   | { [] }
 
 field_elm:
-  | v=VAR COLON ek=field_elm_kind { (v.v, ek) }
+  | v=VAR COLON ek=field_elm_mtype i2=SEMI { withinfo2 v.i i2 (v.v, ek) }
 
-field_elm_kind:
+field_elm_mtype:
   | CELL { Field.Cell }
-  | PTR { Field.Ptr }
-  | ARRAY LPAREN l=INT RPAREN f=field { Field.Lst { length=Some l.v; mem=f; } }
-  | ARRAY_UNLIMITED f=field { Field.Lst { length=None; mem=f; } }
+  | PTR { Field.Index }
+  | ARRAY LPAREN l=INT RPAREN f=field { Field.Array { length=Some l.v; mem=f; } }
+  | ARRAY_UNLIMITED f=field { Field.Array { length=None; mem=f; } }
 
 
 var_list:
