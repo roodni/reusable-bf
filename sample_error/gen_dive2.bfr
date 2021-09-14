@@ -1,0 +1,11 @@
+# 認めるかどうか決めていないが、今のところ弾く
+main {
+  a: array(3) {
+    i: index;
+  };
+} [
+  $dive a [
+    $alloc { y: cell; } in
+    + y
+  ]
+]

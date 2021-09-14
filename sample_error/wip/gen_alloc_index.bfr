@@ -1,4 +1,0 @@
-main {} [
-  $alloc { i: index; } in
-  > i
-]

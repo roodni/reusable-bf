@@ -1,0 +1,12 @@
+# エラーにならない
+# Value.to_nselがcellとarrayを区別しないため
+# - ReusableはNamedの要素でパターンマッチをしない
+# - Namedはarrayに対する + - . , while if を禁止する
+
+main {
+  a: array(3) {
+    i: index;
+  };
+} [
+  + a
+]

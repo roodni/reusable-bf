@@ -1,0 +1,7 @@
+# Namedでassertion failed
+main { x: cell; } [
+  $dive x [
+    $alloc { y: cell; } in
+    + y
+  ]
+]

@@ -1,0 +1,8 @@
+# selector(cell) or selector(array) expectedと出るが、arrayは弾かないといけない
+main {
+  a: array(3) {
+    i: index;
+  };
+} [
+  + a@i
+]
