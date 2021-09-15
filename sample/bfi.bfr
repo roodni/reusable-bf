@@ -21,10 +21,8 @@ let sort = fun compare l ->
               | hd :: tl ->
                   if compare hd pivot < 0
                   then partition (hd :: left) right tl
-                  else partition left (hd :: right) tl
-              end)
-            nil nil rest
-      end)
+                  else partition left (hd :: right) tl)
+            nil nil rest)
     l nil
 
 # セル x をゼロにする
@@ -79,8 +77,7 @@ let gen_switch = fun sel cases default -> [
             - flag_els
             *loop num cases
           ]
-        ]
-      end)
+        ])
     0 cases
 ]
 
@@ -107,8 +104,7 @@ let gen_add_multi = fun src dest_and_coef_list -> [
             $let coef = snd h in
             + dest coef
             *loop l
-          ]
-        end)
+          ])
       dest_and_coef_list
   ]
 ]
@@ -155,8 +151,7 @@ let gen_switch_nat = fun sel blocks default -> [
             + sel i
             *block
           ]
-        ]
-      end)
+        ])
     0 blocks
 ]
 

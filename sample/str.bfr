@@ -2,7 +2,7 @@ let fix = fun f ->
   let g = fun x -> f (fun y -> x x y) in
   g g
 
-let puts = fun l -> [
+let gen_puts = fun l -> [
   $var { c: cell; } in
   *fix
     (fun loop prev l ->
@@ -12,11 +12,10 @@ let puts = fun l -> [
           + c (hd - prev)
           . c
           *loop hd tl
-        ]
-      end)
+        ])
     0 l
 ]
 
 main {} [
-  *puts "hello world\n"
+  *gen_puts "hello world\n"
 ]

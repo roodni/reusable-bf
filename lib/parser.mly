@@ -42,7 +42,8 @@ open Reusable
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
-%nonassoc prec_if prec_fun prec_let
+%nonassoc prec_if prec_fun prec_let prec_match
+%nonassoc END
 %left COMMA
 %left LSHIFT LEQ EQ
 %right CONS
@@ -142,9 +143,10 @@ expr_full:
   | i1=MATCH em=expr_full WITH
     BAR? NIL ARROW en=expr_full
     BAR vh=VAR CONS vt=VAR ARROW ec=expr_full
-    i2=END {
+    i2opt=ioption(END) {
+      let i2 = match i2opt with None -> ec.i | Some i -> i in
       withinfo2 i1 i2 @@ ExMatch (em, en, vh.v, vt.v, ec)
-    }
+    } %prec prec_match
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
