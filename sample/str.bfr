@@ -1,25 +1,22 @@
-main {} in
+let fix = fun f ->
+  let g = fun x -> f (fun y -> x x y) in
+  g g
 
-$let fix = fun f x ->
-  let fix = fun self f x ->
-    f (self self f) x
-  in
-  fix fix f x
-in
-
-$let puts = fun l -> [
+let puts = fun l -> [
   $var { c: cell; } in
-  *fix (fun loop prev l ->
-    match l with
-    | nil -> []
-    | hd :: tl -> [
-        + c (hd - prev)
-        . c
-        *loop hd tl
-      ]
-    end
-  ) 0 l
-] in
+  *fix
+    (fun loop prev l ->
+      match l with
+      | nil -> []
+      | hd :: tl -> [
+          + c (hd - prev)
+          . c
+          *loop hd tl
+        ]
+      end)
+    0 l
+]
 
-*puts "hello
-world\n"
+main {} [
+  *puts "hello world\n"
+]

@@ -1,15 +1,10 @@
 # トランスパイル時に素数を列挙する
 
-main { sp: cell; } in
+let fix = fun f ->
+  let g = fun x -> f (fun y -> x x y) in
+  g g
 
-$let fix = fun f -> fun x ->
-  let fix = fun self -> fun f -> fun x ->
-    f (self self f) x
-  in
-  fix fix f x
-in
-
-$let puti = fun n -> [
+let puti = fun n -> [
   $var { x: cell; } in
   + x '0'
   *fix (fun loop -> fun n -> [
@@ -20,25 +15,28 @@ $let puti = fun n -> [
     + x (digit - rest mod 10)
     . x
   ]) n
-] in
+]
 
-$let is_prime = fun n ->
-  fix (fun loop -> fun i ->
-    if i * i <= n then
-      if n mod i = 0 then false
-      else loop (i + 1)
-    else true
-  ) 2
-in
+let is_prime = fun n ->
+  fix
+    (fun loop -> fun i ->
+      if i * i <= n then
+        if n mod i = 0 then false
+        else loop (i + 1)
+      else true)
+    2
 
-+ sp ' '
+main { sp: cell; } [
+  + sp ' '
 
-*fix (fun loop -> fun i ->
-  if i < 100 then [
-    *(if is_prime i then [
-        *puti i
-        . sp
-      ] else [] )
-    *loop (i + 1)
-  ] else []
-) 2
+  *fix
+    (fun loop -> fun i ->
+      if i < 100 then [
+        *(if is_prime i then [
+            *puti i
+            . sp
+          ] else [] )
+        *loop (i + 1)
+      ] else [])
+    2
+]

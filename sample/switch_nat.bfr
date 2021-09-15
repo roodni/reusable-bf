@@ -1,57 +1,54 @@
+let fix = fun f ->
+  let g = fun x -> f (fun y -> x x y) in
+  g g
+
+let gen_switch_nat = fun sel blocks default -> [
+  *fix
+    (fun loop i blocks ->
+      match blocks with
+      | nil -> [
+          + sel i
+          *default
+        ]
+      | block :: rest -> [
+          ? sel [
+            - sel
+            *loop (i + 1) rest
+          ] [
+            + sel i
+            *block
+          ]
+        ]
+      end)
+    0 blocks
+]
+
+
 main {
-  a: cell;
   b: cell;
-  c: cell;
+  f: cell;
+  r: cell;
   x: cell;
 } in
 
-+ a 'A'
 + b 'B'
-+ c 'C'
-
-$let fix = fun f x ->
-  let fix = fun self f x ->
-    f (self self f) x
-  in
-  fix fix f x
-in
-
-$let gen_switch_nat = fun sel blocks default -> [
-  *fix (fun loop i blocks ->
-    match blocks with
-    | nil -> [
-        + sel i
-        *default
-      ]
-    | block :: rest -> [
-        ? sel [
-          - sel
-          *loop (i + 1) rest
-        ] [
-          + sel i
-          *block
-        ]
-      ]
-    end
-  ) 0 blocks
-] in
++ f 'F'
++ r 'R'
 
 , x
 - x '0'
 
-*gen_switch_nat x (
-  [ # case 0
-    . a
-  ] ::
-  [ # case 1
+*gen_switch_nat x
+  ( [ # case 0
+      . b
+    ] ::
+    [ # case 1
+      . f
+    ] ::
+    [ # case 2
+      . r
+    ] :: nil )
+  [ # default
     + x '0'
     . x
-    . b
-  ] ::
-  [ # case 2
-    . c
-  ] :: nil
-) [ # default
-  + x '0'
-  . x
-]
+  ]

@@ -55,9 +55,18 @@ open Reusable
 %%
 
 program:
+  | ts=toplevel_list m=main { (ts, m) }
+
+toplevel_list:
+  | t=toplevel ts=toplevel_list { t :: ts }
+  | { [] }
+
+toplevel:
+  | i1=LET v=VAR EQ e=expr_full { withinfo2 i1 e.i @@ Program.Let (v.v, e) }
+
+main:
   | MAIN f=field IN sl=stmt_list EOF { (f, sl) }
   | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f, sl) }
-
 
 field:
   | LBRACE el=field_elm_list RBRACE { el }

@@ -55,14 +55,6 @@ and expr' =
   | ExMatch of expr * expr * Var.t * Var.t * expr
   | ExPair of expr * expr
 
-module Stmt = struct
-  type t = stmt
-end
-
-module Expr = struct
-  type t = expr
-end
-
 
 (** Named.Selをラップする *)
 module Sel = struct
@@ -208,45 +200,47 @@ module Builtin = struct
     | _ -> None
 end
 
+module Value : sig
+  type t =
+    | VaInt of int
+    | VaBool of bool
+    | VaSel of Sel.t * NVarEnv.t option
+    | VaFun of env * Var.t * expr
+    | VaBuiltin of Builtin.t
+    | VaBlock of env * stmt list
+    | VaList of t list
+    | VaPair of t * t
+  and env
 
-type va_env = (Var.t * value) list
-and value =
-  | VaInt of int
-  | VaBool of bool
-  | VaSel of Sel.t * NVarEnv.t option
-  | VaFun of va_env * Var.t * expr
-  | VaBuiltin of Builtin.t
-  | VaBlock of va_env * stmt list
-  | VaList of value list
-  | VaPair of value * value
+  val to_int : info -> t -> int
+  val to_bool : info -> t -> bool
+  val to_block : info -> t -> env * stmt list
+  val to_list : info -> t -> t list
+  val to_pair : info -> t -> t * t
+  val to_sel_and_nvar_env : info -> t -> Sel.t * NVarEnv.t option
+  val to_nsel_or_nptr : info -> t -> Sel.nsel_or_nptr
+  val to_nsel : info -> t -> Named.Sel.t
 
-module VaEnv = struct
-  type t = va_env
+  val equal : t -> t -> bool option
 
-  let empty: t = []
+  val env_empty : env
+  val env_extend : Var.t -> t -> env -> env
+  val env_lookup : Var.t -> env -> t option
 
-  let extend (var: Var.t) (value: value) (t: t): t =
-    (var, value) :: t
+  (** [env_extend_with_nvar_env diving nvar_env env] *)
+  val env_extend_with_nvar_env : Sel.t option -> NVarEnv.t -> env -> env
 
-  let extend_with_nvar_env (diving: Sel.t option) (nvar_env: NVarEnv.t) (t: t): t =
-    NVarEnv.to_list nvar_env |>
-      List.fold_left (fun t (var, { v = (nvar, mtype); i }) ->
-        match mtype with
-        | NVarEnv.Cell ->
-            let sel = Sel.base_or_mem diving nvar in
-            (var, VaSel (sel, None)) :: t
-        | Index ->
-            error_at i "Index must be declared as a member of an array"
-        | Array { mem=nvar_env_lst; _ } ->
-            let sel = Sel.base_or_mem diving nvar in
-            (var, VaSel (sel, Some nvar_env_lst)) :: t
-      ) t
-
-  let lookup (var: Var.t) (t: t) = List.assoc_opt var t
-end
-
-module Value = struct
-  type t = value
+end = struct
+  type t =
+    | VaInt of int
+    | VaBool of bool
+    | VaSel of Sel.t * NVarEnv.t option
+    | VaFun of env * Var.t * expr
+    | VaBuiltin of Builtin.t
+    | VaBlock of env * stmt list
+    | VaList of t list
+    | VaPair of t * t
+  and env = (Var.t * t) list
 
   let to_int info = function
     | VaInt i -> i
@@ -254,15 +248,6 @@ module Value = struct
   let to_bool info = function
     | VaBool b -> b
     | _ -> error_at info "bool expected"
-  let to_sel_and_nvar_env info = function
-    | VaSel (sel, nvar_env) -> (sel, nvar_env)
-    | _ -> error_at info "Must be a selector"
-  let to_nsel_or_nptr info v =
-    let sel, _ = to_sel_and_nvar_env info v in
-    Sel.to_nsel_or_nptr sel
-  let to_nsel info v =
-    let sel, _ = to_sel_and_nvar_env info v in
-    Sel.to_nsel info sel
   let to_block info = function
     | VaBlock (env, block) -> (env, block)
     | _ -> error_at info "block expected"
@@ -272,6 +257,17 @@ module Value = struct
   let to_pair info = function
     | VaPair (v1, v2) -> (v1, v2)
     | _ -> error_at info "pair expected"
+
+  (* セレクタまわりは修正した方が良い *)
+  let to_sel_and_nvar_env info = function
+    | VaSel (sel, nvar_env) -> (sel, nvar_env)
+    | _ -> error_at info "Must be a selector"
+  let to_nsel_or_nptr info v =
+    let sel, _ = to_sel_and_nvar_env info v in
+    Sel.to_nsel_or_nptr sel
+  let to_nsel info v =
+    let sel, _ = to_sel_and_nvar_env info v in
+    Sel.to_nsel info sel
 
   let equal x y =
     let rec equal x y =
@@ -288,28 +284,56 @@ module Value = struct
     in
     try Some (equal x y) with
     | Exit -> None
+
+  let env_empty: env = []
+
+  let env_extend (var: Var.t) (value: t) (env: env): env =
+    (var, value) :: env
+
+  let env_extend_with_nvar_env (diving: Sel.t option) (nvar_env: NVarEnv.t) (env: env) =
+    List.fold_left
+      (fun t (var, { v = (nvar, mtype); i }) ->
+        match mtype with
+        | NVarEnv.Cell ->
+            let sel = Sel.base_or_mem diving nvar in
+            (var, VaSel (sel, None)) :: t
+        | Index ->
+            error_at i "Index must be declared as a member of an array"
+        | Array { mem=nvar_env_lst; _ } ->
+            let sel = Sel.base_or_mem diving nvar in
+            (var, VaSel (sel, Some nvar_env_lst)) :: t)
+      env
+      (NVarEnv.to_list nvar_env)
+
+  let env_lookup (var: Var.t) (env: env) = List.assoc_opt var env
 end
 
 
 module Program = struct
-  type t = Field.t * Stmt.t list
+  type toplevel' =
+    | Let of Var.t * expr
+  type toplevel = toplevel' withinfo
+  type main = Field.t * stmt list
+  type t = toplevel list * main
 end
 
 
 module Codegen = struct
   type envs = {
-    va_env: VaEnv.t;
+    va_env: Value.env;
     diving: Sel.t option;
     diving_vars: (Sel.t * NVarEnv.t) list
   }
 
-  let rec eval (envs: envs) (expr: Expr.t) =
+  let envs_init = { va_env = Value.env_empty; diving = None; diving_vars = [] }
+
+  let rec eval (envs: envs) (expr: expr) : Value.t =
     let open Value in
     let { va_env = env; _ } = envs in
     let { i = info; v = expr } = expr in
     match expr with
     | ExVar v -> begin
-        match VaEnv.lookup v env with
+        match env_lookup v env with
         | Some va -> va
         | None -> begin
             match Builtin.of_var v with
@@ -366,7 +390,7 @@ module Codegen = struct
         let va_arg = eval envs ex_arg in
         match va_fn with
         | VaFun (env_fun, var_arg, ex_fun) ->
-            let env_fun = VaEnv.extend var_arg va_arg env_fun in
+            let env_fun = env_extend var_arg va_arg env_fun in
             eval { envs with va_env = env_fun } ex_fun
         | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst
         | VaBuiltin Snd -> to_pair ex_arg.i va_arg |> snd
@@ -400,7 +424,7 @@ module Codegen = struct
         eval envs (if cond then ex_then else ex_else)
     | ExLet (var, ex_var, ex_child) ->
         let value_var = eval envs ex_var in
-        let va_env = VaEnv.extend var value_var envs.va_env in
+        let va_env = env_extend var value_var envs.va_env in
         eval { envs with va_env; } ex_child
     | ExNil -> VaList []
     | ExCons (ex_head, ex_tail) ->
@@ -413,8 +437,8 @@ module Codegen = struct
         | [] -> eval envs ex_nil
         | head :: tail ->
             let va_env = envs.va_env |>
-              VaEnv.extend v_head head |>
-              VaEnv.extend v_tail (VaList tail)
+              env_extend v_head head |>
+              env_extend v_tail (VaList tail)
             in
             eval { envs with va_env } ex_cons
       end
@@ -423,10 +447,22 @@ module Codegen = struct
         let v2 = eval envs ex2 in
         VaPair (v1, v2)
 
-  let codegen (program: Program.t) =
-    let field, st_list = program in
+  let eval_toplevels (envs: envs) (toplevels: Program.toplevel list): envs =
+    List.fold_left
+      (fun envs toplevel ->
+        match toplevel.v with
+        | Program.Let (var, expr) ->
+            let value = eval envs expr in
+            let va_env = Value.env_extend var value envs.va_env in
+            { envs with va_env }
+      )
+      envs toplevels
+
+  let codegen (envs: envs) (main: Program.main) : Named.Dfn.t * Named.Cmd.t list =
+    let field, st_list = main in
     let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty [] field in
-    let va_env = VaEnv.extend_with_nvar_env None nvar_env VaEnv.empty in
+    let va_env = Value.env_extend_with_nvar_env None nvar_env envs.va_env in
+    let envs_main = { envs with va_env } in
     let rec codegen envs states st_list =
       let { va_env; diving; diving_vars } = envs in
       let states, code_list =
@@ -516,7 +552,7 @@ module Codegen = struct
                 | Some sel -> Sel.to_dfn_key sel
               in
               let dfn, nvar_env = NVarEnv.gen_using_field dfn dfn_key_diving field in
-              let va_env = VaEnv.extend_with_nvar_env diving nvar_env va_env in
+              let va_env = Value.env_extend_with_nvar_env diving nvar_env va_env in
               let diving_vars = match diving with
                 | None -> diving_vars
                 | Some sel -> (sel, nvar_env) :: diving_vars
@@ -541,7 +577,7 @@ module Codegen = struct
               (dfn, code_child @ code_clean)
           | StLet (var, ex, st_list) ->
               let value = eval envs ex in
-              let va_env = VaEnv.extend var value va_env in
+              let va_env = Value.env_extend var value va_env in
               codegen { envs with va_env } dfn st_list
           | StExpand ex_block ->
               let va_env, st_list = eval envs ex_block |> Value.to_block ex_block.i in
@@ -555,5 +591,12 @@ module Codegen = struct
       in
       (states, List.flatten code_list)
     in
-    codegen { va_env; diving = None; diving_vars = [] } dfn st_list
+    codegen envs_main dfn st_list
+
+  let codegen_all (program: Program.t) : Named.Dfn.t * Named.Cmd.t list =
+    let toplevels, main = program in
+    let envs = eval_toplevels envs_init toplevels in
+    codegen envs main
+
+
 end

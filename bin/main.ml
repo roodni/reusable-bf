@@ -26,7 +26,7 @@ let main () =
   in
   close_in file_in;
 
-  let dfn, cmd_list = Reusable.Codegen.codegen program in
+  let dfn, cmd_list = Reusable.Codegen.codegen_all program in
   let layout = Named.Layout.of_dfn dfn in
 
   if !flag_verbose then begin

@@ -2,13 +2,11 @@
 # ? <- if (non-destructive)
 # * <- block expansion
 
-main {} in
-
-$let del = fun x -> [
+let del = fun x -> [
   ! x [ - x ]
-] in
+]
 
-$let if_eq = fun a -> fun b -> fun thn -> [
+let if_eq = fun a -> fun b -> fun thn -> [
   ! a [
     - a
     ? b [ - b ] [
@@ -20,11 +18,9 @@ $let if_eq = fun a -> fun b -> fun thn -> [
     *del b
     *thn
   ]
-] in
+]
 
-$var {
-  cont: cell;
-} in
+main { cont: cell; } in
 + cont
 ! cont [
   - cont

@@ -6,7 +6,7 @@ open TestLib
 
 let reusable_to_bf_code code =
   let program = Lexing.from_string code |> Parser.program Lexer.main in
-  let dfn, code = Codegen.codegen program in
+  let dfn, code = Codegen.codegen_all program in
   let layout = Named.Layout.of_dfn dfn in
   Named.codegen layout code
 

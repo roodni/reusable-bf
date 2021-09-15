@@ -61,12 +61,12 @@ let cases = [
   };
   {
     name = "switch_nat";
-    io_list = [ ("0", "A"); ("1", "1B"); ("2", "C"); ("3", "3"); ("7", "7") ];
+    io_list = [ ("0", "B"); ("1", "F"); ("2", "R"); ("3", "3"); ("7", "7") ];
     code = load_code "sample/switch_nat.bfr";
   };
   {
     name = "str";
-    io_list = [ ("", "hello\nworld\n") ];
+    io_list = [ ("", "hello world\n") ];
     code = load_code "sample/str.bfr";
   };
   {

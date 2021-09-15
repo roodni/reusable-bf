@@ -1,35 +1,31 @@
-main {} in
+let fix = fun f ->
+  let g = fun x -> f (fun y -> x x y) in
+  g g
 
-$let fix = fun f x ->
-  let fix = fun self f x ->
-    f (self self f) x
-  in
-  fix fix f x
-in
+let sort = fun compare l ->
+  fix
+    (fun sort -> fun rest sorted ->
+      match rest with
+      | nil -> sorted
+      | pivot :: rest ->
+          fix
+            (fun partition -> fun left right l ->
+              match l with
+              | nil -> sort left (pivot :: sort right sorted)
+              | hd :: tl ->
+                  if compare hd pivot < 0
+                  then partition (hd :: left) right tl
+                  else partition left (hd :: right) tl
+              end)
+            nil nil rest
+      end)
+    l nil
 
-$let sort = fun compare l ->
-  fix (fun sort -> fun rest sorted ->
-    match rest with
-    | nil -> sorted
-    | pivot :: rest ->
-        fix (fun partition -> fun left right l ->
-          match l with
-          | nil -> sort left (pivot :: sort right sorted)
-          | hd :: tl ->
-              if compare hd pivot < 0
-              then partition (hd :: left) right tl
-              else partition left (hd :: right) tl
-          end
-        ) nil nil rest
-    end
-  ) l nil
-in
-
-$let gen_del = fun x -> [
+let gen_del = fun x -> [
   ! x [ - x ]
-] in
+]
 
-$let gen_safe_sub = fun src dest overflow -> [
+let gen_safe_sub = fun src dest overflow -> [
   ! src [
     - src
     ? dest [ - dest ] [
@@ -37,67 +33,66 @@ $let gen_safe_sub = fun src dest overflow -> [
       *gen_del src
     ]
   ]
-] in
+]
 
-$let gen_switch = fun sel cases default -> [
+let gen_switch = fun sel cases default -> [
   $let cases = sort (fun c1 c2 -> fst c1 - fst c2) cases in
   $var {
     sub_src: cell;
     flag_eq: cell;
     flag_els: cell;
   } in
-  *fix (fun loop prev cases ->
-    match cases with
-    | nil -> default
-    | case :: cases -> [
-        $let num = fst case in
-        $let block = snd case in
-        + sub_src (num - prev)
-        + flag_eq
-        *gen_safe_sub sub_src sel [ - flag_eq ]
-        ? sel [ - flag_eq ] []
-        + flag_els
-        ! flag_eq [
-          - flag_eq
-          - flag_els
-          *block
+  *fix
+    (fun loop prev cases ->
+      match cases with
+      | nil -> default
+      | case :: cases -> [
+          $let num = fst case in
+          $let block = snd case in
+          + sub_src (num - prev)
+          + flag_eq
+          *gen_safe_sub sub_src sel [ - flag_eq ]
+          ? sel [ - flag_eq ] []
+          + flag_els
+          ! flag_eq [
+            - flag_eq
+            - flag_els
+            *block
+          ]
+          ! flag_els [
+            - flag_els
+            *loop num cases
+          ]
         ]
-        ! flag_els [
-          - flag_els
-          *loop num cases
-        ]
-      ]
-    end
-  ) 0 cases
-] in
-
-
-$let gen_puts = fun l -> [
-  $var { c: cell; } in
-  *fix (fun loop prev l ->
-    match l with
-    | nil -> []
-    | hd :: tl -> [
-        + c (hd - prev)
-        . c
-        *loop hd tl
-      ]
-    end
-  ) 0 l
-] in
-
-
-$var { x: cell; } in
-, x
-*gen_switch x (
-  ('+', [ *gen_puts "INC" ]) ::
-  ('-', [ *gen_puts "DEC" ]) ::
-  ('.', [ *gen_puts "PUT" ]) ::
-  (',', [ *gen_puts "GET" ]) ::
-  ('[', [ *gen_puts "WHILE" ]) ::
-  (']', [ *gen_puts "WEND" ]) ::
-  ('>', [ *gen_puts "SHR" ]) ::
-  ('<', [ *gen_puts "SHL" ]) :: nil
-) [
-  *gen_puts "OTHER"
+      end)
+    0 cases
 ]
+
+let gen_puts = fun l -> [
+  $var { c: cell; } in
+  *fix
+    (fun loop prev l ->
+      match l with
+      | nil -> []
+      | hd :: tl -> [
+          + c (hd - prev)
+          . c
+          *loop hd tl
+        ]
+      end)
+    0 l
+]
+
+main { x: cell; } in
+, x
+
+*gen_switch x
+  ( ('+', [ *gen_puts "INC" ]) ::
+    ('-', [ *gen_puts "DEC" ]) ::
+    ('.', [ *gen_puts "PUT" ]) ::
+    (',', [ *gen_puts "GET" ]) ::
+    ('[', [ *gen_puts "WHILE" ]) ::
+    (']', [ *gen_puts "WEND" ]) ::
+    ('>', [ *gen_puts "SHR" ]) ::
+    ('<', [ *gen_puts "SHL" ]) :: nil )
+  [ *gen_puts "OTHER" ]
