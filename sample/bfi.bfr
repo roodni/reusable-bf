@@ -184,38 +184,26 @@ $dive code@p [
   ! cont [
     , p:inst
     + flag_next
-    *gen_switch p:inst (
-      ('+', [
-        *gen_set p:inst 1
-      ]) ::
-      ('-', [
-        *gen_set p:inst 2
-      ]) ::
-      ('>', [
-        *gen_set p:inst 3
-      ]) ::
-      ('<', [
-        *gen_set p:inst 4
-      ]) ::
-      ('[', [
-        *gen_set p:inst 5
-        + p:(1)depth
-      ]) ::
-      (']', [
-        *gen_set p:inst 6
-        - p:depth
-      ]) ::
-      ('.', [
-        *gen_set p:inst 7
-      ]) ::
-      (',', [
-        *gen_set p:inst 8
-      ]) ::
-      ('\\', [
-        - flag_next
-        - cont
-      ]) :: nil
-    ) [ - flag_next ]
+    *gen_switch p:inst
+      ( ('+', [ *gen_set p:inst 1 ]) ::
+        ('-', [ *gen_set p:inst 2 ]) ::
+        ('>', [ *gen_set p:inst 3 ]) ::
+        ('<', [ *gen_set p:inst 4 ]) ::
+        ('[', [
+          *gen_set p:inst 5
+          + p:(1)depth
+        ]) ::
+        (']', [
+          *gen_set p:inst 6
+           - p:depth
+        ]) ::
+        ('.', [ *gen_set p:inst 7 ]) ::
+        (',', [ *gen_set p:inst 8 ]) ::
+        ('\\', [
+          - flag_next
+          - cont
+        ]) :: nil )
+      [ - flag_next ]
     ! flag_next [
       - flag_next
       *gen_add_restore p:depth p:(1)depth
@@ -241,32 +229,28 @@ $dive code@p [
         [ < tape@p ] ::
         [ # while
           ? tape@p:v [] [
-            *gen_add_multi_restore p:depth (
-              (depth_cur, 1) ::
-              (p:(1)depth, -1) :: nil
-            )
+            *gen_add_multi_restore p:depth
+              ( (depth_cur, 1) ::
+                (p:(1)depth, -1) :: nil )
             > p
             ! p:depth [
-              *gen_add_multi_restore depth_cur (
-                (p:depth, 1) ::
-                (p:(1)depth, -1) :: nil
-              )
+              *gen_add_multi_restore depth_cur
+                ( (p:depth, 1) ::
+                  (p:(1)depth, -1) :: nil )
               > p
             ]
             *gen_add depth_cur p:depth
           ]
         ] ::
         [ # wend
-          *gen_add_multi_restore p:depth (
-            (depth_cur, 1) ::
-            (p:(-1)depth, -1) :: nil
-          )
+          *gen_add_multi_restore p:depth
+            ( (depth_cur, 1) ::
+              (p:(-1)depth, -1) :: nil )
           < p
           ! p:depth [
-            *gen_add_multi_restore depth_cur (
-              (p:depth, 1) ::
-              (p:(-1)depth, -1) :: nil
-            )
+            *gen_add_multi_restore depth_cur
+              ( (p:depth, 1) ::
+                (p:(-1)depth, -1) :: nil )
             < p
           ]
           *gen_add depth_cur p:depth
