@@ -1,0 +1,11 @@
+# named で assertion failed
+main {
+  a: array(3) {
+    b: array_unlimited {
+      i: index;
+      x: cell;
+    };
+  };
+} [
+  > a@i:b@i
+]
