@@ -2,6 +2,9 @@
 
 brainfuckにトランスパイルするプログラミング言語
 
+## 資料
+* https://www.slideshare.net/roodni/brainfuckbfreusable
+
 ## 依存ソフトウェア
 
 https://opam.ocaml.org/
