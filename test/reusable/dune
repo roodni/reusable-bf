@@ -1,0 +1,4 @@
+(test
+ (name reusableTest)
+ (libraries lib testLib batteries ounit2)
+ (deps (source_tree %{project_root}/sample)))

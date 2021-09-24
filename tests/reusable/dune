@@ -1,3 +1,0 @@
-(test
- (name reusableTest)
- (libraries lib testLib batteries ounit2))
