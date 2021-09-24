@@ -2,7 +2,7 @@ open Printf
 open Lib
 open Support.Error
 
-let main () =
+let () =
   let flag_run = ref false in
   let flag_verbose = ref false in
   let filename = ref "-" in
@@ -56,5 +56,3 @@ let main () =
     end;
     if state.err <> None then exit 1;
   end
-
-let () = main ()
