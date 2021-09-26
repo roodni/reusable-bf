@@ -22,6 +22,16 @@ module BOpInt = struct
   type t = Add | Sub | Mul | Div | Mod | Lt | Leq
 end
 
+type pat = pat' withinfo
+and pat' =
+  | PatVar of Var.t
+  | PatWild
+  | PatCons of pat * pat
+  | PatNil
+  | PatPair of pat * pat
+  | PatInt of int
+  | PatBool of bool
+
 type stmt = stmt' withinfo
 and stmt' =
   | StAdd of int * expr * expr option  (* sign, sel, int *)
@@ -319,17 +329,11 @@ end
 
 
 module Codegen = struct
-  type envs = {
-    va_env: Value.env;
-    diving: Sel.t option;
-    diving_vars: (Sel.t * NVarEnv.t) list
-  }
+  type eval_envs = { va_env : Value.env; }
 
-  let envs_init = { va_env = Value.env_empty; diving = None; diving_vars = [] }
-
-  let rec eval (envs: envs) (expr: expr) : Value.t =
+  let rec eval (envs: eval_envs) (expr: expr) : Value.t =
     let open Value in
-    let { va_env = env; _ } = envs in
+    let env = envs.va_env in
     let { i = info; v = expr } = expr in
     match expr with
     | ExVar v -> begin
@@ -391,7 +395,7 @@ module Codegen = struct
         match va_fn with
         | VaFun (env_fun, var_arg, ex_fun) ->
             let env_fun = env_extend var_arg va_arg env_fun in
-            eval { envs with va_env = env_fun } ex_fun
+            eval { va_env = env_fun } ex_fun
         | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst
         | VaBuiltin Snd -> to_pair ex_arg.i va_arg |> snd
         | _ -> error_at ex_fn.i "function expected"
@@ -425,7 +429,7 @@ module Codegen = struct
     | ExLet (var, ex_var, ex_child) ->
         let value_var = eval envs ex_var in
         let va_env = env_extend var value_var envs.va_env in
-        eval { envs with va_env; } ex_child
+        eval { va_env } ex_child
     | ExNil -> VaList []
     | ExCons (ex_head, ex_tail) ->
         let head = eval envs ex_head in
@@ -440,66 +444,73 @@ module Codegen = struct
               env_extend v_head head |>
               env_extend v_tail (VaList tail)
             in
-            eval { envs with va_env } ex_cons
+            eval { va_env } ex_cons
       end
     | ExPair (ex1, ex2) ->
         let v1 = eval envs ex1 in
         let v2 = eval envs ex2 in
         VaPair (v1, v2)
 
-  let eval_toplevels (envs: envs) (toplevels: Program.toplevel list): envs =
+  let eval_toplevels (envs: eval_envs) (toplevels: Program.toplevel list): eval_envs =
     List.fold_left
       (fun envs toplevel ->
         match toplevel.v with
         | Program.Let (var, expr) ->
             let value = eval envs expr in
             let va_env = Value.env_extend var value envs.va_env in
-            { envs with va_env }
+            { va_env }
       )
       envs toplevels
 
-  let codegen (envs: envs) (main: Program.main) : Named.Dfn.t * Named.Cmd.t list =
+  type codegen_ctx = {
+    eval_envs: eval_envs;
+    diving: Sel.t option;
+    diving_vars: (Sel.t * NVarEnv.t) list
+  }
+
+  let codegen (eval_envs : eval_envs) (main: Program.main) : Named.Dfn.t * Named.Cmd.t list =
     let field, st_list = main in
     let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty [] field in
-    let va_env = Value.env_extend_with_nvar_env None nvar_env envs.va_env in
-    let envs_main = { envs with va_env } in
-    let rec codegen envs states st_list =
-      let { va_env; diving; diving_vars } = envs in
+    let va_env_main = Value.env_extend_with_nvar_env None nvar_env eval_envs.va_env in
+    let eval_envs = { va_env = va_env_main } in
+    let ctx = { eval_envs; diving = None; diving_vars = [] } in
+    let rec codegen ctx states st_list =
+      let { eval_envs; diving; diving_vars } = ctx in
       let states, code_list =
         List.fold_left_map (fun dfn stmt ->
           let { i = info; v = stmt } = stmt in
           match stmt with
           | StAdd (sign, ex_sel, ex_i_opt) -> begin
-              let nsel = eval envs ex_sel |> Value.to_nsel ex_sel.i in
+              let nsel = eval eval_envs ex_sel |> Value.to_nsel ex_sel.i in
               let i =
                 match ex_i_opt with
                 | None -> 1
-                | Some ex_i -> eval envs ex_i |>  Value.to_int ex_i.i
+                | Some ex_i -> eval eval_envs ex_i |>  Value.to_int ex_i.i
               in
               let code = [ Named.Cmd.Add (i * sign, nsel) ] in
               (dfn, code)
             end
           | StPut ex_sel ->
-              let nsel = eval envs ex_sel |> Value.to_nsel ex_sel.i in
+              let nsel = eval eval_envs ex_sel |> Value.to_nsel ex_sel.i in
               let code = [ Named.Cmd.Put nsel ] in
               (dfn, code)
           | StGet ex_sel ->
-              let nsel = eval envs ex_sel |> Value.to_nsel ex_sel.i in
+              let nsel = eval eval_envs ex_sel |> Value.to_nsel ex_sel.i in
               let code = [ Named.Cmd.Get nsel ] in
               (dfn, code)
           | StWhile (ex_sel, st_list) -> begin
-              match eval envs ex_sel |> Value.to_nsel_or_nptr ex_sel.i with
+              match eval eval_envs ex_sel |> Value.to_nsel_or_nptr ex_sel.i with
               | Sel.NSel nsel ->
-                  let states, code_loop = codegen envs dfn st_list in
+                  let states, code_loop = codegen ctx dfn st_list in
                   let code = [ Named.Cmd.Loop (nsel, code_loop) ] in
                   (states, code)
               | Sel.NPtr (nsel, ptr) ->
-                  let states, code_loop = codegen envs dfn st_list in
+                  let states, code_loop = codegen ctx dfn st_list in
                   let code = [ Named.Cmd.LoopPtr (nsel, ptr, code_loop) ] in
                   (states, code)
             end
           | StIf (ex_sel, st_list_then, st_list_else) ->
-              let nsel = eval envs ex_sel |> Value.to_nsel ex_sel.i in
+              let nsel = eval eval_envs ex_sel |> Value.to_nsel ex_sel.i in
               let dfn_key = Named.Sel.to_dfn_key nsel in
               let dfn =
                 match Named.Dfn.lookup dfn_key dfn with
@@ -508,19 +519,19 @@ module Codegen = struct
                 | Some Cell ->  Named.Dfn.extend dfn_key Named.Dfn.CellIfable dfn
                 | Some (Lst _ | Ptr) -> error_at ex_sel.i "selector(cell) expected"
               in
-              let dfn, code_then = codegen envs dfn st_list_then in
+              let dfn, code_then = codegen ctx dfn st_list_then in
               let dfn, code_else = match st_list_else with
                 | None -> (dfn, [])
-                | Some st_list_else -> codegen envs dfn st_list_else
+                | Some st_list_else -> codegen ctx dfn st_list_else
               in
               let code = [ Named.Cmd.If (nsel, code_then, code_else) ] in
               (dfn, code)
           | StShift (sign, ex_ptr, ex_i_opt) ->
-              let sel, _ = eval envs ex_ptr |> Value.to_sel_and_nvar_env ex_ptr.i in
+              let sel, _ = eval eval_envs ex_ptr |> Value.to_sel_and_nvar_env ex_ptr.i in
               let nsel, ptr = Sel.to_nptr ex_ptr.i sel in
               let i = sign * match ex_i_opt with
                 | None -> 1
-                | Some ex_i -> eval envs ex_i |> Value.to_int ex_i.i
+                | Some ex_i -> eval eval_envs ex_i |> Value.to_int ex_i.i
               in
               if abs i <> 1 then error_at info "2 or more shift is not implemented";
               let code_move_var = diving_vars |>
@@ -552,13 +563,14 @@ module Codegen = struct
                 | Some sel -> Sel.to_dfn_key sel
               in
               let dfn, nvar_env = NVarEnv.gen_using_field dfn dfn_key_diving field in
-              let va_env = Value.env_extend_with_nvar_env diving nvar_env va_env in
+              let va_env = Value.env_extend_with_nvar_env diving nvar_env eval_envs.va_env in
+              let eval_envs = { va_env } in
               let diving_vars = match diving with
                 | None -> diving_vars
                 | Some sel -> (sel, nvar_env) :: diving_vars
               in
-              let envs = { envs with va_env; diving_vars; } in
-              let dfn, code_child = codegen envs dfn st_list in
+              let ctx = { ctx with eval_envs; diving_vars; } in
+              let dfn, code_child = codegen ctx dfn st_list in
               (* 変数が使用したセルをゼロにする *)
               let code_clean =
                 NVarEnv.to_list nvar_env |>
@@ -576,26 +588,28 @@ module Codegen = struct
               in
               (dfn, code_child @ code_clean)
           | StLet (var, ex, st_list) ->
-              let value = eval envs ex in
-              let va_env = Value.env_extend var value va_env in
-              codegen { envs with va_env } dfn st_list
+              let value = eval eval_envs ex in
+              let va_env = Value.env_extend var value eval_envs.va_env in
+              let eval_envs = { va_env } in
+              codegen { ctx with eval_envs } dfn st_list
           | StExpand ex_block ->
-              let va_env, st_list = eval envs ex_block |> Value.to_block ex_block.i in
-              codegen { envs with va_env } dfn st_list
+              let va_env, st_list = eval eval_envs ex_block |> Value.to_block ex_block.i in
+              let eval_envs = { va_env } in
+              codegen { ctx with eval_envs } dfn st_list
           | StDive (ex_ptr, st_list) ->
-              let sel, _ = eval envs ex_ptr |> Value.to_sel_and_nvar_env ex_ptr.i in
+              let sel, _ = eval eval_envs ex_ptr |> Value.to_sel_and_nvar_env ex_ptr.i in
               let _ = Sel.to_nptr ex_ptr.i sel in
               (* ↑インデックスであることを確認している *)
-              codegen { envs with diving = Some sel } dfn st_list
+              codegen { ctx with diving = Some sel } dfn st_list
         ) states st_list
       in
       (states, List.flatten code_list)
     in
-    codegen envs_main dfn st_list
+    codegen ctx dfn st_list
 
   let codegen_all (program: Program.t) : Named.Dfn.t * Named.Cmd.t list =
     let toplevels, main = program in
-    let envs = eval_toplevels envs_init toplevels in
+    let envs = eval_toplevels { va_env = Value.env_empty } toplevels in
     codegen envs main
 
 
