@@ -18,8 +18,7 @@ let gen_switch_nat = fun sel blocks default -> [
             + sel i
             *block
           ]
-        ]
-      end)
+        ])
     0 blocks
 ]
 

@@ -15,10 +15,8 @@ let sort = fun compare l ->
               | hd :: tl ->
                   if compare hd pivot < 0
                   then partition (hd :: left) right tl
-                  else partition left (hd :: right) tl
-              end)
-            nil nil rest
-      end)
+                  else partition left (hd :: right) tl)
+            nil nil rest)
     l nil
 
 let puti = fun n -> [
@@ -42,8 +40,7 @@ let dump_ilist = fun l ->
       | hd :: tl -> [
           *puti hd
           *iter tl
-        ]
-      end)
+        ])
     l
 
 main {} [

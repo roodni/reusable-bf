@@ -22,6 +22,7 @@ open Reusable
 %token <Support.Error.info> LEQ  // <=
 %token <Support.Error.info> CONS
 %token <Support.Error.info> BAR
+%token <Support.Error.info> UNDER
 
 %token <Support.Error.info> ST_VAR
 %token <Support.Error.info> ST_LET
@@ -43,8 +44,8 @@ open Reusable
 %token <Support.Error.info> NIL
 
 %nonassoc prec_if prec_fun prec_let prec_match
-%nonassoc END
-%left COMMA
+%nonassoc BAR
+%right COMMA
 %left LSHIFT LEQ EQ
 %right CONS
 %left PLUS MINUS
@@ -140,13 +141,9 @@ expr_full:
   | i=LET v=VAR EQ e1=expr_full IN e2=expr_full {
       withinfo2 i e2.i @@ ExLet(v.v, e1, e2)
     } %prec prec_let
-  | i1=MATCH em=expr_full WITH
-    BAR? NIL ARROW en=expr_full
-    BAR vh=VAR CONS vt=VAR ARROW ec=expr_full
-    i2opt=ioption(END) {
-      let i2 = match i2opt with None -> ec.i | Some i -> i in
-      withinfo2 i1 i2 @@ ExMatch (em, en, vh.v, vt.v, ec)
-    } %prec prec_match
+  | i1=MATCH e=expr_full i2=WITH BAR? c=clauses {
+      withinfo2 i1 i2 @@ ExMatch (e, c)
+    }
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
@@ -165,3 +162,19 @@ expr_full:
 expr_appable:
   | e=expr { e }
   | ef=expr_appable ea=expr { withinfo2 ef.i ea.i @@ ExApp (ef, ea) }
+
+
+pat:
+  | v=VAR { withinfo v.i @@ PatVar v.v }
+  | i=UNDER { withinfo i PatWild }
+  | p1=pat CONS p2=pat { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
+  | i=NIL { withinfo i PatNil }
+  | p1=pat COMMA p2=pat { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
+  | i=INT { withinfo i.i @@ PatInt i.v }
+  | i=TRUE { withinfo i @@ PatBool true }
+  | i=FALSE { withinfo i @@ PatBool false }
+  | i1=LPAREN p=pat i2=RPAREN { withinfo2 i1 i2 @@ p.v }
+
+clauses:
+  | p=pat ARROW e=expr_full { [ (p, e) ] } %prec prec_match
+  | p=pat ARROW e=expr_full BAR c=clauses { (p, e) :: c }

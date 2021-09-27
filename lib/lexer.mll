@@ -17,11 +17,11 @@ let reserved = [
   ("in", fun i -> P.IN i);
   ("match", fun i -> P.MATCH i);
   ("with", fun i -> P.WITH i);
-  ("end", fun i -> P.END i);
   ("mod", fun i -> P.MOD i);
   ("true", fun i -> P.TRUE i);
   ("false", fun i -> P.FALSE i);
   ("nil", fun i -> P.NIL i);
+  ("_", fun i -> P.UNDER i)
 ]
 
 let string_to_char = function

@@ -62,7 +62,7 @@ and expr' =
   | ExLet of Var.t * expr * expr
   | ExNil
   | ExCons of expr * expr
-  | ExMatch of expr * expr * Var.t * Var.t * expr
+  | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
 
 
@@ -199,14 +199,10 @@ end
 
 
 module Builtin = struct
-  type t =
-    | Fst
-    | Snd
+  type t = unit
 
   let of_var (v: Var.t) =
     match v with
-    | "fst" -> Some Fst
-    | "snd" -> Some Snd
     | _ -> None
 end
 
@@ -329,6 +325,23 @@ end
 
 
 module Codegen = struct
+  let rec matches va_env pat value =
+    let open Value in
+    let (let*) = Option.bind in
+    match pat.v, value with
+    | PatVar var, _ -> Some (Value.env_extend var value va_env)
+    | PatWild, _ -> Some va_env
+    | PatCons (phd, ptl), VaList (vhd :: vtl) ->
+        let* va_env = matches va_env phd vhd in
+        matches va_env ptl (VaList vtl)
+    | PatNil, VaList [] -> Some va_env
+    | PatPair (pf, ps), VaPair (vf, vs) ->
+        let* va_env = matches va_env pf vf in
+        matches va_env ps vs
+    | PatInt pi, VaInt vi when pi = vi -> Some va_env
+    | PatBool pb, VaBool vb when pb = vb -> Some va_env
+    | _ -> None
+
   type eval_envs = { va_env : Value.env; }
 
   let rec eval (envs: eval_envs) (expr: expr) : Value.t =
@@ -396,8 +409,7 @@ module Codegen = struct
         | VaFun (env_fun, var_arg, ex_fun) ->
             let env_fun = env_extend var_arg va_arg env_fun in
             eval { va_env = env_fun } ex_fun
-        | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst
-        | VaBuiltin Snd -> to_pair ex_arg.i va_arg |> snd
+        (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
         | _ -> error_at ex_fn.i "function expected"
       end
     | ExBlock st_list -> VaBlock (env, st_list)
@@ -435,16 +447,18 @@ module Codegen = struct
         let head = eval envs ex_head in
         let tail = eval envs ex_tail |> to_list ex_tail.i in
         VaList (head :: tail)
-    | ExMatch (ex_matched, ex_nil, v_head, v_tail, ex_cons) -> begin
-        let matched = eval envs ex_matched |> to_list ex_matched.i in
-        match matched with
-        | [] -> eval envs ex_nil
-        | head :: tail ->
-            let va_env = envs.va_env |>
-              env_extend v_head head |>
-              env_extend v_tail (VaList tail)
-            in
-            eval { va_env } ex_cons
+    | ExMatch (ex_matched, pat_ex_list) -> begin
+        let va_matched = eval envs ex_matched in
+        let env_ex_opt =
+          List.find_map_opt
+            (fun (pat, ex) ->
+              matches envs.va_env pat va_matched
+              |> Option.map (fun va_env -> (va_env, ex)))
+            pat_ex_list
+        in
+        match env_ex_opt with
+        | Some (va_env, ex) -> eval { va_env } ex
+        | None -> error_at info "Match failed"
       end
     | ExPair (ex1, ex2) ->
         let v1 = eval envs ex1 in

@@ -50,7 +50,11 @@ let gen_sub_safe = fun src dest overflow -> [
 # 該当するものがなければブロック default を実行する
 # ブロック中で sel の値が変化しても良い
 let gen_switch = fun sel cases default -> [
-  $let cases = sort (fun c1 c2 -> fst c1 - fst c2) cases in
+  $let cases = sort
+    (fun c1 c2 ->
+      match c1, c2 with (n1, _), (n2, _) -> n1 - n2)
+    cases
+  in
   $var {
     sub_src: cell;
     flag_eq: cell;
@@ -60,9 +64,7 @@ let gen_switch = fun sel cases default -> [
     (fun loop prev cases ->
       match cases with
       | nil -> default
-      | case :: cases -> [
-          $let num = fst case in
-          $let block = snd case in
+      | (num, block) :: cases -> [
           + sub_src (num - prev)
           + flag_eq
           *gen_sub_safe sub_src sel [ - flag_eq ]
@@ -99,9 +101,7 @@ let gen_add_multi = fun src dest_and_coef_list -> [
       (fun loop l ->
         match l with
         | nil -> []
-        | h :: l -> [
-            $let dest = fst h in
-            $let coef = snd h in
+        | (dest, coef) :: l -> [
             + dest coef
             *loop l
           ])

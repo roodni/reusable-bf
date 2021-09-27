@@ -15,10 +15,8 @@ let sort = fun compare l ->
               | hd :: tl ->
                   if compare hd pivot < 0
                   then partition (hd :: left) right tl
-                  else partition left (hd :: right) tl
-              end)
-            nil nil rest
-      end)
+                  else partition left (hd :: right) tl)
+            nil nil rest)
     l nil
 
 let gen_del = fun x -> [
@@ -36,7 +34,11 @@ let gen_safe_sub = fun src dest overflow -> [
 ]
 
 let gen_switch = fun sel cases default -> [
-  $let cases = sort (fun c1 c2 -> fst c1 - fst c2) cases in
+  $let cases = sort
+    (fun c1 c2 ->
+      match c1, c2 with (n1, _), (n2, _) -> n1 - n2)
+    cases
+  in
   $var {
     sub_src: cell;
     flag_eq: cell;
@@ -46,9 +48,7 @@ let gen_switch = fun sel cases default -> [
     (fun loop prev cases ->
       match cases with
       | nil -> default
-      | case :: cases -> [
-          $let num = fst case in
-          $let block = snd case in
+      | (num, block) :: cases -> [
           + sub_src (num - prev)
           + flag_eq
           *gen_safe_sub sub_src sel [ - flag_eq ]
@@ -63,8 +63,7 @@ let gen_switch = fun sel cases default -> [
             - flag_els
             *loop num cases
           ]
-        ]
-      end)
+        ])
     0 cases
 ]
 
@@ -78,8 +77,7 @@ let gen_puts = fun l -> [
           + c (hd - prev)
           . c
           *loop hd tl
-        ]
-      end)
+        ])
     0 l
 ]
 
