@@ -8,6 +8,8 @@ module Error : sig
 
   val withinfo : info -> 'a -> 'a withinfo
 
+  val merge_info : info -> info -> info
+
   (** [withinfo2 info_start info_end value] *)
   val withinfo2 : info -> info -> 'a -> 'a withinfo
 

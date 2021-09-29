@@ -1,0 +1,5 @@
+let f = fun (a, b) -> a + b
+
+main { x: cell; } [
+  + x (f 1 2)
+]

@@ -50,11 +50,7 @@ let gen_sub_safe = fun src dest overflow -> [
 # 該当するものがなければブロック default を実行する
 # ブロック中で sel の値が変化しても良い
 let gen_switch = fun sel cases default -> [
-  $let cases = sort
-    (fun c1 c2 ->
-      match c1, c2 with (n1, _), (n2, _) -> n1 - n2)
-    cases
-  in
+  $let cases = sort (fun (n1, _) (n2, _) -> n1 - n2) cases in
   $var {
     sub_src: cell;
     flag_eq: cell;

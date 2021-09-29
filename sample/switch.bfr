@@ -34,10 +34,7 @@ let gen_safe_sub = fun src dest overflow -> [
 ]
 
 let gen_switch = fun sel cases default -> [
-  $let cases = sort
-    (fun c1 c2 ->
-      match c1, c2 with (n1, _), (n2, _) -> n1 - n2)
-    cases
+  $let cases = sort (fun (n1, _) (n2, _) -> n1 - n2) cases
   in
   $var {
     sub_src: cell;

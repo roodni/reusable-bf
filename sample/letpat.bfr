@@ -1,0 +1,6 @@
+let a, b = 6, 5
+
+main { x: cell; } [
+  + x (a * 10 + 5)
+  . x
+]

@@ -41,7 +41,7 @@ and stmt' =
   | StIf of expr * stmt list * stmt list option
   | StShift of int * expr * expr option  (* sign, ptr, int *)
   | StVar of Field.t * stmt list
-  | StLet of Var.t * expr * stmt list
+  | StLet of let_binding * stmt list
   | StExpand of expr
   | StDive of expr * stmt list
 and expr = expr' withinfo
@@ -52,18 +52,19 @@ and expr' =
   | ExStr of char list
   | ExSelMem of expr * expr option * Var.t
   | ExSelPtr of expr * Var.t
-  | ExFun of Var.t * expr
+  | ExFun of pat * expr
   | ExApp of expr * expr
   | ExBlock of stmt list
   | ExBOpInt of expr * BOpInt.t * expr
   | ExMinus of expr
   | ExEqual of expr * expr
   | ExIf of expr * expr * expr
-  | ExLet of Var.t * expr * expr
+  | ExLet of let_binding * expr
   | ExNil
   | ExCons of expr * expr
   | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
+and let_binding = pat * expr
 
 
 (** Named.Selをラップする *)
@@ -211,7 +212,7 @@ module Value : sig
     | VaInt of int
     | VaBool of bool
     | VaSel of Sel.t * NVarEnv.t option
-    | VaFun of env * Var.t * expr
+    | VaFun of env * pat * expr
     | VaBuiltin of Builtin.t
     | VaBlock of env * stmt list
     | VaList of t list
@@ -241,7 +242,7 @@ end = struct
     | VaInt of int
     | VaBool of bool
     | VaSel of Sel.t * NVarEnv.t option
-    | VaFun of env * Var.t * expr
+    | VaFun of env * pat * expr
     | VaBuiltin of Builtin.t
     | VaBlock of env * stmt list
     | VaList of t list
@@ -317,7 +318,7 @@ end
 
 module Program = struct
   type toplevel' =
-    | Let of Var.t * expr
+    | Let of let_binding
   type toplevel = toplevel' withinfo
   type main = Field.t * stmt list
   type t = toplevel list * main
@@ -344,7 +345,14 @@ module Codegen = struct
 
   type eval_envs = { va_env : Value.env; }
 
-  let rec eval (envs: eval_envs) (expr: expr) : Value.t =
+  let rec eval_let_binding (envs: eval_envs) ((pat, expr) : let_binding) =
+    let v = eval envs expr in
+    let va_env_opt = matches envs.va_env pat v in
+    match va_env_opt with
+    | None -> error_at (merge_info pat.i expr.i) "match failed"
+    | Some va_env -> { va_env }
+
+  and eval (envs: eval_envs) (expr: expr) : Value.t =
     let open Value in
     let env = envs.va_env in
     let { i = info; v = expr } = expr in
@@ -406,9 +414,12 @@ module Codegen = struct
         let va_fn = eval envs ex_fn in
         let va_arg = eval envs ex_arg in
         match va_fn with
-        | VaFun (env_fun, var_arg, ex_fun) ->
-            let env_fun = env_extend var_arg va_arg env_fun in
-            eval { va_env = env_fun } ex_fun
+        | VaFun (env_fun, pat_arg, ex_body) -> begin
+            let env_opt = matches env_fun pat_arg va_arg in
+            match env_opt with
+            | None -> error_at info "match failed"
+            | Some env -> eval { va_env = env } ex_body
+          end
         (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
         | _ -> error_at ex_fn.i "function expected"
       end
@@ -438,10 +449,9 @@ module Codegen = struct
     | ExIf (ex_cond, ex_then, ex_else) ->
         let cond = eval envs ex_cond |> to_bool ex_cond.i in
         eval envs (if cond then ex_then else ex_else)
-    | ExLet (var, ex_var, ex_child) ->
-        let value_var = eval envs ex_var in
-        let va_env = env_extend var value_var envs.va_env in
-        eval { va_env } ex_child
+    | ExLet (binding, expr) ->
+        let envs_let = eval_let_binding envs binding in
+        eval envs_let expr
     | ExNil -> VaList []
     | ExCons (ex_head, ex_tail) ->
         let head = eval envs ex_head in
@@ -469,10 +479,7 @@ module Codegen = struct
     List.fold_left
       (fun envs toplevel ->
         match toplevel.v with
-        | Program.Let (var, expr) ->
-            let value = eval envs expr in
-            let va_env = Value.env_extend var value envs.va_env in
-            { va_env }
+        | Program.Let binding -> eval_let_binding envs binding
       )
       envs toplevels
 
@@ -601,10 +608,8 @@ module Codegen = struct
                 ) |> List.flatten
               in
               (dfn, code_child @ code_clean)
-          | StLet (var, ex, st_list) ->
-              let value = eval eval_envs ex in
-              let va_env = Value.env_extend var value eval_envs.va_env in
-              let eval_envs = { va_env } in
+          | StLet (binding, st_list) ->
+              let eval_envs = eval_let_binding ctx.eval_envs binding in
               codegen { ctx with eval_envs } dfn st_list
           | StExpand ex_block ->
               let va_env, st_list = eval eval_envs ex_block |> Value.to_block ex_block.i in

@@ -32,7 +32,7 @@ open Reusable
 %token <Support.Error.info> FUN
 %token <Support.Error.info> LET IN
 %token <Support.Error.info> IF THEN ELSE
-%token <Support.Error.info> MATCH WITH END
+%token <Support.Error.info> MATCH WITH
 %token <Support.Error.info> MAIN
 %token <Support.Error.info> MOD
 
@@ -64,7 +64,7 @@ toplevel_list:
   | { [] }
 
 toplevel:
-  | i1=LET v=VAR EQ e=expr_full { withinfo2 i1 e.i @@ Program.Let (v.v, e) }
+  | i=LET lb=let_binding { withinfo i @@ Program.Let lb }
 
 main:
   | MAIN f=field IN sl=stmt_list EOF { (f, sl) }
@@ -87,15 +87,10 @@ field_elm_mtype:
   | ARRAY_UNLIMITED f=field { Field.Array { length=None; mem=f; } }
 
 
-var_list:
-  | v=VAR vl=var_list { v :: vl }
-  | { [] }
-
-
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | i=ST_VAR f=field IN sl=stmt_list { [ withinfo i @@ StVar (f, sl) ] }
-  | i=ST_LET v=VAR EQ e=expr_full IN sl=stmt_list { [ withinfo i @@ StLet (v.v, e, sl) ] }
+  | i=ST_LET lb=let_binding IN sl=stmt_list { [ withinfo i @@ StLet (lb, sl) ] }
   | { [] }
 
 stmt:
@@ -130,16 +125,16 @@ expr:
 
 expr_full:
   | e=expr_appable { e }
-  | i=FUN v=VAR vl=var_list ARROW e=expr_full {
+  | i=FUN pl=pat_simple+ ARROW e=expr_full {
       List.fold_right
-        (fun arg body -> withinfo2 i e.i @@ ExFun (arg.v, body))
-        (v :: vl) e
+        (fun arg body -> withinfo2 i e.i @@ ExFun (arg, body))
+        pl e
     } %prec prec_fun
   | i=IF ec=expr_full THEN et=expr_full ELSE ee=expr_full {
       withinfo2 i ee.i @@ ExIf (ec, et, ee)
     } %prec prec_if
-  | i=LET v=VAR EQ e1=expr_full IN e2=expr_full {
-      withinfo2 i e2.i @@ ExLet(v.v, e1, e2)
+  | i=LET lb=let_binding IN e=expr_full {
+      withinfo2 i e.i @@ ExLet(lb, e)
     } %prec prec_let
   | i1=MATCH e=expr_full i2=WITH BAR? c=clauses {
       withinfo2 i1 i2 @@ ExMatch (e, c)
@@ -165,11 +160,14 @@ expr_appable:
 
 
 pat:
+  | p=pat_simple { p }
+  | p1=pat CONS p2=pat { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
+  | p1=pat COMMA p2=pat { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
+
+pat_simple:
   | v=VAR { withinfo v.i @@ PatVar v.v }
   | i=UNDER { withinfo i PatWild }
-  | p1=pat CONS p2=pat { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
   | i=NIL { withinfo i PatNil }
-  | p1=pat COMMA p2=pat { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
   | i=INT { withinfo i.i @@ PatInt i.v }
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
@@ -178,3 +176,7 @@ pat:
 clauses:
   | p=pat ARROW e=expr_full { [ (p, e) ] } %prec prec_match
   | p=pat ARROW e=expr_full BAR c=clauses { (p, e) :: c }
+
+
+let_binding:
+  | p=pat EQ e=expr_full { (p, e) }
