@@ -180,3 +180,10 @@ clauses:
 
 let_binding:
   | p=pat EQ e=expr_full { (p, e) }
+  | v=VAR pl=pat_simple+ EQ e=expr_full {
+      let body = List.fold_right
+        (fun arg body -> withinfo2 arg.i e.i @@ ExFun (arg, body))
+        pl e
+      in
+      (withinfo v.i @@ PatVar v.v, body)
+    }

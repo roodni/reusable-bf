@@ -1,0 +1,6 @@
+let f (a, b) c = a * b * 10 + c
+
+main { x: cell; } [
+  + x (f (2, 3) 5)
+  . x
+]
