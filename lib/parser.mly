@@ -43,7 +43,8 @@ open Reusable
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
-%nonassoc prec_if prec_fun prec_let prec_match
+%nonassoc prec_fun prec_let prec_match
+%nonassoc prec_if
 %nonassoc BAR
 %right COMMA
 %left LSHIFT LEQ EQ
@@ -122,6 +123,18 @@ expr:
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelPtr (e, v.v) }
   | i1=LBRACKET sl=stmt_list i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
+  | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
+      withinfo2 i1 i2 @@ ExList (e :: l)
+    }
+
+expr_semi_list:
+  | e=expr_full SEMI l=expr_semi_list { e :: l }
+  | e=expr_full { [ e ] }
+  | { [] }
+
+expr_appable:
+  | e=expr { e }
+  | ef=expr_appable ea=expr { withinfo2 ef.i ea.i @@ ExApp (ef, ea) }
 
 expr_full:
   | e=expr_appable { e }
@@ -153,10 +166,6 @@ expr_full:
   | MOD { BOpInt.Mod }
   | LSHIFT { BOpInt.Lt }
   | LEQ { BOpInt.Leq }
-
-expr_appable:
-  | e=expr { e }
-  | ef=expr_appable ea=expr { withinfo2 ef.i ea.i @@ ExApp (ef, ea) }
 
 
 pat:

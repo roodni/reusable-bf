@@ -116,7 +116,7 @@ let gen_add_multi_restore = fun src dest_and_coef_list -> [
 # セル dest にセル src の値を足す
 # src は復元される
 let gen_add_restore = fun src dest -> [
-  *gen_add_multi_restore src ((dest, 1) :: nil)
+  *gen_add_multi_restore src ((dest, 1);)
 ]
 
 # セル x の値を数値 n にする
@@ -176,24 +176,25 @@ $dive code@p [
     , p:inst
     + flag_next
     *gen_switch p:inst
-      ( ('+', [ *gen_set p:inst 1 ]) ::
-        ('-', [ *gen_set p:inst 2 ]) ::
-        ('>', [ *gen_set p:inst 3 ]) ::
-        ('<', [ *gen_set p:inst 4 ]) ::
+      ( ('+', [ *gen_set p:inst 1 ]);
+        ('-', [ *gen_set p:inst 2 ]);
+        ('>', [ *gen_set p:inst 3 ]);
+        ('<', [ *gen_set p:inst 4 ]);
         ('[', [
           *gen_set p:inst 5
           + p:(1)depth
-        ]) ::
+        ]);
         (']', [
           *gen_set p:inst 6
            - p:depth
-        ]) ::
-        ('.', [ *gen_set p:inst 7 ]) ::
-        (',', [ *gen_set p:inst 8 ]) ::
+        ]);
+        ('.', [ *gen_set p:inst 7 ]);
+        (',', [ *gen_set p:inst 8 ]);
         ('\\', [
           - flag_next
           - cont
-        ]) :: nil )
+        ]);
+      )
       [ - flag_next ]
     ! flag_next [
       - flag_next
@@ -213,41 +214,42 @@ $dive code@p [
   } in
   ! p:inst [
     *gen_switch_nat p:inst
-      ( [] ::
-        [ + tape@p:v ] ::
-        [ - tape@p:v ] ::
-        [ > tape@p ] ::
-        [ < tape@p ] ::
+      ( [];
+        [ + tape@p:v ];
+        [ - tape@p:v ];
+        [ > tape@p ];
+        [ < tape@p ];
         [ # while
           ? tape@p:v [] [
             *gen_add_multi_restore p:depth
-              ( (depth_cur, 1) ::
-                (p:(1)depth, -1) :: nil )
+              ( (depth_cur, 1);
+                (p:(1)depth, -1) )
             > p
             ! p:depth [
               *gen_add_multi_restore depth_cur
-                ( (p:depth, 1) ::
-                  (p:(1)depth, -1) :: nil )
+                ( (p:depth, 1);
+                  (p:(1)depth, -1) )
               > p
             ]
             *gen_add depth_cur p:depth
           ]
-        ] ::
+        ];
         [ # wend
           *gen_add_multi_restore p:depth
-            ( (depth_cur, 1) ::
-              (p:(-1)depth, -1) :: nil )
+            ( (depth_cur, 1);
+              (p:(-1)depth, -1) )
           < p
           ! p:depth [
             *gen_add_multi_restore depth_cur
-              ( (p:depth, 1) ::
-                (p:(-1)depth, -1) :: nil )
+              ( (p:depth, 1);
+                (p:(-1)depth, -1) )
             < p
           ]
           *gen_add depth_cur p:depth
           < p
-        ] ::
-        [ . tape@p:v ] :: nil )
+        ];
+        [ . tape@p:v ];
+      )
       [ , tape@p:v ]
     > p
   ]

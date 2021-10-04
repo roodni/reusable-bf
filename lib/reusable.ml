@@ -62,6 +62,7 @@ and expr' =
   | ExLet of let_binding * expr
   | ExNil
   | ExCons of expr * expr
+  | ExList of expr list
   | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
 and let_binding = pat * expr
@@ -457,6 +458,9 @@ module Codegen = struct
         let head = eval envs ex_head in
         let tail = eval envs ex_tail |> to_list ex_tail.i in
         VaList (head :: tail)
+    | ExList el ->
+        let vl = List.map (eval envs) el in
+        VaList vl
     | ExMatch (ex_matched, pat_ex_list) -> begin
         let va_matched = eval envs ex_matched in
         let env_ex_opt =

@@ -82,12 +82,13 @@ main { x: cell; } in
 , x
 
 *gen_switch x
-  ( ('+', [ *gen_puts "INC" ]) ::
-    ('-', [ *gen_puts "DEC" ]) ::
-    ('.', [ *gen_puts "PUT" ]) ::
-    (',', [ *gen_puts "GET" ]) ::
-    ('[', [ *gen_puts "WHILE" ]) ::
-    (']', [ *gen_puts "WEND" ]) ::
-    ('>', [ *gen_puts "SHR" ]) ::
-    ('<', [ *gen_puts "SHL" ]) :: nil )
+  ( ('+', [ *gen_puts "INC" ]);
+    ('-', [ *gen_puts "DEC" ]);
+    ('.', [ *gen_puts "PUT" ]);
+    (',', [ *gen_puts "GET" ]);
+    ('[', [ *gen_puts "WHILE" ]);
+    (']', [ *gen_puts "WEND" ]);
+    ('>', [ *gen_puts "SHR" ]);
+    ('<', [ *gen_puts "SHL" ]);
+  )
   [ *gen_puts "OTHER" ]
