@@ -53,22 +53,22 @@ open Reusable
 %left ASTER SLASH MOD
 
 %start program
-%type <Program.t> program
+%type <program> program
 
 %%
 
 program:
-  | ts=toplevel_list m=main { (ts, m) }
+  | ts=toplevel_list m=main? EOF { (ts, m) }
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
   | { [] }
 
 toplevel:
-  | i=LET lb=let_binding { withinfo i @@ Program.Let lb }
+  | i=LET lb=let_binding { withinfo i @@ TopLet lb }
 
 main:
-  | MAIN f=field IN sl=stmt_list EOF { (f, sl) }
+  | MAIN f=field IN sl=stmt_list { (f, sl) }
   | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f, sl) }
 
 field:

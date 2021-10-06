@@ -3,8 +3,10 @@ open Support.Error
 
 module Var = struct
   type t = string
+  let compare = compare
 end
 
+module VMap = Map.Make(Var)
 
 module Field = struct
   type t = (Var.t * mtype) withinfo list
@@ -231,7 +233,7 @@ module Value : sig
   val equal : t -> t -> bool option
 
   val env_empty : env
-  val env_extend : Var.t -> t -> env -> env
+  val env_extend : ?export:bool -> Var.t -> t -> env -> env
   val env_lookup : Var.t -> env -> t option
 
   (** [env_extend_with_nvar_env diving nvar_env env] *)
@@ -247,7 +249,7 @@ end = struct
     | VaBlock of env * stmt list
     | VaList of t list
     | VaPair of t * t
-  and env = (Var.t * t) list
+  and env = (t * bool) VMap.t
 
   let to_int info = function
     | VaInt i -> i
@@ -292,37 +294,37 @@ end = struct
     try Some (equal x y) with
     | Exit -> None
 
-  let env_empty: env = []
+  let env_empty: env = VMap.empty
 
-  let env_extend (var: Var.t) (value: t) (env: env): env =
-    (var, value) :: env
+  let env_extend ?(export=false) (var: Var.t) (value: t) (env: env): env =
+    VMap.add var (value, export) env
 
   let env_extend_with_nvar_env (diving: Sel.t option) (nvar_env: NVarEnv.t) (env: env) =
     List.fold_left
-      (fun t (var, { v = (nvar, mtype); i }) ->
+      (fun env (var, { v = (nvar, mtype); i }) ->
         match mtype with
         | NVarEnv.Cell ->
             let sel = Sel.base_or_mem diving nvar in
-            (var, VaSel (sel, None)) :: t
+            let vasel = VaSel (sel, None) in
+            env_extend var vasel env
         | Index ->
             error_at i "Index must be declared as a member of an array"
         | Array { mem=nvar_env_lst; _ } ->
             let sel = Sel.base_or_mem diving nvar in
-            (var, VaSel (sel, Some nvar_env_lst)) :: t)
+            let vasel = VaSel (sel, Some nvar_env_lst) in
+            env_extend var vasel env)
       env
       (NVarEnv.to_list nvar_env)
 
-  let env_lookup (var: Var.t) (env: env) = List.assoc_opt var env
+  let env_lookup (var: Var.t) (env: env) = VMap.find_opt var env |> Option.map fst
 end
 
 
-module Program = struct
-  type toplevel' =
-    | Let of let_binding
-  type toplevel = toplevel' withinfo
-  type main = Field.t * stmt list
-  type t = toplevel list * main
-end
+type toplevel' =
+  | TopLet of let_binding
+type toplevel = toplevel' withinfo
+type main = Field.t * stmt list
+type program = toplevel list * main option
 
 
 module Codegen = struct
@@ -478,11 +480,11 @@ module Codegen = struct
         let v2 = eval envs ex2 in
         VaPair (v1, v2)
 
-  let eval_toplevels (envs: eval_envs) (toplevels: Program.toplevel list): eval_envs =
+  let eval_toplevels (envs: eval_envs) (toplevels: toplevel list): eval_envs =
     List.fold_left
       (fun envs toplevel ->
         match toplevel.v with
-        | Program.Let binding -> eval_let_binding envs binding
+        | TopLet binding -> eval_let_binding envs binding
       )
       envs toplevels
 
@@ -492,7 +494,7 @@ module Codegen = struct
     diving_vars: (Sel.t * NVarEnv.t) list
   }
 
-  let codegen (eval_envs : eval_envs) (main: Program.main) : Named.Dfn.t * Named.Cmd.t list =
+  let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t list =
     let field, st_list = main in
     let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty [] field in
     let va_env_main = Value.env_extend_with_nvar_env None nvar_env eval_envs.va_env in
@@ -629,10 +631,13 @@ module Codegen = struct
     in
     codegen ctx dfn st_list
 
-  let codegen_all (program: Program.t) : Named.Dfn.t * Named.Cmd.t list =
+  let codegen_all (program: program) : Named.Dfn.t * Named.Cmd.t list =
     let toplevels, main = program in
-    let envs = eval_toplevels { va_env = Value.env_empty } toplevels in
-    codegen envs main
+    match main with
+    | None -> error_at unknown_info "main not found"
+    | Some main ->
+        let envs = eval_toplevels { va_env = Value.env_empty } toplevels in
+        codegen envs main
 
 
 end
