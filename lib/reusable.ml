@@ -1,9 +1,16 @@
 open Printf
 open Support.Error
 
-module Var = struct
+module Var : sig
+  type t
+  val compare : t -> t -> int
+  val of_string : string -> t
+  val to_string : t -> string
+end = struct
   type t = string
   let compare = compare
+  let of_string s = s
+  let to_string s = s
 end
 
 module VMap = Map.Make(Var)
@@ -179,7 +186,7 @@ end = struct
       : Named.Dfn.t * t =
     List.fold_left_map (fun dfn field_mem ->
       let var, mtype = field_mem.v in
-      let nvar = Named.Var.gen_named var in
+      let nvar = Named.Var.gen_named (Var.to_string var) in
       let key = parent @ [ nvar ] in
       match mtype with
       | Field.Cell ->
@@ -365,7 +372,7 @@ module Codegen = struct
         | None -> begin
             match Builtin.of_var v with
             | Some b -> VaBuiltin b
-            | None -> error_at info @@ sprintf "Unbound value '%s'" v
+            | None -> error_at info @@ sprintf "Unbound value '%s'" (Var.to_string v)
           end
       end
     | ExInt i -> VaInt i
@@ -382,7 +389,7 @@ module Codegen = struct
         | _, None -> error_at ex_parent.i "selector(array) or selector(index) expected"
         | sel, Some nvar_env -> begin
             match NVarEnv.lookup var nvar_env with
-            | None -> error_at info @@ sprintf "Unbound member '%s'" var
+            | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
             | Some { v = (nvar, nvar_mtype); i = _ } ->
                 let sel = Sel.LstMem (sel, index, nvar) in
                 let nvar_env_opt =
@@ -401,7 +408,7 @@ module Codegen = struct
             error_at ex_parent.i "selector(array) expected"
         | sel, Some nvar_env -> begin
             match NVarEnv.lookup var nvar_env with
-            | None -> error_at info @@ sprintf "Unbound member '%s'" var
+            | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
             | Some { v = (nvar, nvar_mtype); i = _ } -> begin
                 match nvar_mtype with
                 | Cell | Array _ -> error_at info "Not selecting an index (Use ':' instead of '@')"

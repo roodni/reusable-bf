@@ -124,6 +124,6 @@ and main = parse
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
       let id = Lexing.lexeme lexbuf in
       try (List.assoc id reserved) (info lexbuf)
-      with Not_found -> P.VAR (withinfo (info lexbuf) id)
+      with Not_found -> P.VAR (withinfo (info lexbuf) (Reusable.Var.of_string id))
     }
   | _ { raise @@ Error (info lexbuf) }

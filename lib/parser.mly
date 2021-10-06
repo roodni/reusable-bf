@@ -39,7 +39,7 @@ open Reusable
 %token <int Support.Error.withinfo> INT
 %token <char Support.Error.withinfo> CHAR
 %token <char list Support.Error.withinfo> STRING
-%token <string Support.Error.withinfo> VAR
+%token <Reusable.Var.t Support.Error.withinfo> VAR
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
