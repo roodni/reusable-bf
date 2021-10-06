@@ -1,4 +1,3 @@
-open Batteries
 open Printf
 open Support.Error
 
@@ -464,7 +463,7 @@ module Codegen = struct
     | ExMatch (ex_matched, pat_ex_list) -> begin
         let va_matched = eval envs ex_matched in
         let env_ex_opt =
-          List.find_map_opt
+          List.find_map
             (fun (pat, ex) ->
               matches envs.va_env pat va_matched
               |> Option.map (fun va_env -> (va_env, ex)))
