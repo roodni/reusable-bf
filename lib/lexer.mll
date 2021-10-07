@@ -3,6 +3,8 @@ open Support.Error
 module P = Parser
 
 let reserved = [
+  ("import", fun i -> P.IMPORT i);
+  ("as", fun i -> P.AS i);
   ("cell", fun i -> P.CELL i);
   ("ptr", fun i -> P.PTR i);
   ("index", fun i -> P.PTR i);
@@ -72,7 +74,8 @@ rule str p1 l = parse
   | "\"" {
       let p2 = Lexing.lexeme_end_p lexbuf in
       let i = create_info p1 p2 in
-      P.STRING (withinfo i @@ List.rev l)
+      let s = List.rev l |> List.to_seq |> String.of_seq in
+      P.STRING (withinfo i s)
     }
   | eof | _ { raise @@ Error (info lexbuf) }
 
@@ -125,5 +128,9 @@ and main = parse
       let id = Lexing.lexeme lexbuf in
       try (List.assoc id reserved) (info lexbuf)
       with Not_found -> P.VAR (withinfo (info lexbuf) (Reusable.Var.of_string id))
+    }
+  | ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
+      let id = Lexing.lexeme lexbuf in
+      P.UVAR (withinfo (info lexbuf) (Reusable.UVar.of_string id))
     }
   | _ { raise @@ Error (info lexbuf) }

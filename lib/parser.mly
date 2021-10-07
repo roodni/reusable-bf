@@ -35,11 +35,13 @@ open Reusable
 %token <Support.Error.info> MATCH WITH
 %token <Support.Error.info> MAIN
 %token <Support.Error.info> MOD
+%token <Support.Error.info> IMPORT AS
 
 %token <int Support.Error.withinfo> INT
 %token <char Support.Error.withinfo> CHAR
-%token <char list Support.Error.withinfo> STRING
+%token <string Support.Error.withinfo> STRING
 %token <Reusable.Var.t Support.Error.withinfo> VAR
+%token <Reusable.UVar.t Support.Error.withinfo> UVAR
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
@@ -66,6 +68,8 @@ toplevel_list:
 
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
+  | i=IMPORT p=STRING { withinfo i @@ TopImport p.v }
+  | i=IMPORT p=STRING AS u=UVAR { withinfo i @@ TopImportAs (p.v, u.v) }
 
 main:
   | MAIN f=field IN sl=stmt_list { (f, sl) }

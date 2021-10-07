@@ -15,6 +15,17 @@ end
 
 module VMap = Map.Make(Var)
 
+(* 先頭が大文字の識別子 *)
+module UVar : sig
+  type t
+  val of_string : string -> t
+  val to_string : t -> string
+end = struct
+  type t = string
+  let of_string s = s
+  let to_string s = s
+end
+
 module Field = struct
   type t = (Var.t * mtype) withinfo list
   and mtype =
@@ -57,7 +68,7 @@ and expr' =
   | ExVar of Var.t
   | ExInt of int
   | ExBool of bool
-  | ExStr of char list
+  | ExStr of string
   | ExSelMem of expr * expr option * Var.t
   | ExSelPtr of expr * Var.t
   | ExFun of pat * expr
@@ -329,6 +340,8 @@ end
 
 type toplevel' =
   | TopLet of let_binding
+  | TopImport of string
+  | TopImportAs of string * UVar.t
 type toplevel = toplevel' withinfo
 type main = Field.t * stmt list
 type program = toplevel list * main option
@@ -377,7 +390,7 @@ module Codegen = struct
       end
     | ExInt i -> VaInt i
     | ExBool b -> VaBool b
-    | ExStr cl -> VaList (List.map (fun c -> VaInt (int_of_char c)) cl)
+    | ExStr s -> VaList (String.to_seq s |> Seq.map (fun c -> VaInt (int_of_char c)) |> List.of_seq)
     | ExSelMem (ex_parent, ex_index_opt, var) -> begin
         let index =
           match ex_index_opt with
@@ -492,6 +505,8 @@ module Codegen = struct
       (fun envs toplevel ->
         match toplevel.v with
         | TopLet binding -> eval_let_binding envs binding
+        | TopImport _ -> assert false
+        | TopImportAs (_, _) -> assert false
       )
       envs toplevels
 
