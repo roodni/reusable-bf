@@ -1,7 +1,7 @@
 %{
 module Lib = struct end (* おまじない *)
 open Support.Error
-open Reusable
+open Syntax
 %}
 
 %token <Support.Error.info> EOF
@@ -40,8 +40,8 @@ open Reusable
 %token <int Support.Error.withinfo> INT
 %token <char Support.Error.withinfo> CHAR
 %token <string Support.Error.withinfo> STRING
-%token <Reusable.Var.t Support.Error.withinfo> VAR
-%token <Reusable.UVar.t Support.Error.withinfo> UVAR
+%token <Syntax.Var.t Support.Error.withinfo> VAR
+%token <Syntax.UVar.t Support.Error.withinfo> UVAR
 %token <Support.Error.info> TRUE FALSE
 %token <Support.Error.info> NIL
 
