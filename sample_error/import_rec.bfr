@@ -1,0 +1,3 @@
+import "./import_rec.bfr"
+
+main {} []

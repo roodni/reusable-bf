@@ -11,22 +11,10 @@ let () =
     ("-v", Set flag_verbose, "verbose");
   ] (fun s -> filename := s ) "usage";
 
-  let file_in =
-    if !filename = "-" then stdin
-    else open_in !filename
-  in
-  let lexbuf = Lexer.create !filename file_in in
-  let program =
-      try Parser.program Lexer.main lexbuf with
-      | Lexer.Error info -> error_at info "syntax error"
-      | Parser.Error -> begin
-          let info = !Lexer.curr_info in
-          error_at info "unexpected token"
-        end
-  in
-  close_in file_in;
+  let dirname = Filename.dirname !filename in
+  let program = Reusable.load_program !filename in
 
-  let dfn, cmd_list = Reusable.Codegen.codegen_all program in
+  let dfn, cmd_list = Reusable.codegen_all dirname program in
   let layout = Named.Layout.of_dfn dfn in
 
   if !flag_verbose then begin

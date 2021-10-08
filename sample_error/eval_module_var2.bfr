@@ -1,0 +1,5 @@
+import "../sample/import_b.bfr" as B
+
+let _ = B:c
+
+main {} []

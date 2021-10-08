@@ -1,26 +1,23 @@
 open Support.Error
 
-module Var : sig
+module type VarS = sig
   type t
   val compare : t -> t -> int
   val of_string : string -> t
   val to_string : t -> string
-end = struct
+end
+
+module Var : VarS = struct
   type t = string
   let compare = compare
   let of_string s = s
   let to_string s = s
 end
 
-module VMap = Map.Make(Var)
-
 (* 先頭が大文字の識別子 *)
-module UVar : sig
-  type t
-  val of_string : string -> t
-  val to_string : t -> string
-end = struct
+module UVar : VarS = struct
   type t = string
+  let compare = compare
   let of_string s = s
   let to_string s = s
 end
@@ -65,6 +62,7 @@ and stmt' =
 and expr = expr' withinfo
 and expr' =
   | ExVar of Var.t
+  | ExModuleVar of UVar.t * Var.t
   | ExInt of int
   | ExBool of bool
   | ExStr of string

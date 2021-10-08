@@ -114,6 +114,7 @@ stmt:
 
 expr:
   | v=VAR { withinfo v.i @@ ExVar v.v }
+  | uv=UVAR COLON v=VAR { withinfo2 uv.i v.i @@ ExModuleVar (uv.v, v.v) }
   | i=INT { withinfo i.i @@ ExInt i.v }
   | c=CHAR { withinfo c.i @@ ExInt (int_of_char c.v) }
   | s=STRING { withinfo s.i @@ ExStr s.v }

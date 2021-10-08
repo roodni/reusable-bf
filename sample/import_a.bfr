@@ -1,0 +1,22 @@
+let gen_putc c = [
+  $alloc { x: cell; } in
+  + x c
+  . x
+]
+
+let x = '1'
+
+let p1 = gen_putc x
+
+import "./import_b.bfr"
+import "./import_c.bfr" as C
+
+let p2 = gen_putc x
+
+main {} [
+  *gen_putc b
+  *gen_putc C:c
+  *p1
+  *p2
+  *gen_putc C:x
+]

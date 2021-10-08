@@ -10,7 +10,7 @@ brainfuckにトランスパイルするプログラミング言語
 https://opam.ocaml.org/
 
 ```
-opam install dune batteries menhir ounit2
+opam install dune menhir ounit2 fileutils batteries
 ```
 
 ## 実行

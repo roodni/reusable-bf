@@ -1,6 +1,6 @@
 open Batteries
 
-let find_project_root () =
+let project_root =
   let cwd_list = Sys.getcwd () |>
     String.split_on_string ~by:(Filename.dir_sep) |>
     List.rev
@@ -15,64 +15,60 @@ let find_project_root () =
   in
   find cwd_list |> dir_list_to_string
 
-let load_code path () =
-  let project_root = find_project_root () in
-	let input = open_in (project_root ^ "/" ^ path) in
-	let code = BatIO.read_all input in
-	close_in input;
-	code
+let filename_from_current filename_from_root =
+	Filename.concat project_root filename_from_root
 
 type case = {
   name: string;
   io_list: (string * string) list;
-  code: unit -> string;
+  filename: string
 }
 
 let cases = [
   {
     name = "rev";
     io_list = [ ("hello\n", "olleh") ];
-		code = load_code "sample/rev.bfr";
+		filename = filename_from_current "sample/rev.bfr";
   };
   {
     name = "rev2";
     io_list = [ ("hello\na", "olleh") ];
-    code = load_code "sample/rev2.bfr";
+    filename = filename_from_current "sample/rev2.bfr";
   };
   {
     name = "echo";
     io_list = [ ("Hello, world!#test", "Hello, world!#") ];
-    code = load_code "sample/echo.bfr"
+    filename = filename_from_current "sample/echo.bfr"
   };
   {
     name = "hygienic";
     io_list = [ ("", "O") ];
-    code = load_code "sample/hygienic.bfr";
+    filename = filename_from_current "sample/hygienic.bfr";
   };
   {
     name = "rev3";
     io_list = [ ("hello\na", "olleh") ];
-    code = load_code "sample/rev3.bfr";
+    filename = filename_from_current "sample/rev3.bfr";
   };
   {
     name = "prime";
     io_list = [ ("", "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 ")];
-    code = load_code "sample/prime.bfr";
+    filename = filename_from_current "sample/prime.bfr";
   };
   {
     name = "switch_nat";
     io_list = [ ("0", "B"); ("1", "F"); ("2", "R"); ("3", "3"); ("7", "7") ];
-    code = load_code "sample/switch_nat.bfr";
+    filename = filename_from_current "sample/switch_nat.bfr";
   };
   {
     name = "str";
     io_list = [ ("", "hello world\n") ];
-    code = load_code "sample/str.bfr";
+    filename = filename_from_current "sample/str.bfr";
   };
   {
     name = "sort";
     io_list = [ ("", "34567") ];
-    code = load_code "sample/sort.bfr"
+    filename = filename_from_current "sample/sort.bfr"
   };
   {
     name = "switch";
@@ -83,6 +79,11 @@ let cases = [
       (">", "SHR"); ("<", "SHL");
       ("a", "OTHER"); ("\n", "OTHER");
     ];
-    code = load_code "sample/switch.bfr"
+    filename = filename_from_current "sample/switch.bfr"
+  };
+  {
+    name = "import";
+    io_list = [ ("", "BC123") ];
+    filename = filename_from_current "sample/import_a.bfr"
   }
 ]
