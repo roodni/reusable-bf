@@ -1,6 +1,4 @@
-let fix = fun f ->
-  let g = fun x -> f (fun y -> x x y) in
-  g g
+import "./bfi_lib.bfr"
 
 let gen_puts = fun l -> [
   $var { c: cell; } in

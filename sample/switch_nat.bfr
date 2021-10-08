@@ -1,27 +1,4 @@
-let fix = fun f ->
-  let g = fun x -> f (fun y -> x x y) in
-  g g
-
-let gen_switch_nat = fun sel blocks default -> [
-  *fix
-    (fun loop i blocks ->
-      match blocks with
-      | nil -> [
-          + sel i
-          *default
-        ]
-      | block :: rest -> [
-          ? sel [
-            - sel
-            *loop (i + 1) rest
-          ] [
-            + sel i
-            *block
-          ]
-        ])
-    0 blocks
-]
-
+import "./bfi_lib.bfr"
 
 main {
   b: cell;
