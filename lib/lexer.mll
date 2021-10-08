@@ -108,7 +108,7 @@ and main = parse
   | "<=" { P.LEQ (info lexbuf) }
   | "::" { P.CONS (info lexbuf) }
   | "|" { P.BAR (info lexbuf) }
-  | "$var" | "$alloc" { P.ST_VAR (info lexbuf) }
+  | "$var" | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {

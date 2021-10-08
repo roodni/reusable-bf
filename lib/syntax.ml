@@ -55,7 +55,7 @@ and stmt' =
   | StWhile of expr * stmt list
   | StIf of expr * stmt list * stmt list option
   | StShift of int * expr * expr option  (* sign, ptr, int *)
-  | StVar of Field.t * stmt list
+  | StAlloc of Field.t * stmt list
   | StLet of let_binding * stmt list
   | StExpand of expr
   | StDive of expr * stmt list

@@ -24,7 +24,7 @@ open Syntax
 %token <Support.Error.info> BAR
 %token <Support.Error.info> UNDER
 
-%token <Support.Error.info> ST_VAR
+%token <Support.Error.info> ST_ALLOC
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
 
@@ -94,7 +94,7 @@ field_elm_mtype:
 
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
-  | i=ST_VAR f=field IN sl=stmt_list { [ withinfo i @@ StVar (f, sl) ] }
+  | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f, sl) ] }
   | i=ST_LET lb=let_binding IN sl=stmt_list { [ withinfo i @@ StLet (lb, sl) ] }
   | { [] }
 
@@ -110,6 +110,7 @@ stmt:
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
+  | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f, sl) }
   | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:

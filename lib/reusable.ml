@@ -559,7 +559,7 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
             in
             let code_shift = [ Named.Cmd.Shift (i, nsel, ptr) ] in
             (dfn, code_move_var @ code_shift)
-        | StVar (field, st_list) ->
+        | StAlloc (field, st_list) ->
             let dfn_key_diving = match diving with
               | None -> []
               | Some sel -> Sel.to_dfn_key sel
