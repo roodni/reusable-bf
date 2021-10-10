@@ -1,6 +1,6 @@
-open Batteries
 open OUnit2
 open Lib
+open Lib.Support.Pervasive
 open Lib.Named
 
 (* テープの状態を比較するテスト *)
@@ -38,11 +38,15 @@ let expected = [0; 0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
     let bf = codegen layout program in
-    let state = Bf.run bf (Enum.empty ()) in
-    let Bf.State.{ tape; _ } = state in
+    let _, tape, _ =
+      Bf.Exe.run_string
+        ~cell_type:Bf.Overflow256
+        ~input:(Stream.of_string "")
+        (Bf.Exe.from_code bf)
+    in
     let ptr_max = List.length expected - 1 in
     let actual =
-      (0 -- ptr_max) |> map (fun i -> Bf.Tape.geti i tape) |> List.of_enum
+      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Tape.geti tape i)
     in
     assert_equal
       ~printer:(fun l -> l |> List.map string_of_int |> String.concat ";")

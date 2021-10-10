@@ -1,4 +1,3 @@
-open Batteries
 open OUnit2
 open Lib
 open TestLib
@@ -13,18 +12,22 @@ let reusable_to_bf_code filename =
 module BfI = struct
   let filename = ReusableCases.filename_from_current "sample/bfi.bfr"
 
-  let bf_code = reusable_to_bf_code filename
+  let bf_exe = reusable_to_bf_code filename |> Bf.Exe.from_code
 end
 
 let test_run ReusableCases.{ name; filename; io_list; } =
   name >:: (fun _ ->
-    let bf_code = reusable_to_bf_code filename |> Bf.Cmd.list_to_string in
+    let bf_code = reusable_to_bf_code filename |> Bf.Code.to_string in
     io_list |> List.iter (fun (ipt, opt) ->
       let ipt = bf_code ^ "\\" ^ ipt in
-      let state = Bf.run BfI.bf_code (String.enum ipt) in
-      let Bf.State.{ err; _ } = state in
-      assert_equal ~printer:(fun s -> s) opt (Bf.State.output_to_string state);
-      assert_bool "error" (err = None)
+      let res, _, opt_act =
+        Bf.Exe.run_string
+          ~cell_type:Bf.Overflow256
+          ~input:(Stream.of_string ipt)
+          BfI.bf_exe
+      in
+      assert_equal ~printer:(fun s -> s) opt opt_act;
+      assert_bool "error" (Result.is_ok res)
     )
   )
 

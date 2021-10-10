@@ -1,5 +1,20 @@
 open Printf
 
+module Pervasive = struct
+  let (--) a b =
+    let len = b - a + 1 in
+    if len < 0 then []
+    else List.init len (fun i -> a + i)
+
+  module String = struct
+    include String
+    let repeat s n =
+      let buf = Buffer.create (String.length s * n) in
+      (1 -- n) |> List.iter (fun _ -> Buffer.add_string buf s);
+      Buffer.contents buf
+  end
+end
+
 module Error = struct
   type info =
     | Loc of {

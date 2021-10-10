@@ -1,3 +1,12 @@
+module Pervasive : sig
+  val (--) : int -> int -> int list
+
+  module String : sig
+    include module type of String
+    val repeat : string -> int -> string
+  end
+end
+
 module Error : sig
   (** ソースコード中の位置 *)
   type info

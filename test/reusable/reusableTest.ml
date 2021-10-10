@@ -11,14 +11,32 @@ let test_run ReusableCases.{ name; filename; io_list; } =
     let layout = Named.Layout.of_dfn dfn in
     let bf_code = Named.codegen layout cmd_list in
     io_list |> List.iter (fun (ipt, opt) ->
-      let state = Bf.run bf_code (String.enum ipt) in
-      let Bf.State.{ err; _ } = state in
-      if err <> None || opt <> Bf.State.output_to_string state then begin
-        print_endline @@ Bf.Cmd.list_to_string bf_code;
+      let res, tape, opt_act =
+        Bf.Exe.run_string
+          ~input:(Stream.of_string ipt)
+          ~cell_type:Bf.Overflow256
+          (Bf.Exe.from_code bf_code)
+      in
+      let failed = ref false in
+      begin
+        match res with
+        | Ok () -> ()
+        | Error msg ->
+            print_endline "--- error ---";
+            print_endline msg;
+            failed := true
+      end;
+      if opt <> opt_act then begin
+        print_endline @@ Bf.Code.to_string bf_code;
         print_endline "--- expected output ---";
         print_endline opt;
+        print_endline "--- but got ---";
+        print_endline opt_act;
+        failed := true;
+      end;
+      if !failed then begin
         print_newline ();
-        Bf.State.dump state;
+        Bf.Exe.Tape.dump tape;
         assert_bool "fail" false
       end
     )

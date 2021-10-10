@@ -1,18 +1,16 @@
-open Batteries
 open Printf
+open Support.Pervasive
 
-
-module Cmd = struct
-  type t =
+module Code = struct
+  type t = cmd list
+  and cmd =
     | Add of int
     | Put
     | Get
     | Move of int
-    | Loop of t list
-    | Dump
-    | Comment of string
+    | Loop of t
 
-  let rec list_to_string program =
+  let rec to_string program =
     program
     |> List.map (function
       | Add n ->
@@ -29,225 +27,180 @@ module Cmd = struct
           else if n < 0 then
             String.repeat "<" (-n)
           else ""
-      | Loop cmds -> "[" ^ list_to_string cmds ^ "]"
-      | Dump -> "#"
-      | Comment s ->
-          let s =
-            s |> String.enum |>
-            filter (fun c -> not @@ List.mem c ['+'; '-'; '.'; ','; '>'; '<'; '['; ']']) |>
-            String.of_enum
-          in
-          "\n" ^ s ^ "\n"
+      | Loop cmds -> "[" ^ to_string cmds ^ "]"
     )
     |> String.concat ""
 end
 
-
-module Err = struct
-  type t =
-    | End_of_input
-    | Overflow
-    | Ptr_out_of_range
-
-  let to_string = function
-    | End_of_input -> "end of input"
-    | Overflow -> "overflow"
-    | Ptr_out_of_range -> "pointer out of range"
-
-  let opt_to_string = function
-    | None -> "ok"
-    | Some e -> to_string e
-end
+type cell_type = WrapAround256 | Overflow256 | OCamlInt
 
 
-module Tape = struct
-  type t = {
-    ptr: int;
-    ptr_max: int;
-    array: int Array.t;
-  }
+module Exe = struct
+  type t = cmd list
+  and cmd =
+    | Add of int
+    | Put
+    | Get
+    | Move of int
+    | Loop of t
+  
+  let rec from_code code =
+    List.map
+      (function
+        | Code.Add n -> Add n
+        | Code.Put -> Put
+        | Code.Get -> Get
+        | Code.Move n -> Move n
+        | Code.Loop l -> Loop (from_code l)
+      )
+      code
+  
+  exception Err of string
+  
+  module Tape = struct
+    type t =
+      { mutable ptr: int;
+        mutable ptr_max: int;
+        cells: (int, int) Hashtbl.t;
+        cell_type: cell_type;
+      }
 
-  let init () = {
-    ptr = 0;
-    ptr_max = 0;
-    array = Array.make 100000 0;
-  }
+    let init cell_type =
+      { ptr = 0;
+        ptr_max = 0;
+        cells = Hashtbl.create 30000;
+        cell_type;
+      }
 
-  let move n tape =
-    let { ptr; ptr_max; array } = tape in
-    let ptr = ptr + n in
-    let ptr_max = max ptr ptr_max in
-    if 0 <= ptr && ptr < Array.length array then
-      Ok { tape with ptr; ptr_max }
-    else
-      Error Err.Ptr_out_of_range
+    let move tape n =
+      let p = tape.ptr + n in
+      if p < 0 then
+        raise (Err "Pointer out of range")
+      else begin
+        tape.ptr <- p;
+        tape.ptr_max <- max tape.ptr_max p;
+      end
+    ;;
 
-  let set n tape =
-    if 0 <= n && n < 256 then
-      let { ptr; array; _ } = tape in
-      array.(ptr) <- n;
-      Ok tape
-    else
-      Error Err.Overflow
-
-  let get tape =
-    let { ptr; array; _ } = tape in
-    array.(ptr)
-
-  let geti i tape =
-    let { array; _ } = tape in
-    array.(i)
-
-  let dump tape =
-    let cols_n = 20 in
-    let len =
-      let len_v =
-        (0 -- tape.ptr_max) |>
-        map (fun i -> geti i tape |> string_of_int |> String.length) |>
-        fold max 3
+    let set tape n =
+      let n = match tape.cell_type with
+        | WrapAround256 -> n land 255
+        | Overflow256 when 0 <= n && n < 256 -> n
+        | Overflow256 -> raise (Err "Overflow")
+        | OCamlInt -> n
       in
-      let len_p = tape.ptr_max |> string_of_int |> String.length in
-      max len_v len_p
-    in
-    let rec loop i_left =
-      let i_right = min tape.ptr_max (i_left + cols_n - 1) in
-      let is_ptr_disp i =
-        i = i_left || i = i_right || i mod 5 = 0 || i = tape.ptr
+      Hashtbl.replace tape.cells tape.ptr n
+
+    let get tape offset =
+      let i = tape.ptr + offset in
+      Hashtbl.find_opt tape.cells i
+      |> Option.value ~default:0
+    
+    let geti tape i = Hashtbl.find_opt tape.cells i |> Option.value ~default:0
+
+    let dump tape =
+      let cols_n = 20 in
+      let len =
+        let len_v =
+          (0 -- tape.ptr_max)
+          |> List.map
+            (fun i ->
+              Hashtbl.find_opt tape.cells i
+              |> Option.map (fun i -> String.length @@ string_of_int i)
+              |> Option.value ~default:0)
+          |> List.fold_left max 3
+        in
+        let len_p = tape.ptr_max |> string_of_int |> String.length in
+        max len_v len_p
       in
-      (* インデックスの出力 *)
-      let emph_l, emph_r = '{', '}' in
-      (i_left -- i_right) |> iter (fun i ->
-        let s_of_i =
-          if is_ptr_disp i then sprintf "%*d" len i
-          else String.repeat " " len
+      let rec loop i_left =
+        let i_right = min tape.ptr_max (i_left + cols_n - 1) in
+        let is_ptr_disp i =
+          i = i_left || i = i_right || i mod 5 = 0 || i = tape.ptr
         in
-        let partition_left =
-          if i = tape.ptr then emph_l
-          else if i = tape.ptr + 1 then emph_r
-          else ' '
-        in
-        printf "%c%s" partition_left s_of_i
-      );
-      if i_right = tape.ptr then printf "%c\n" emph_r
-      else printf " \n";
-      (* 値の出力 *)
-      (i_left -- i_right) |> iter (fun i ->
-        printf "|%*d" len (geti i tape)
-      );
-      printf "|\n";
-      if i_right < tape.ptr_max then
-        loop (i_right + 1)
-    in
-    loop 0;
-    flush stdout;
-end
+        (* インデックスの出力 *)
+        let emph_l, emph_r = '{', '}' in
+        (i_left -- i_right) |> List.iter (fun i ->
+          let s_of_i =
+            if is_ptr_disp i then sprintf "%*d" len i
+            else String.repeat " " len
+          in
+          let partition_left =
+            if i = tape.ptr then emph_l
+            else if i = tape.ptr + 1 then emph_r
+            else ' '
+          in
+          printf "%c%s" partition_left s_of_i
+        );
+        if i_right = tape.ptr then printf "%c\n" emph_r
+        else printf " \n";
+        (* 値の出力 *)
+        (i_left -- i_right) |> List.iter (fun i ->
+          print_string "|";
+          match Hashtbl.find_opt tape.cells i with
+          | None -> print_string @@ String.repeat " " len
+          | Some v -> printf "%*d" len v
+        );
+        printf "|\n";
+        if i_right < tape.ptr_max then
+          loop (i_right + 1)
+      in
+      loop 0;
+      flush stdout;
+  end
 
-
-module State = struct
-  type t = {
-    stack: Cmd.t list list;
-    tape: Tape.t;
-    input: char Enum.t;
-    output: int list;
-    err: Err.t option;
-    comments: string list;
-  }
-
-  let init ~program ~input =
-    {
-      stack = [ program ];
-      tape = Tape.init ();
-      input;
-      output = [];
-      err = None;
-      comments = [];
-    }
-
-  let output_to_string { output; _ } =
-    output |> List.rev_map (fun i -> char_of_int i) |> String.of_list
-
-  let is_finished { stack; err; _ } =
-    err <> None || List.is_empty stack
-
-  let step ?(printer=fun (_: char) -> ()) ({ stack; tape; input; output; comments; _; } as state) =
-    if is_finished state then state
-    else
-      match stack with
-      | [] -> state
-      | [] :: stack_rest -> { state with stack = stack_rest; }
-      | (cmd :: cmds_rest) :: stack_rest -> begin
-          let stack = cmds_rest :: stack_rest in
+  let run ~printer ~input ~cell_type executable =
+    let tape = Tape.init cell_type in
+    let rec loop = function
+      | [] -> ()
+      | [] :: stack -> loop stack
+      | (cmd :: cmds) :: stack -> begin
           match cmd with
-          | Cmd.Add n -> begin
-              let res = Tape.set (Tape.get tape + n) tape in
-              match res with
-              | Ok tape -> { state with stack; tape; }
-              | Error err -> { state with err = Some err; }
-            end
-          | Cmd.Put ->
-              let x = Tape.get tape in
-              printer @@ char_of_int x;
-              let output = x :: output in
-              { state with stack; output }
-          | Cmd.Get -> begin
-              match Enum.get input with
-              | None -> { state with err = Some Err.End_of_input; }
-              | Some c -> begin
-                  let res = Tape.set (int_of_char c) tape in
-                  match res with
-                  | Ok tape -> { state with stack; tape; }
-                  | Error err -> { state with err = Some err; }
-                end
-            end
-          | Cmd.Move n -> begin
-              match Tape.move n tape with
-              | Ok tape -> { state with stack; tape; }
-              | Error err -> { state with err = Some err; }
-            end
-          | Cmd.Loop loop -> begin
-              let x = Tape.get tape in
-              if x = 0 then
-                { state with stack; }
-              else
-                { state with stack = loop :: (cmd :: cmds_rest) :: stack_rest }
-            end
-          | Dump ->
-              print_newline ();
-              Tape.dump tape;
-              { state with stack }
-          | Comment s ->
-              { state with stack; comments = s :: comments; }
+          | Add n ->
+              let v = Tape.get tape 0 in
+              Tape.set tape (v + n);
+              loop (cmds :: stack)
+          | Put ->
+              let v = Tape.get tape 0 in
+              printer (char_of_int v);
+              loop (cmds :: stack)
+          | Get ->
+              let c =
+                try Stream.next input with
+                | Stream.Failure -> raise (Err "End of input")
+              in
+              Tape.set tape (int_of_char c);
+              loop (cmds :: stack)
+          | Move n ->
+              Tape.move tape n;
+              loop (cmds :: stack)
+          | Loop l ->
+              let v = Tape.get tape 0 in
+              if v = 0
+                then loop (cmds :: stack)
+                else loop (l :: (cmd :: cmds) :: stack)
         end
-
-  let dump state =
-    printf "--- state dump ---\n";
-    print_endline "[output]";
-    output_to_string state |> print_endline;
-    print_endline "[tape]";
-    Tape.dump state.tape;
-    print_endline "[comments]";
-    state.comments |> List.take 100 |> String.concat " <- " |> print_endline;
-    print_endline "[error]";
-    print_endline (Err.opt_to_string state.err);
-    flush stdout
+    in
+    let res =
+      try loop [ executable ]; Ok () with
+      | Err msg -> Error msg
+    in
+    (res, tape)
+  
+  let run_stdio ~cell_type executable =
+    run
+      ~printer:(fun c -> print_char c; flush stdout)
+      ~input:(Stream.of_channel stdin)
+      ~cell_type
+      executable
+  
+  let run_string ~input ~cell_type executable =
+    let buf = Buffer.create 100 in
+    let res, tape =
+      run
+        ~printer:(Buffer.add_char buf)
+        ~input ~cell_type
+        executable
+    in
+    (res, tape, Buffer.contents buf)
 end
-
-let cnt = ref 0
-
-let run ?printer program input =
-  cnt := 0;
-  let rec loop state =
-    incr cnt;
-    (* assert (!cnt < 100000); *)
-    if State.is_finished state then
-      state
-    else
-      loop (State.step ?printer state)
-  in
-  let state = State.init ~program ~input in
-  loop state
-
-
-let run_stdio program =
-  let printer c = printf "%c%!" c in
-  run ~printer program (input_chars Stdlib.stdin)

@@ -274,15 +274,15 @@ module Pos = struct
     of_sel layout sel
 
   (** リストのポインタを遡って根本のoffset_of_headまで戻るコードを生成する *)
-  let rec codegen_root { offset_in_lst; size; child_pos; _ }: Bf.Cmd.t list =
+  let rec codegen_root { offset_in_lst; size; child_pos; _ }: Bf.Code.t =
     let origin_offset = match child_pos with
       | Cell offset -> offset
       | Ptr { offset_of_head; _ } -> offset_of_head
     in
     let code = [
-      Bf.Cmd.Move (offset_in_lst - origin_offset - size);
-      Bf.Cmd.Loop [
-        Bf.Cmd.Move (-size)
+      Bf.Code.Move (offset_in_lst - origin_offset - size);
+      Bf.Code.Loop [
+        Bf.Code.Move (-size)
       ]
     ] in
     match child_pos with
@@ -290,7 +290,7 @@ module Pos = struct
     | Ptr ptr -> codegen_root ptr @ code
 
   (** [codegen_move origin dest]  [origin]から[dest]に移動するコードを生成する *)
-  let rec codegen_move (origin: t) (dest: t): Bf.Cmd.t list =
+  let rec codegen_move (origin: t) (dest: t): Bf.Code.t =
     match origin, dest with
     | Ptr origin, Ptr dest when origin.offset_of_head = dest.offset_of_head ->
         codegen_move origin.child_pos dest.child_pos
@@ -298,13 +298,13 @@ module Pos = struct
         codegen_root origin @ codegen_move (Cell origin.offset_of_head) dest
     | Cell origin, Ptr dest ->
         let code = [
-          Bf.Cmd.Move (dest.offset_of_head + dest.size - origin);
-          Bf.Cmd.Loop [
-            Bf.Cmd.Move dest.size
+          Bf.Code.Move (dest.offset_of_head + dest.size - origin);
+          Bf.Code.Loop [
+            Bf.Code.Move dest.size
           ]
         ] in
         code @ codegen_move (Cell dest.offset_in_lst) (dest.child_pos)
-    | Cell origin, Cell dest -> [ Bf.Cmd.Move (dest - origin) ]
+    | Cell origin, Cell dest -> [ Bf.Code.Move (dest - origin) ]
 end
 
 
@@ -317,31 +317,29 @@ module Cmd = struct
     | LoopPtr of (Sel.t * Var.t * t_list)
     | Shift of int * Sel.t * Var.t
     | If of Sel.t * t_list * t_list
-    | Comment of string
-    | Dump
   and t_list = t list
 end
 
-let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
+let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Code.t =
   let rec codegen (pos_init: Pos.t) (cmd_list: Cmd.t_list) =
     let pos, bf_cmd_list_list = List.fold_left_map (fun pos cmd ->
         match cmd with
         | Cmd.Add (0, _) -> (pos, [])
         | Cmd.Add (n, sel) ->
             let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Add n ])
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Add n ])
         | Put sel ->
             let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Put ])
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Put ])
         | Get sel ->
             let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Cmd.Get ])
+            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Get ])
         | Loop (sel, cmd_list) ->
             let pos_cond = Pos.of_sel layout sel in
             let code_move1 = Pos.codegen_move pos pos_cond in
             let pos, code_loop = codegen pos_cond cmd_list in
             let code_move2 = Pos.codegen_move pos pos_cond in
-            (pos_cond, code_move1 @ [ Bf.Cmd.Loop (code_loop @ code_move2) ])
+            (pos_cond, code_move1 @ [ Bf.Code.Loop (code_loop @ code_move2) ])
         | LoopPtr (lst, ptr, cmd_list) ->
             let sel_cond = Sel.ptr_for_shift lst ptr (-1) in
             codegen pos [ Cmd.Loop (sel_cond, cmd_list) ]
@@ -354,11 +352,11 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
             | 0 -> (pos, [])
             | 1 ->
                 let code_move = Pos.codegen_move pos pos_ptr in
-                let code = code_move @ [ Bf.Cmd.Add 1 ] in
+                let code = code_move @ [ Bf.Code.Add 1 ] in
                 (pos_ptr_prev, code)
             | -1 ->
                 let code_move = Pos.codegen_move pos pos_ptr_prev in
-                let code = code_move @ [ Bf.Cmd.Add (-1) ] in
+                let code = code_move @ [ Bf.Code.Add (-1) ] in
                 (pos_ptr, code)
             | _ -> failwith "not implemented"
           end
@@ -371,24 +369,22 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Cmd.t list =
             let code =
               Pos.codegen_move pos pos_flag @
               [
-                Bf.Cmd.Add 1;
-                Bf.Cmd.Move (-1);
-                Bf.Cmd.Loop (
-                  [ Bf.Cmd.Move 1; Bf.Cmd.Add (-1); ] @
+                Bf.Code.Add 1;
+                Bf.Code.Move (-1);
+                Bf.Code.Loop (
+                  [ Bf.Code.Move 1; Bf.Code.Add (-1); ] @
                   code_then @
                   Pos.codegen_move pos_then_end pos_flag
                 );
-                Bf.Cmd.Move 1;
-                Bf.Cmd.Loop (
-                  [ Bf.Cmd.Add (-1) ] @
+                Bf.Code.Move 1;
+                Bf.Code.Loop (
+                  [ Bf.Code.Add (-1) ] @
                   code_else @
                   Pos.codegen_move pos_else_end pos_zero
                 );
               ]
             in
             (pos_zero, code)
-        | Comment s -> (pos, [ Bf.Cmd.Comment s ])
-        | Dump -> (pos, [ Bf.Cmd.Dump ])
       ) pos_init cmd_list
     in
     (pos, List.flatten bf_cmd_list_list)

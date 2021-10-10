@@ -1,6 +1,6 @@
-open Batteries
 open OUnit2
 open Lib
+open Lib.Support.Pervasive
 open Lib.Named
 
 (* 出力結果を比較するテスト *)
@@ -16,14 +16,18 @@ let test_run {name; dfn; cmd_list; io_list} =
     let layout = Layout.of_dfn dfn in
     let bf = codegen layout cmd_list in
     io_list |> List.iter (fun (ipt, opt) ->
-      let state = Bf.run bf (String.enum ipt) in
-      let Bf.State.{ err; _ } = state in
-      if err <> None then begin
-        bf |> Bf.Cmd.list_to_string |> print_endline;
-        Bf.State.dump state;
-        assert_bool "err" false;
-      end;
-      assert_equal ~printer:(fun s -> s) opt (Bf.State.output_to_string state);
+      let res, tape, opt_act =
+        Bf.Exe.run_string
+          ~input:(Stream.of_string ipt)
+          ~cell_type:Bf.Overflow256
+          (Bf.Exe.from_code bf)
+      in
+      match res with
+      | Ok () -> assert_equal ~printer:(fun s -> s) opt opt_act
+      | Error msg ->
+          print_endline @@ Bf.Code.to_string bf;
+          Bf.Exe.Tape.dump tape;
+          assert_bool msg false
     )
   )
 
@@ -53,7 +57,7 @@ let cases =
   [
     begin
       (* echo *)
-      let var_list = (1--5) |> Enum.map (fun _ -> Var.gen ()) |> List.of_enum in
+      let var_list = (1--5) |> List.map (fun _ -> Var.gen ()) in
       {
         name = "echo";
         dfn = var_list |> List.map (fun v -> (v, Dfn.Cell));
@@ -235,7 +239,7 @@ let cases =
           ]
         end;
         cmd_list = [
-          Comment "input1";
+          (* Comment "input1"; *)
           add (slst ~i:0 buf1 @@ svar c);
           loop (slst ~p buf1 @@ svar c) [
             Shift (1, svar buf1, p);
@@ -244,7 +248,7 @@ let cases =
           ];
           sub (slst ~i:0 buf1 @@ svar c);
 
-          Comment "input2";
+          (* Comment "input2"; *)
           add (slst ~i:0 buf2 @@ svar c);
           loop (slst ~p buf2 @@ svar c) [
             Shift (1, svar buf2, p);
@@ -253,7 +257,7 @@ let cases =
           ];
           sub (slst ~i:0 buf2 @@ svar c);
 
-          Comment "output1";
+          (* Comment "output1"; *)
           Shift (-1, svar buf1, p);
           loop (slst ~p buf1 @@ svar c) [
             add ~n:10  (slst ~p buf1 @@ svar c);
@@ -264,7 +268,7 @@ let cases =
           add ~n:(int_of_char ' ') (svar c);
           Put (svar c);
 
-          Comment "output2";
+          (* Comment "output2"; *)
           Shift (-1, svar buf2, p);
           loop (slst ~p buf2 @@ svar c) [
             add ~n:10  (slst ~p buf2 @@ svar c);

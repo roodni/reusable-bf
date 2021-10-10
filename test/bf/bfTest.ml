@@ -1,21 +1,24 @@
-open Batteries
 open OUnit2
 open Lib.Bf
 
 type case = {
   name: string;
-  program: Cmd.t list;
+  program: Code.t;
   input: string;
   output: string;
-  err: Err.t option
+  is_ok: bool;
 }
 
-let test_run { name; program; input; output; err } =
+let test_run { name; program; input; output; is_ok } =
   name >:: fun _ ->
-    let input = input |> String.enum in
-    let res = run program input in
-    assert_equal ~printer:Err.opt_to_string err res.err;
-    assert_equal ~printer:(fun s -> s) output (State.output_to_string res)
+    let res, _, output_actual =
+      Exe.run_string
+        ~cell_type:Overflow256
+        ~input:(Stream.of_string input)
+        (Exe.from_code program)
+    in
+    assert_bool "err" (is_ok = Result.is_ok res);
+    assert_equal ~printer:Fun.id output output_actual
 
 let cases = [
   {
@@ -62,28 +65,28 @@ let cases = [
     ];
     input = "How are you?\nI'm fine, thank you.# hoge";
     output = "How are you?\nI'm fine, thank you.#";
-    err = None
+    is_ok = true
   };
   {
     name = "overflow";
     program = [ Add (-1) ];
     input = "";
     output = "";
-    err = Some Overflow
+    is_ok = false
   };
   {
     name = "end of input";
     program = [ Add 1; Loop [ Get; Put ] ];
     input = "abc";
     output = "abc";
-    err = Some End_of_input
+    is_ok = false
   };
   {
     name = "pointer out of range";
     program = [ Move (-1) ];
     input = "";
     output = "";
-    err = Some Ptr_out_of_range
+    is_ok = false
   }
 ]
 

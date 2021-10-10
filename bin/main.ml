@@ -27,20 +27,23 @@ let () =
   let code = Named.codegen layout cmd_list in
 
   if !flag_verbose || not !flag_run then begin
-    print_endline @@ Bf.Cmd.list_to_string code;
+    print_endline @@ Bf.Code.to_string code;
   end;
 
   if !flag_run then begin
-    let state = Bf.run_stdio code in
+    let res, tape =
+      Bf.Exe.run_stdio
+        ~cell_type:Overflow256
+        (Bf.Exe.from_code code)
+    in
     if !flag_verbose then begin
       print_newline ();
-      Bf.State.dump state;
+      Bf.Exe.Tape.dump tape;
     end else begin
-      match state.err with
-      | None -> ()
-      | Some e -> begin
-          eprintf "execution error: %s" (Bf.Err.to_string e);
-        end
-    end;
-    if state.err <> None then exit 1;
+      match res with
+      | Ok () -> ()
+      | Error e ->
+          eprintf "Execution error: %s" e;
+          exit 1
+    end
   end
