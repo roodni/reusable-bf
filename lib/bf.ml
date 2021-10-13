@@ -61,26 +61,31 @@ module Exe = struct
     type t =
       { mutable ptr: int;
         mutable ptr_max: int;
-        cells: (int, int) Hashtbl.t;
+        cells: int Array.t;
         cell_type: cell_type;
       }
 
     let init cell_type =
       { ptr = 0;
         ptr_max = 0;
-        cells = Hashtbl.create 30000;
+        cells = Array.make 100000 0;
         cell_type;
       }
+    
+    let geti_opt cells (i: int) : int option = Some (cells.(i))
+    let geti cells (i: int) : int = cells.(i)
+    let seti cells (i: int) (n: int) =
+      cells.(i) <- n
+    
+    let validate_location tape l =
+      if l < 0 || Array.length tape.cells <= l then
+        raise (Err "Pointer out of range")
 
     let move tape n =
       let p = tape.ptr + n in
-      if p < 0 then
-        raise (Err "Pointer out of range")
-      else begin
-        tape.ptr <- p;
-        tape.ptr_max <- max tape.ptr_max p;
-      end
-    ;;
+      validate_location tape p;
+      tape.ptr <- p;
+      tape.ptr_max <- max tape.ptr_max p
 
     let set tape n =
       let n = match tape.cell_type with
@@ -89,14 +94,10 @@ module Exe = struct
         | Overflow256 -> raise (Err "Overflow")
         | OCamlInt -> n
       in
-      Hashtbl.replace tape.cells tape.ptr n
+      seti tape.cells tape.ptr n
 
-    let get tape offset =
-      let i = tape.ptr + offset in
-      Hashtbl.find_opt tape.cells i
-      |> Option.value ~default:0
-    
-    let geti tape i = Hashtbl.find_opt tape.cells i |> Option.value ~default:0
+    let get tape =
+      geti tape.cells tape.ptr
 
     let dump tape =
       let cols_n = 20 in
@@ -105,7 +106,7 @@ module Exe = struct
           (0 -- tape.ptr_max)
           |> List.map
             (fun i ->
-              Hashtbl.find_opt tape.cells i
+              geti_opt tape.cells i
               |> Option.map (fun i -> String.length @@ string_of_int i)
               |> Option.value ~default:0)
           |> List.fold_left max 3
@@ -137,7 +138,7 @@ module Exe = struct
         (* 値の出力 *)
         (i_left -- i_right) |> List.iter (fun i ->
           print_string "|";
-          match Hashtbl.find_opt tape.cells i with
+          match geti_opt tape.cells i with
           | None -> print_string @@ String.repeat " " len
           | Some v -> printf "%*d" len v
         );
@@ -157,11 +158,11 @@ module Exe = struct
       | (cmd :: cmds) :: stack -> begin
           match cmd with
           | Add n ->
-              let v = Tape.get tape 0 in
+              let v = Tape.get tape in
               Tape.set tape (v + n);
               loop (cmds :: stack)
           | Put ->
-              let v = Tape.get tape 0 in
+              let v = Tape.get tape in
               printer (char_of_int v);
               loop (cmds :: stack)
           | Get ->
@@ -175,7 +176,7 @@ module Exe = struct
               Tape.move tape n;
               loop (cmds :: stack)
           | Loop l ->
-              let v = Tape.get tape 0 in
+              let v = Tape.get tape in
               if v = 0
                 then loop (cmds :: stack)
                 else loop (l :: (cmd :: cmds) :: stack)
