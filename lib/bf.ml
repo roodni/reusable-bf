@@ -44,8 +44,27 @@ module Exe = struct
     | Shift of int
     | Loop of t
     | ShiftLoop of int
+    | MoveLoop of (int * int) list
 
   let rec from_code code =
+    let move_loop_body code =
+      let tbl : (int, int) Hashtbl.t = Hashtbl.create 3 in
+      let pos = ref 0 in
+      try
+        List.iter
+          (function
+            | Code.Add n ->
+                let a = Hashtbl.find_opt tbl !pos |> Option.value ~default:0 in
+                Hashtbl.replace tbl !pos (a + n)
+            | Code.Shift n -> pos := !pos + n
+            | _ -> raise Exit)
+          code;
+        if !pos <> 0 then raise Exit;
+        if Hashtbl.find_opt tbl 0 <> Some (-1) then raise Exit;
+        Hashtbl.remove tbl 0;
+        Hashtbl.to_seq tbl |> List.of_seq |> Option.some
+      with Exit -> None
+    in
     List.map
       (function
         | Code.Add n -> Add n
@@ -53,12 +72,16 @@ module Exe = struct
         | Code.Get -> Get
         | Code.Shift n -> Shift n
         | Code.Loop [ Shift n ] -> ShiftLoop n
-        | Code.Loop l -> Loop (from_code l)
+        | Code.Loop l -> begin
+            match move_loop_body l with
+            | Some mlb -> MoveLoop mlb
+            | None -> Loop (from_code l)
+          end
       )
       code
-  
+
   exception Err of string
-  
+
   module Tape = struct
     type t =
       { mutable ptr: int;
@@ -73,12 +96,12 @@ module Exe = struct
         cells = Array.make 100000 0;
         cell_type;
       }
-    
+
     let geti_opt cells (i: int) : int option = Some (cells.(i))
     let geti cells (i: int) : int = cells.(i)
     let seti cells (i: int) (n: int) =
       cells.(i) <- n
-    
+
     let validate_location tape l =
       if l < 0 || Array.length tape.cells <= l then
         raise (Err "Pointer out of range")
@@ -105,6 +128,18 @@ module Exe = struct
       while get tape <> 0 do
         shift tape n
       done
+
+    let move_loop tape pos_coef_list =
+      let v0 = get tape in
+      List.iter
+        (fun (pos, coef) ->
+          let l = tape.ptr + pos in
+          validate_location tape l;
+          let v = geti tape.cells l in
+          seti tape.cells l (v + v0 * coef)
+        )
+        pos_coef_list;
+      set tape 0
 
     let dump tape =
       let cols_n = 20 in
@@ -182,6 +217,7 @@ module Exe = struct
                   loop l
                 done
             | ShiftLoop n -> Tape.shift_loop tape n
+            | MoveLoop mlb -> Tape.move_loop tape mlb
           in
           loop cmds
         end
@@ -191,14 +227,14 @@ module Exe = struct
       | Err msg -> Error msg
     in
     (res, tape)
-  
+
   let run_stdio ~cell_type executable =
     run
       ~printer:(fun c -> print_char c; flush stdout)
       ~input:(Stream.of_channel stdin)
       ~cell_type
       executable
-  
+
   let run_string ~input ~cell_type executable =
     let buf = Buffer.create 100 in
     let res, tape =
