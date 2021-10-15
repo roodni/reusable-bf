@@ -154,36 +154,32 @@ module Exe = struct
     let tape = Tape.init cell_type in
     let rec loop = function
       | [] -> ()
-      | [] :: stack -> loop stack
-      | (cmd :: cmds) :: stack -> begin
-          match cmd with
-          | Add n ->
-              let v = Tape.get tape in
-              Tape.set tape (v + n);
-              loop (cmds :: stack)
-          | Put ->
-              let v = Tape.get tape in
-              printer (char_of_int v);
-              loop (cmds :: stack)
-          | Get ->
-              let c =
-                try Stream.next input with
-                | Stream.Failure -> raise (Err "End of input")
-              in
-              Tape.set tape (int_of_char c);
-              loop (cmds :: stack)
-          | Move n ->
-              Tape.move tape n;
-              loop (cmds :: stack)
-          | Loop l ->
-              let v = Tape.get tape in
-              if v = 0
-                then loop (cmds :: stack)
-                else loop (l :: (cmd :: cmds) :: stack)
+      | cmd :: cmds -> begin
+          let () = match cmd with
+            | Add n ->
+                let v = Tape.get tape in
+                Tape.set tape (v + n)
+            | Put ->
+                let v = Tape.get tape in
+                printer (char_of_int v)
+            | Get ->
+                let c =
+                  try Stream.next input with
+                  | Stream.Failure -> raise (Err "End of input")
+                in
+                Tape.set tape (int_of_char c)
+            | Move n ->
+                Tape.move tape n
+            | Loop l ->
+                while Tape.get tape <> 0 do
+                  loop l
+                done
+          in
+          loop cmds
         end
     in
     let res =
-      try loop [ executable ]; Ok () with
+      try loop executable; Ok () with
       | Err msg -> Error msg
     in
     (res, tape)
