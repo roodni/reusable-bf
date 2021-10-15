@@ -280,9 +280,9 @@ module Pos = struct
       | Ptr { offset_of_head; _ } -> offset_of_head
     in
     let code = [
-      Bf.Code.Move (offset_in_lst - origin_offset - size);
+      Bf.Code.Shift (offset_in_lst - origin_offset - size);
       Bf.Code.Loop [
-        Bf.Code.Move (-size)
+        Bf.Code.Shift (-size)
       ]
     ] in
     match child_pos with
@@ -298,13 +298,13 @@ module Pos = struct
         codegen_root origin @ codegen_move (Cell origin.offset_of_head) dest
     | Cell origin, Ptr dest ->
         let code = [
-          Bf.Code.Move (dest.offset_of_head + dest.size - origin);
+          Bf.Code.Shift (dest.offset_of_head + dest.size - origin);
           Bf.Code.Loop [
-            Bf.Code.Move dest.size
+            Bf.Code.Shift dest.size
           ]
         ] in
         code @ codegen_move (Cell dest.offset_in_lst) (dest.child_pos)
-    | Cell origin, Cell dest -> [ Bf.Code.Move (dest - origin) ]
+    | Cell origin, Cell dest -> [ Bf.Code.Shift (dest - origin) ]
 end
 
 
@@ -370,13 +370,13 @@ let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Code.t =
               Pos.codegen_move pos pos_flag @
               [
                 Bf.Code.Add 1;
-                Bf.Code.Move (-1);
+                Bf.Code.Shift (-1);
                 Bf.Code.Loop (
-                  [ Bf.Code.Move 1; Bf.Code.Add (-1); ] @
+                  [ Bf.Code.Shift 1; Bf.Code.Add (-1); ] @
                   code_then @
                   Pos.codegen_move pos_then_end pos_flag
                 );
-                Bf.Code.Move 1;
+                Bf.Code.Shift 1;
                 Bf.Code.Loop (
                   [ Bf.Code.Add (-1) ] @
                   code_else @

@@ -27,40 +27,40 @@ let cases = [
       Add 1;
       Loop [
         Add (-1);
-        Move 1; Get; Put;
-        Move 1; Add (int_of_char '#');
-        Move (-1); Loop [
+        Shift 1; Get; Put;
+        Shift 1; Add (int_of_char '#');
+        Shift (-1); Loop [
           Add (-1);
-          Move 3; Add 1;
-          Move (-2); Loop [
+          Shift 3; Add 1;
+          Shift (-2); Loop [
             Loop [
               Add (-1);
-              Move 1; Add 1;
-              Move (-1)
+              Shift 1; Add 1;
+              Shift (-1)
             ];
-            Move 2; Add (-1);
-            Move (-1); Add (-1);
-            Move (-1);
+            Shift 2; Add (-1);
+            Shift (-1); Add (-1);
+            Shift (-1);
           ];
-          Move 2; Loop [
+          Shift 2; Loop [
             Add (-1);
-            Move (-3); Loop [ Add (-1) ];
-            Move (-1); Add 1;
-            Move 4;
+            Shift (-3); Loop [ Add (-1) ];
+            Shift (-1); Add 1;
+            Shift 4;
           ];
-          Move (-1); Loop [
+          Shift (-1); Loop [
             Add (-1);
-            Move (-1); Add 1;
-            Move 1;
+            Shift (-1); Add 1;
+            Shift 1;
           ];
-          Move (-2);
+          Shift (-2);
         ];
-        Move 1; Loop [
+        Shift 1; Loop [
           Loop  [ Add (-1) ];
-          Move (-2); Add 1;
-          Move 2;
+          Shift (-2); Add 1;
+          Shift 2;
         ];
-        Move (-2);
+        Shift (-2);
       ]
     ];
     input = "How are you?\nI'm fine, thank you.# hoge";
@@ -83,7 +83,7 @@ let cases = [
   };
   {
     name = "pointer out of range";
-    program = [ Move (-1) ];
+    program = [ Shift (-1) ];
     input = "";
     output = "";
     is_ok = false

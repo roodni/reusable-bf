@@ -7,7 +7,7 @@ module Code = struct
     | Add of int
     | Put
     | Get
-    | Move of int
+    | Shift of int
     | Loop of t
 
   let rec to_string program =
@@ -21,7 +21,7 @@ module Code = struct
           else ""
       | Put -> "."
       | Get -> ","
-      | Move n ->
+      | Shift n ->
           if n > 0 then
             String.repeat ">" n
           else if n < 0 then
@@ -41,16 +41,18 @@ module Exe = struct
     | Add of int
     | Put
     | Get
-    | Move of int
+    | Shift of int
     | Loop of t
-  
+    | ShiftLoop of int
+
   let rec from_code code =
     List.map
       (function
         | Code.Add n -> Add n
         | Code.Put -> Put
         | Code.Get -> Get
-        | Code.Move n -> Move n
+        | Code.Shift n -> Shift n
+        | Code.Loop [ Shift n ] -> ShiftLoop n
         | Code.Loop l -> Loop (from_code l)
       )
       code
@@ -81,7 +83,7 @@ module Exe = struct
       if l < 0 || Array.length tape.cells <= l then
         raise (Err "Pointer out of range")
 
-    let move tape n =
+    let shift tape n =
       let p = tape.ptr + n in
       validate_location tape p;
       tape.ptr <- p;
@@ -98,6 +100,11 @@ module Exe = struct
 
     let get tape =
       geti tape.cells tape.ptr
+
+    let shift_loop tape n =
+      while get tape <> 0 do
+        shift tape n
+      done
 
     let dump tape =
       let cols_n = 20 in
@@ -168,12 +175,13 @@ module Exe = struct
                   | Stream.Failure -> raise (Err "End of input")
                 in
                 Tape.set tape (int_of_char c)
-            | Move n ->
-                Tape.move tape n
+            | Shift n ->
+                Tape.shift tape n
             | Loop l ->
                 while Tape.get tape <> 0 do
                   loop l
                 done
+            | ShiftLoop n -> Tape.shift_loop tape n
           in
           loop cmds
         end
