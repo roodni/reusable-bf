@@ -30,6 +30,44 @@ module Code = struct
       | Loop cmds -> "[" ^ to_string cmds ^ "]"
     )
     |> String.concat ""
+
+  let parse st =
+    let rec parse ~nested =
+      let code_rev = ref [] in
+      let append cmd =
+        code_rev := cmd :: !code_rev
+      in
+      let rec loop () =
+        match Stream.peek st with
+        | None -> ()
+        | Some ('+' | '-') -> loop_adding 0
+        | Some ('>' | '<') -> loop_shifting 0
+        | Some '.' -> append Put; Stream.junk st; loop ()
+        | Some ',' -> append Get; Stream.junk st; loop ()
+        | Some '[' ->
+            Stream.junk st;
+            let code = parse ~nested:true in
+            append (Loop code);
+            loop ()
+        | Some ']' ->
+            if not nested then failwith "syntax error";
+            Stream.junk st
+        | Some _ -> Stream.junk st; loop ()
+      and loop_adding n =
+        match Stream.peek st with
+        | Some '+' -> Stream.junk st; loop_adding (n + 1)
+        | Some '-' -> Stream.junk st; loop_adding (n - 1)
+        | _ -> append (Add n); loop ()
+      and loop_shifting n =
+        match Stream.peek st with
+        | Some '>' -> Stream.junk st; loop_shifting (n + 1)
+        | Some '<' -> Stream.junk st; loop_shifting (n - 1)
+        | _ -> append (Shift n); loop ()
+      in
+      loop ();
+      List.rev !code_rev
+    in
+    parse ~nested:false
 end
 
 type cell_type = WrapAround256 | Overflow256 | OCamlInt
