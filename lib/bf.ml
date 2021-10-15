@@ -157,7 +157,7 @@ module Exe = struct
       let p = tape.ptr + n in
       validate_location tape p;
       tape.ptr <- p;
-      tape.ptr_max <- max tape.ptr_max p
+      if tape.ptr_max < p then tape.ptr_max <- p
 
     let modify_cell_value tape v =
       match tape.cell_type with
@@ -279,7 +279,10 @@ module Exe = struct
 
   let run_stdio ~cell_type executable =
     run
-      ~printer:(fun c -> print_char c; flush stdout)
+      ~printer:(fun c ->
+          print_char c;
+          if c = '\n' then flush stdout
+        )
       ~input:(Stream.of_channel stdin)
       ~cell_type
       executable
