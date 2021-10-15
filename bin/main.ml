@@ -44,7 +44,7 @@ let () =
   if !flag_run || !flag_bf then begin
     let res, tape =
       Bf.Exe.run_stdio
-        ~cell_type:Overflow256
+        ~cell_type:WrapAround256
         (Bf.Exe.from_code bf_code)
     in
     if !flag_verbose then begin

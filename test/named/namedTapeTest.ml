@@ -46,7 +46,7 @@ let test = "shift" >:: (fun _ ->
     in
     let ptr_max = List.length expected - 1 in
     let actual =
-      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Tape.geti tape.cells i)
+      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Tape.geti tape i)
     in
     assert_equal
       ~printer:(fun l -> l |> List.map string_of_int |> String.concat ";")

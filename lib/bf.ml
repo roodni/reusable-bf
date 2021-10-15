@@ -37,6 +37,10 @@ module Code = struct
       let append cmd =
         code_rev := cmd :: !code_rev
       in
+      let is_cmd = function
+        | '+' | '-' | '>' | '<' | '.' | ',' | '[' | ']' -> true
+        | _ -> false
+      in
       let rec loop () =
         match Stream.peek st with
         | None -> ()
@@ -57,11 +61,13 @@ module Code = struct
         match Stream.peek st with
         | Some '+' -> Stream.junk st; loop_adding (n + 1)
         | Some '-' -> Stream.junk st; loop_adding (n - 1)
+        | Some c when not (is_cmd c) -> Stream.junk st; loop_adding n
         | _ -> append (Add n); loop ()
       and loop_shifting n =
         match Stream.peek st with
         | Some '>' -> Stream.junk st; loop_shifting (n + 1)
         | Some '<' -> Stream.junk st; loop_shifting (n - 1)
+        | Some c when not (is_cmd c) -> Stream.junk st; loop_shifting n
         | _ -> append (Shift n); loop ()
       in
       loop ();
@@ -112,6 +118,7 @@ module Exe = struct
         | Code.Loop [ Shift n ] -> ShiftLoop n
         | Code.Loop l -> begin
             match move_loop_body l with
+            (* match None with *)
             | Some mlb -> MoveLoop mlb
             | None -> Loop (from_code l)
           end
@@ -135,11 +142,6 @@ module Exe = struct
         cell_type;
       }
 
-    let geti_opt cells (i: int) : int option = Some (cells.(i))
-    let geti cells (i: int) : int = cells.(i)
-    let seti cells (i: int) (n: int) =
-      cells.(i) <- n
-
     let validate_location tape l =
       if l < 0 || Array.length tape.cells <= l then
         raise (Err "Pointer out of range")
@@ -150,17 +152,17 @@ module Exe = struct
       tape.ptr <- p;
       tape.ptr_max <- max tape.ptr_max p
 
-    let set tape n =
-      let n = match tape.cell_type with
-        | WrapAround256 -> n land 255
-        | Overflow256 when 0 <= n && n < 256 -> n
+    let modify_cell_value tape v =
+      match tape.cell_type with
+        | WrapAround256 -> v land 255
+        | Overflow256 when 0 <= v && v < 256 -> v
         | Overflow256 -> raise (Err "Overflow")
-        | OCamlInt -> n
-      in
-      seti tape.cells tape.ptr n
+        | OCamlInt -> v
 
-    let get tape =
-      geti tape.cells tape.ptr
+    let set tape n =
+      tape.cells.(tape.ptr) <- modify_cell_value tape n
+
+    let get tape = tape.cells.(tape.ptr)
 
     let shift_loop tape n =
       while get tape <> 0 do
@@ -169,27 +171,29 @@ module Exe = struct
 
     let move_loop tape pos_coef_list =
       let v0 = get tape in
-      List.iter
-        (fun (pos, coef) ->
-          let l = tape.ptr + pos in
-          validate_location tape l;
-          let v = geti tape.cells l in
-          seti tape.cells l (v + v0 * coef)
-        )
-        pos_coef_list;
-      set tape 0
+      if v0 <> 0 then begin
+        List.iter
+          (fun (pos, coef) ->
+            let l = tape.ptr + pos in
+            validate_location tape l;
+            let v = tape.cells.(l) in
+            tape.cells.(l) <- modify_cell_value tape (v + v0 * coef)
+          )
+          pos_coef_list;
+        set tape 0
+      end
 
     let dump tape =
       let cols_n = 20 in
       let len =
         let len_v =
           (0 -- tape.ptr_max)
-          |> List.map
-            (fun i ->
-              geti_opt tape.cells i
-              |> Option.map (fun i -> String.length @@ string_of_int i)
-              |> Option.value ~default:0)
-          |> List.fold_left max 3
+            |> List.map
+              (fun i ->
+                tape.cells.(i)
+                  |> string_of_int
+                  |> String.length )
+            |> List.fold_left max 3
         in
         let len_p = tape.ptr_max |> string_of_int |> String.length in
         max len_v len_p
@@ -218,16 +222,16 @@ module Exe = struct
         (* 値の出力 *)
         (i_left -- i_right) |> List.iter (fun i ->
           print_string "|";
-          match geti_opt tape.cells i with
-          | None -> print_string @@ String.repeat " " len
-          | Some v -> printf "%*d" len v
+          printf "%*d" len tape.cells.(i)
         );
         printf "|\n";
         if i_right < tape.ptr_max then
           loop (i_right + 1)
       in
       loop 0;
-      flush stdout;
+      flush stdout
+
+    let geti tape i = tape.cells.(i)
   end
 
   let run ~printer ~input ~cell_type executable =
