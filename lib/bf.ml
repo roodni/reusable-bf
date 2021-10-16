@@ -186,6 +186,7 @@ module Exe = struct
           (fun (pos, coef) ->
             let l = tape.ptr + pos in
             validate_location tape l;
+            if tape.ptr_max < l then tape.ptr_max <- l;
             let v = tape.cells.(l) in
             tape.cells.(l) <- modify_cell_value tape (v + v0 * coef)
           )

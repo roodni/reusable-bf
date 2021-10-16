@@ -7,18 +7,20 @@ type case = {
   input: string;
   output: string;
   is_ok: bool;
+  ptr_max: int;
 }
 
-let test_run { name; program; input; output; is_ok } =
+let test_run { name; program; input; output; is_ok; ptr_max } =
   name >:: fun _ ->
-    let res, _, output_actual =
+    let res, tape, output_actual =
       Exe.run_string
         ~cell_type:Overflow256
         ~input:(Stream.of_string input)
         (Exe.from_code program)
     in
-    assert_bool "err" (is_ok = Result.is_ok res);
-    assert_equal ~printer:Fun.id output output_actual
+    assert_equal ~printer:string_of_bool is_ok (Result.is_ok res);
+    assert_equal ~printer:Fun.id output output_actual;
+    assert_equal ~printer:string_of_int ptr_max tape.ptr_max
 
 let cases = [
   {
@@ -65,28 +67,48 @@ let cases = [
     ];
     input = "How are you?\nI'm fine, thank you.# hoge";
     output = "How are you?\nI'm fine, thank you.#";
-    is_ok = true
+    is_ok = true;
+    ptr_max = 4;
   };
   {
     name = "overflow";
     program = [ Add (-1) ];
     input = "";
     output = "";
-    is_ok = false
+    is_ok = false;
+    ptr_max = 0;
   };
   {
     name = "end of input";
     program = [ Add 1; Loop [ Get; Put ] ];
     input = "abc";
     output = "abc";
-    is_ok = false
+    is_ok = false;
+    ptr_max = 0;
   };
   {
     name = "pointer out of range";
     program = [ Shift (-1) ];
     input = "";
     output = "";
-    is_ok = false
+    is_ok = false;
+    ptr_max = 0;
+  };
+  {
+    name = "skipped move_loop";
+    program = [ Loop [ Add (-1); Shift (-1); Add 1; Shift 1; ] ];
+    input = "";
+    output = "";
+    is_ok = true;
+    ptr_max = 0;
+  };
+  {
+    name = "ptr_max move_loop";
+    program = [ Add 1; Loop [ Shift 1; Add 1; Shift (-1); Add (-1); ] ];
+    input = "";
+    output = "";
+    is_ok = true;
+    ptr_max = 1;
   }
 ]
 
