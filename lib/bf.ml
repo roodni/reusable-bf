@@ -172,13 +172,15 @@ module Exe = struct
     let get tape = tape.cells.(tape.ptr)
 
     let shift_loop tape n =
-      while get tape <> 0 do
-        shift tape n
-      done
+      while tape.cells.(tape.ptr) <> 0 do
+        tape.ptr <- tape.ptr + n
+      done;
+      if tape.ptr_max < tape.ptr then tape.ptr_max <- tape.ptr
 
     let move_loop tape pos_coef_list =
-      let v0 = get tape in
+      let v0 = tape.cells.(tape.ptr) in
       if v0 <> 0 then begin
+        tape.cells.(tape.ptr) <- 0;
         List.iter
           (fun (pos, coef) ->
             let l = tape.ptr + pos in
@@ -186,8 +188,7 @@ module Exe = struct
             let v = tape.cells.(l) in
             tape.cells.(l) <- modify_cell_value tape (v + v0 * coef)
           )
-          pos_coef_list;
-        set tape 0
+          pos_coef_list
       end
 
     let dump tape =
