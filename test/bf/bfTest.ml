@@ -88,7 +88,7 @@ let cases = [
   };
   {
     name = "pointer out of range";
-    program = [ Shift (-1) ];
+    program = [ Shift (-1); Add 1 ];
     input = "";
     output = "";
     is_ok = false;

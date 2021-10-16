@@ -152,15 +152,12 @@ module Exe = struct
         cell_type;
       }
 
-    let validate_location tape l =
-      if l < 0 || Array.length tape.cells <= l then
-        raise (Err "Pointer out of range")
+    exception PointerOutOfRange = Invalid_argument
 
     let shift tape n =
       let p = tape.ptr + n in
-      validate_location tape p;
-      tape.ptr <- p;
-      if tape.ptr_max < p then tape.ptr_max <- p
+      if tape.ptr_max < p then tape.ptr_max <- p;
+      tape.ptr <- p
 
     let modify_cell_value tape v =
       match tape.cell_type with
@@ -185,7 +182,6 @@ module Exe = struct
         List.iter
           (fun (pos, coef) ->
             let l = tape.ptr + pos in
-            validate_location tape l;
             if tape.ptr_max < l then tape.ptr_max <- l;
             let v = tape.cells.(l) in
             tape.cells.(l) <- modify_cell_value tape (v + v0 * coef)
@@ -278,6 +274,7 @@ module Exe = struct
     let res =
       try loop executable; Ok () with
       | Err msg -> Error msg
+      | Tape.PointerOutOfRange _ -> Error "Pointer out of range"
     in
     (res, tape)
 
