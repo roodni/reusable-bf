@@ -99,7 +99,6 @@ module Exe = struct
     | Loop of t
     | ShiftLoop of int
     | MoveLoop of (int * int) list
-    | Del
 
   let rec from_code code =
     let move_loop_body code =
@@ -129,7 +128,7 @@ module Exe = struct
         | Code.Loop [ Shift n ] -> ShiftLoop n
         | Code.Loop l -> begin
             match move_loop_body l with
-            | Some [] -> Del
+            (* match None with *)
             | Some mlb -> MoveLoop mlb
             | None -> Loop (from_code l)
           end
@@ -256,9 +255,9 @@ module Exe = struct
                 let v = Tape.get tape in
                 printer (char_of_int v)
             | Get ->
-                let c =
-                  try Stream.next input with
-                  | Stream.Failure -> raise (Err "End of input")
+                let c = match input () with
+                  | Some c -> c
+                  | None -> raise (Err "End of input")
                 in
                 Tape.set tape (int_of_char c)
             | Shift n ->
@@ -269,7 +268,6 @@ module Exe = struct
                 done
             | ShiftLoop n -> Tape.shift_loop tape n
             | MoveLoop mlb -> Tape.move_loop tape mlb
-            | Del -> Tape.set tape 0
           in
           loop cmds
         end
@@ -282,12 +280,22 @@ module Exe = struct
     (res, tape)
 
   let run_stdio ~cell_type executable =
+    let flushed = ref true in
     run
       ~printer:(fun c ->
           print_char c;
-          if c = '\n' then flush stdout
+          if c = '\n'
+            then (flush stdout; flushed := true)
+            else flushed := false
         )
-      ~input:(Stream.of_channel stdin)
+      ~input:(fun () ->
+          if not !flushed then begin
+            flush stdout;
+            flushed := true
+          end;
+          try Some (input_char stdin) with
+          | End_of_file -> None
+        )
       ~cell_type
       executable
 
@@ -296,7 +304,11 @@ module Exe = struct
     let res, tape =
       run
         ~printer:(Buffer.add_char buf)
-        ~input ~cell_type
+        ~input:(fun () ->
+            try Some (Stream.next input) with
+            | Stream.Failure -> None
+          )
+        ~cell_type
         executable
     in
     (res, tape, Buffer.contents buf)
