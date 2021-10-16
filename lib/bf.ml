@@ -192,6 +192,9 @@ module Exe = struct
           pos_coef_list
       end
 
+    let del tape =
+      tape.cells.(tape.ptr) <- 0
+
     let dump tape =
       let cols_n = 20 in
       let len =
@@ -269,7 +272,7 @@ module Exe = struct
                 done
             | ShiftLoop n -> Tape.shift_loop tape n
             | MoveLoop mlb -> Tape.move_loop tape mlb
-            | Del -> Tape.set tape 0
+            | Del -> Tape.del tape
           in
           loop cmds
         end
