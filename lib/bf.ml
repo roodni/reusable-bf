@@ -99,6 +99,7 @@ module Exe = struct
     | Loop of t
     | ShiftLoop of int
     | MoveLoop of (int * int) list
+    | Del
 
   let rec from_code code =
     let move_loop_body code =
@@ -128,7 +129,7 @@ module Exe = struct
         | Code.Loop [ Shift n ] -> ShiftLoop n
         | Code.Loop l -> begin
             match move_loop_body l with
-            (* match None with *)
+            | Some [] -> Del
             | Some mlb -> MoveLoop mlb
             | None -> Loop (from_code l)
           end
@@ -268,6 +269,7 @@ module Exe = struct
                 done
             | ShiftLoop n -> Tape.shift_loop tape n
             | MoveLoop mlb -> Tape.move_loop tape mlb
+            | Del -> Tape.set tape 0
           in
           loop cmds
         end
