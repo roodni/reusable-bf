@@ -209,14 +209,17 @@ module Exe = struct
       let v0 = tape.cells.(tape.ptr) in
       if v0 <> 0 then begin
         tape.cells.(tape.ptr) <- 0;
-        List.iter
-          (fun (pos, coef) ->
-            let l = tape.ptr + pos in
-            if tape.ptr_max < l then tape.ptr_max <- l;
-            let v = tape.cells.(l) in
-            tape.cells.(l) <- modify_cell_value tape (v + v0 * coef)
-          )
-          pos_coef_list
+        (* List.iter は遅い *)
+        let rec loop = function
+          | [] -> ()
+          | (pos, coef) :: rest ->
+              let l = tape.ptr + pos in
+              if tape.ptr_max < l then tape.ptr_max <- l;
+              let v = tape.cells.(l) in
+              tape.cells.(l) <- modify_cell_value tape (v + v0 * coef);
+              loop rest
+        in
+        loop pos_coef_list
       end
 
     let del tape =
