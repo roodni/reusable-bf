@@ -96,12 +96,13 @@ module Exe = struct
     | Put
     | Get
     | Shift of int
-    | Loop of t
+    | While of t ref
+    | Wend of t ref
     | ShiftLoop of int
     | MoveLoop of (int * int) list
     | Del
 
-  let rec from_code code =
+  let from_code code =
     let move_loop_body code =
       let tbl : (int, int) Hashtbl.t = Hashtbl.create 3 in
       let pos = ref 0 in
@@ -120,21 +121,47 @@ module Exe = struct
         Hashtbl.to_seq tbl |> List.of_seq |> Option.some
       with Exit -> None
     in
-    List.map
-      (function
-        | Code.Add n -> Add n
-        | Code.Put -> Put
-        | Code.Get -> Get
-        | Code.Shift n -> Shift n
-        | Code.Loop [ Shift n ] -> ShiftLoop n
-        | Code.Loop l -> begin
-            match move_loop_body l with
-            | Some [] -> Del
-            | Some mlb -> MoveLoop mlb
-            | None -> Loop (from_code l)
-          end
-      )
-      code
+    let rec rev_convert exe_rev = function
+      | [] -> exe_rev
+      | cmd :: cmds ->
+          let exe_rev =
+            match cmd with
+            | Code.Add n when n = 0 -> exe_rev
+            | Code.Add n -> Add n :: exe_rev
+            | Code.Put -> Put :: exe_rev
+            | Code.Get -> Get :: exe_rev
+            | Code.Shift n when n = 0 -> exe_rev
+            | Code.Shift n -> Shift n :: exe_rev
+            | Code.Loop [ Shift n ] -> ShiftLoop n :: exe_rev
+            | Code.Loop l -> begin
+                match move_loop_body l with
+                | Some [] -> Del :: exe_rev
+                | Some mlb -> MoveLoop mlb :: exe_rev
+                | None ->
+                    let er = While (ref exe_rev) :: exe_rev in (* refはダミー *)
+                    Wend (ref exe_rev) :: rev_convert er l
+              end
+          in
+          rev_convert exe_rev cmds
+    in
+    let exe_rev = rev_convert [] code in
+    let rec rev_construct exe wend_stack = function
+      | [] -> assert (wend_stack = []); exe
+      | cmd :: exe_rev -> begin
+          let wend_stack =
+            match cmd, wend_stack with
+            | Wend ref_exe_wend, _ -> (ref_exe_wend, exe) :: wend_stack
+            | While ref_exe_while, (ref_exe_wend, exe_after_wend) :: wend_stack ->
+                ref_exe_while := exe_after_wend;
+                ref_exe_wend := exe;
+                wend_stack
+            | While _, [] -> assert false
+            | _ -> wend_stack
+          in
+          rev_construct (cmd :: exe) wend_stack exe_rev
+        end
+    in
+    rev_construct [] [] exe_rev
 
   exception Err of string
 
@@ -249,36 +276,44 @@ module Exe = struct
   let run ~printer ~input ~cell_type executable =
     let tape = Tape.init cell_type in
     let rec loop = function
-      | [] -> ()
+      | [] -> Ok ()
       | cmd :: cmds -> begin
-          let () = match cmd with
-            | Add n ->
-                let v = Tape.get tape in
-                Tape.set tape (v + n)
-            | Put ->
-                let v = Tape.get tape in
-                printer (char_of_int v)
-            | Get ->
-                let c = match input () with
-                  | Some c -> c
-                  | None -> raise (Err "End of input")
-                in
-                Tape.set tape (int_of_char c)
-            | Shift n ->
-                Tape.shift tape n
-            | Loop l ->
-                while Tape.get tape <> 0 do
-                  loop l
-                done
-            | ShiftLoop n -> Tape.shift_loop tape n
-            | MoveLoop mlb -> Tape.move_loop tape mlb
-            | Del -> Tape.del tape
-          in
-          loop cmds
+          match cmd with
+          | Add n ->
+              let v = Tape.get tape in
+              Tape.set tape (v + n);
+              loop cmds
+          | Put ->
+              let v = Tape.get tape in
+              printer (char_of_int v);
+              loop cmds
+          | Get ->
+              let c = match input () with
+                | Some c -> c
+                | None -> raise (Err "End of input")
+              in
+              Tape.set tape (int_of_char c);
+              loop cmds
+          | Shift n ->
+              Tape.shift tape n;
+              loop cmds
+          | While ref_exe ->
+              if Tape.get tape = 0 then loop !ref_exe else loop cmds
+          | Wend ref_exe ->
+              if Tape.get tape <> 0 then loop !ref_exe else loop cmds
+          | ShiftLoop n ->
+              Tape.shift_loop tape n;
+              loop cmds
+          | MoveLoop mlb ->
+              Tape.move_loop tape mlb;
+              loop cmds
+          | Del ->
+              Tape.del tape;
+              loop cmds
         end
     in
     let res =
-      try loop executable; Ok () with
+      try loop executable with
       | Err msg -> Error msg
       | Tape.PointerOutOfRange _ -> Error "Pointer out of range"
     in
