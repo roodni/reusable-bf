@@ -10,26 +10,29 @@ module Code = struct
     | Shift of int
     | Loop of t
 
-  let rec to_string program =
-    program
-    |> List.map (function
-      | Add n ->
-          if n > 0 then
-            String.repeat "+" n
-          else if n < 0 then
-            String.repeat "-" (-n)
-          else ""
-      | Put -> "."
-      | Get -> ","
-      | Shift n ->
-          if n > 0 then
-            String.repeat ">" n
-          else if n < 0 then
-            String.repeat "<" (-n)
-          else ""
-      | Loop cmds -> "[" ^ to_string cmds ^ "]"
-    )
-    |> String.concat ""
+  let to_string code =
+    let buf = Buffer.create 10000 in
+    let rec loop code =
+      List.iter
+        (function
+          | Add n ->
+              let c = if n < 0 then '-' else '+' in
+              (1 -- abs n) |> List.iter (fun _ -> Buffer.add_char buf c)
+          | Put -> Buffer.add_char buf '.'
+          | Get -> Buffer.add_char buf ','
+          | Shift n ->
+              let c = if n < 0 then '<' else '>' in
+              (1 -- abs n) |> List.iter (fun _ -> Buffer.add_char buf c)
+          | Loop l ->
+              Buffer.add_char buf '[';
+              loop l;
+              Buffer.add_char buf ']'
+        )
+        code
+    in
+    loop code;
+    Buffer.contents buf
+  ;;
 
   exception ParseError
 
