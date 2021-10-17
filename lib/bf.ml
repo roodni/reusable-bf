@@ -242,47 +242,48 @@ module Exe = struct
       if !mut_p_max < p_new then mut_p_max := p_new
     in
 
-    let rec loop p exe =
-      match exe with
+    let rec loop = function
       | [] -> Ok ()
       | cmd :: cmds -> begin
           match cmd with
           | Add n ->
+              let p = !mut_p in
               tape.(p) <- modify_cell_value (tape.(p) + n);
-              loop p cmds
+              loop cmds
           | Put ->
-              let v = tape.(p) in
+              let v = tape.(!mut_p) in
               printer (char_of_int v);
-              loop p cmds
+              loop cmds
           | Get ->
               let v = match input () with
                 | Some c -> int_of_char c
                 | None -> raise (Err "End of input")
               in
-              tape.(p) <- modify_cell_value v;
-              loop p cmds
+              tape.(!mut_p) <- modify_cell_value v;
+              loop cmds
           | Shift n ->
-              let p = p + n in
+              let p = !mut_p + n in
               mut_p := p;
               update_p_max p;
-              loop p cmds
+              loop cmds
           | While ref_exe ->
-              if tape.(p) = 0
-                then loop p !ref_exe
-                else loop p cmds
+              if tape.(!mut_p) = 0
+                then loop !ref_exe
+                else loop cmds
           | Wend ref_exe ->
-              if tape.(p) = 0
-                then loop p cmds
-                else loop p !ref_exe
+              if tape.(!mut_p) = 0
+                then loop cmds
+                else loop !ref_exe
           | ShiftLoop n ->
               let rec shift_loop l =
                 if tape.(l) = 0 then l else shift_loop (l + n)
               in
-              let p = shift_loop p in
+              let p = shift_loop !mut_p in
               mut_p := p;
               update_p_max p;
-              loop p cmds
+              loop cmds
           | MoveLoop mlb ->
+              let p = !mut_p in
               let v0 = tape.(p) in
               if v0 <> 0 then begin
                 tape.(p) <- 0;
@@ -297,16 +298,16 @@ module Exe = struct
                 in
                 let p_max = move_loop !mut_p_max mlb in
                 update_p_max p_max;
-                loop p cmds
+                loop cmds
               end else
-                loop p cmds
+                loop cmds
           | Del ->
-              tape.(p) <- 0;
-              loop p cmds
+              tape.(!mut_p) <- 0;
+              loop cmds
         end
     in
     let res =
-      try loop !mut_p executable with
+      try loop executable with
       | Err msg -> Error msg
       | Invalid_argument  _ -> Error "Pointer out of range"
     in
