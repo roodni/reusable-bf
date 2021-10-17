@@ -16,7 +16,7 @@ let test_run {name; dfn; cmd_list; io_list} =
     let layout = Layout.of_dfn dfn in
     let bf = codegen layout cmd_list in
     io_list |> List.iter (fun (ipt, opt) ->
-      let res, tape, opt_act =
+      let res, dump, opt_act =
         Bf.Exe.run_string
           ~input:(Stream.of_string ipt)
           ~cell_type:Bf.Overflow256
@@ -26,7 +26,7 @@ let test_run {name; dfn; cmd_list; io_list} =
       | Ok () -> assert_equal ~printer:(fun s -> s) opt opt_act
       | Error msg ->
           print_endline @@ Bf.Code.to_string bf;
-          Bf.Exe.Tape.dump tape;
+          Bf.Exe.Dump.dump dump;
           assert_bool msg false
     )
   )

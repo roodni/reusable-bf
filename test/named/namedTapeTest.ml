@@ -38,7 +38,7 @@ let expected = [0; 0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
     let bf = codegen layout program in
-    let _, tape, _ =
+    let _, dump, _ =
       Bf.Exe.run_string
         ~cell_type:Bf.Overflow256
         ~input:(Stream.of_string "")
@@ -46,12 +46,12 @@ let test = "shift" >:: (fun _ ->
     in
     let ptr_max = List.length expected - 1 in
     let actual =
-      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Tape.geti tape i)
+      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Dump.geti dump i)
     in
     assert_equal
       ~printer:(fun l -> l |> List.map string_of_int |> String.concat ";")
       expected actual;
-    assert_equal ~printer:string_of_int ptr_max tape.ptr_max
+    assert_equal ~printer:string_of_int ptr_max dump.p_max
   )
 
 let () = run_test_tt_main test

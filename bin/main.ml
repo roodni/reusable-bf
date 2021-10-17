@@ -42,14 +42,14 @@ let () =
   end;
 
   if !flag_run || !flag_bf then begin
-    let res, tape =
+    let res, dump =
       Bf.Exe.run_stdio
         ~cell_type:WrapAround256
         (Bf.Exe.from_code bf_code)
     in
     if !flag_verbose then begin
       print_newline ();
-      Bf.Exe.Tape.dump tape;
+      Bf.Exe.Dump.dump dump;
     end else begin
       match res with
       | Ok () -> ()

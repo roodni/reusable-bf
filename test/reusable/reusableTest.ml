@@ -11,7 +11,7 @@ let test_run ReusableCases.{ name; filename; io_list; } =
     let layout = Named.Layout.of_dfn dfn in
     let bf_code = Named.codegen layout cmd_list in
     io_list |> List.iter (fun (ipt, opt) ->
-      let res, tape, opt_act =
+      let res, dump, opt_act =
         Bf.Exe.run_string
           ~input:(Stream.of_string ipt)
           ~cell_type:Bf.Overflow256
@@ -36,7 +36,7 @@ let test_run ReusableCases.{ name; filename; io_list; } =
       end;
       if !failed then begin
         print_newline ();
-        Bf.Exe.Tape.dump tape;
+        Bf.Exe.Dump.dump dump;
         assert_bool "fail" false
       end
     )

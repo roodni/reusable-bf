@@ -12,7 +12,7 @@ type case = {
 
 let test_run { name; program; input; output; is_ok; ptr_max } =
   name >:: fun _ ->
-    let res, tape, output_actual =
+    let res, dump, output_actual =
       Exe.run_string
         ~cell_type:Overflow256
         ~input:(Stream.of_string input)
@@ -20,7 +20,7 @@ let test_run { name; program; input; output; is_ok; ptr_max } =
     in
     assert_equal ~printer:string_of_bool is_ok (Result.is_ok res);
     assert_equal ~printer:Fun.id output output_actual;
-    assert_equal ~printer:string_of_int ptr_max tape.ptr_max
+    assert_equal ~printer:string_of_int ptr_max dump.p_max
 
 let cases = [
   {

@@ -163,90 +163,33 @@ module Exe = struct
     in
     rev_construct [] [] exe_rev
 
-  exception Err of string
 
-  module Tape = struct
-    type t =
-      { mutable ptr: int;
-        mutable ptr_max: int;
-        cells: int Array.t;
-        cell_type: cell_type;
-      }
+  module Dump = struct
+    type t = {
+      p: int;
+      p_max: int;
+      cells: int Array.t;
+    }
 
-    let init cell_type =
-      { ptr = 0;
-        ptr_max = 0;
-        cells = Array.make 100000 0;
-        cell_type;
-      }
-
-    exception PointerOutOfRange = Invalid_argument
-
-    let update_ptr_max tape l =
-      if tape.ptr_max < l then tape.ptr_max <- l
-
-    let exe_shift tape n =
-      let p = tape.ptr + n in
-      update_ptr_max tape p;
-      tape.ptr <- p
-
-    let modify_cell_value tape v =
-      match tape.cell_type with
-        | WrapAround256 -> v land 255
-        | Overflow256 when 0 <= v && v < 256 -> v
-        | Overflow256 -> raise (Err "Overflow")
-        | OCamlInt -> v
-
-    let set tape n =
-      tape.cells.(tape.ptr) <- modify_cell_value tape n
-
-    let get tape = tape.cells.(tape.ptr)
-
-    let exe_shift_loop tape n =
-      while tape.cells.(tape.ptr) <> 0 do
-        tape.ptr <- tape.ptr + n
-      done;
-      update_ptr_max tape tape.ptr
-
-    let exe_move_loop tape pos_coef_list =
-      let v0 = tape.cells.(tape.ptr) in
-      if v0 <> 0 then begin
-        tape.cells.(tape.ptr) <- 0;
-        (* List.iter は遅い *)
-        let rec loop = function
-          | [] -> ()
-          | (pos, coef) :: rest ->
-              let l = tape.ptr + pos in
-              if tape.ptr_max < l then tape.ptr_max <- l;
-              let v = tape.cells.(l) in
-              tape.cells.(l) <- modify_cell_value tape (v + v0 * coef);
-              loop rest
-        in
-        loop pos_coef_list
-      end
-
-    let exe_del tape =
-      tape.cells.(tape.ptr) <- 0
-
-    let dump tape =
+    let dump d =
       let cols_n = 20 in
       let len =
         let len_v =
-          (0 -- tape.ptr_max)
+          (0 -- d.p_max)
             |> List.map
               (fun i ->
-                tape.cells.(i)
+                d.cells.(i)
                   |> string_of_int
                   |> String.length )
             |> List.fold_left max 3
         in
-        let len_p = tape.ptr_max |> string_of_int |> String.length in
+        let len_p = d.p_max |> string_of_int |> String.length in
         max len_v len_p
       in
       let rec loop i_left =
-        let i_right = min tape.ptr_max (i_left + cols_n - 1) in
+        let i_right = min d.p_max (i_left + cols_n - 1) in
         let is_ptr_disp i =
-          i = i_left || i = i_right || i mod 5 = 0 || i = tape.ptr
+          i = i_left || i = i_right || i mod 5 = 0 || i = d.p
         in
         (* インデックスの出力 *)
         let emph_l, emph_r = '{', '}' in
@@ -256,21 +199,21 @@ module Exe = struct
             else String.repeat " " len
           in
           let partition_left =
-            if i = tape.ptr then emph_l
-            else if i = tape.ptr + 1 then emph_r
+            if i = d.p then emph_l
+            else if i = d.p + 1 then emph_r
             else ' '
           in
           printf "%c%s" partition_left s_of_i
         );
-        if i_right = tape.ptr then printf "%c\n" emph_r
+        if i_right = d.p then printf "%c\n" emph_r
         else printf " \n";
         (* 値の出力 *)
         (i_left -- i_right) |> List.iter (fun i ->
           print_string "|";
-          printf "%*d" len tape.cells.(i)
+          printf "%*d" len d.cells.(i)
         );
         printf "|\n";
-        if i_right < tape.ptr_max then
+        if i_right < d.p_max then
           loop (i_right + 1)
       in
       loop 0;
@@ -279,51 +222,96 @@ module Exe = struct
     let geti tape i = tape.cells.(i)
   end
 
+  exception Err of string
+
   let run ~printer ~input ~cell_type executable =
-    let tape = Tape.init cell_type in
-    let rec loop = function
+    let tape_size = 100000 in
+    let tape = Array.make tape_size 0 in
+    let mut_p = ref 0 in
+    let mut_p_max = ref 0 in
+
+    let modify_cell_value v =
+      match cell_type with
+        | WrapAround256 -> v land 255
+        | Overflow256 when 0 <= v && v < 256 -> v
+        | Overflow256 -> raise (Err "Overflow")
+        | OCamlInt -> v
+    in
+
+    let update_p_max p_new =
+      if !mut_p_max < p_new then mut_p_max := p_new
+    in
+
+    let rec loop p exe =
+      match exe with
       | [] -> Ok ()
       | cmd :: cmds -> begin
           match cmd with
           | Add n ->
-              let v = Tape.get tape in
-              Tape.set tape (v + n);
-              loop cmds
+              tape.(p) <- modify_cell_value (tape.(p) + n);
+              loop p cmds
           | Put ->
-              let v = Tape.get tape in
+              let v = tape.(p) in
               printer (char_of_int v);
-              loop cmds
+              loop p cmds
           | Get ->
-              let c = match input () with
-                | Some c -> c
+              let v = match input () with
+                | Some c -> int_of_char c
                 | None -> raise (Err "End of input")
               in
-              Tape.set tape (int_of_char c);
-              loop cmds
+              tape.(p) <- modify_cell_value v;
+              loop p cmds
           | Shift n ->
-              Tape.exe_shift tape n;
-              loop cmds
+              let p = p + n in
+              mut_p := p;
+              update_p_max p;
+              loop p cmds
           | While ref_exe ->
-              if Tape.get tape = 0 then loop !ref_exe else loop cmds
+              if tape.(p) = 0
+                then loop p !ref_exe
+                else loop p cmds
           | Wend ref_exe ->
-              if Tape.get tape <> 0 then loop !ref_exe else loop cmds
+              if tape.(p) = 0
+                then loop p cmds
+                else loop p !ref_exe
           | ShiftLoop n ->
-              Tape.exe_shift_loop tape n;
-              loop cmds
+              let rec shift_loop l =
+                if tape.(l) = 0 then l else shift_loop (l + n)
+              in
+              let p = shift_loop p in
+              mut_p := p;
+              update_p_max p;
+              loop p cmds
           | MoveLoop mlb ->
-              Tape.exe_move_loop tape mlb;
-              loop cmds
+              let v0 = tape.(p) in
+              if v0 <> 0 then begin
+                tape.(p) <- 0;
+                let rec move_loop l_max = function
+                  | [] -> l_max
+                  | (offset, coef) :: rest ->
+                      let l = p + offset in
+                      let l_max = if l_max < l then l else l_max in
+                      let v = tape.(l) in
+                      tape.(l) <- modify_cell_value (v + v0 * coef);
+                      move_loop l_max rest
+                in
+                let p_max = move_loop !mut_p_max mlb in
+                update_p_max p_max;
+                loop p cmds
+              end else
+                loop p cmds
           | Del ->
-              Tape.exe_del tape;
-              loop cmds
+              tape.(p) <- 0;
+              loop p cmds
         end
     in
     let res =
-      try loop executable with
+      try loop !mut_p executable with
       | Err msg -> Error msg
-      | Tape.PointerOutOfRange _ -> Error "Pointer out of range"
+      | Invalid_argument  _ -> Error "Pointer out of range"
     in
-    (res, tape)
+    (res, Dump.{ p = !mut_p; p_max = !mut_p_max; cells = tape; })
+  ;;
 
   let run_stdio ~cell_type executable =
     let flushed = ref true in
