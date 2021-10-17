@@ -182,9 +182,12 @@ module Exe = struct
 
     exception PointerOutOfRange = Invalid_argument
 
-    let shift tape n =
+    let update_ptr_max tape l =
+      if tape.ptr_max < l then tape.ptr_max <- l
+
+    let exe_shift tape n =
       let p = tape.ptr + n in
-      if tape.ptr_max < p then tape.ptr_max <- p;
+      update_ptr_max tape p;
       tape.ptr <- p
 
     let modify_cell_value tape v =
@@ -199,13 +202,13 @@ module Exe = struct
 
     let get tape = tape.cells.(tape.ptr)
 
-    let shift_loop tape n =
+    let exe_shift_loop tape n =
       while tape.cells.(tape.ptr) <> 0 do
         tape.ptr <- tape.ptr + n
       done;
-      if tape.ptr_max < tape.ptr then tape.ptr_max <- tape.ptr
+      update_ptr_max tape tape.ptr
 
-    let move_loop tape pos_coef_list =
+    let exe_move_loop tape pos_coef_list =
       let v0 = tape.cells.(tape.ptr) in
       if v0 <> 0 then begin
         tape.cells.(tape.ptr) <- 0;
@@ -222,7 +225,7 @@ module Exe = struct
         loop pos_coef_list
       end
 
-    let del tape =
+    let exe_del tape =
       tape.cells.(tape.ptr) <- 0
 
     let dump tape =
@@ -298,20 +301,20 @@ module Exe = struct
               Tape.set tape (int_of_char c);
               loop cmds
           | Shift n ->
-              Tape.shift tape n;
+              Tape.exe_shift tape n;
               loop cmds
           | While ref_exe ->
               if Tape.get tape = 0 then loop !ref_exe else loop cmds
           | Wend ref_exe ->
               if Tape.get tape <> 0 then loop !ref_exe else loop cmds
           | ShiftLoop n ->
-              Tape.shift_loop tape n;
+              Tape.exe_shift_loop tape n;
               loop cmds
           | MoveLoop mlb ->
-              Tape.move_loop tape mlb;
+              Tape.exe_move_loop tape mlb;
               loop cmds
           | Del ->
-              Tape.del tape;
+              Tape.exe_del tape;
               loop cmds
         end
     in
