@@ -1,4 +1,0 @@
-(test
- (name bfiTest)
- (libraries lib testLib batteries ounit2)
- (deps (source_tree %{project_root}/sample)))

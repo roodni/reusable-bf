@@ -1,0 +1,27 @@
+# ハローワールド
+
+# 不動点コンビネータ
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+# 文字列を引数にとり
+# 文字列を出力するブロック文を返す関数
+let gen_puts = fun l -> [
+  $alloc { c: cell; } in
+  *fix
+    (fun loop prev l ->
+      match l with
+      | nil -> []
+      | hd :: tl -> [
+          + c (hd - prev)
+          . c
+          *loop hd tl
+        ])
+    0 l
+]
+
+main {} [
+  # 展開文(*)でブロック文を展開する
+  *gen_puts "hello world\n"
+]

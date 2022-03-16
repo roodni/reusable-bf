@@ -1,6 +1,5 @@
 open OUnit2
 open Lib
-open TestLib
 
 let reusable_to_bf_code filename =
   let dirname = Filename.dirname filename in
@@ -10,12 +9,12 @@ let reusable_to_bf_code filename =
   Named.codegen layout code
 
 module BfI = struct
-  let filename = ReusableCases.filename_from_current "sample/bfi.bfr"
+  let filename = Testcase.filename_from_current "sample/bfi.bfr"
 
   let bf_exe = reusable_to_bf_code filename |> Bf.Exe.from_code
 end
 
-let test_run ReusableCases.{ name; filename; io_list; } =
+let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
     let bf_code = reusable_to_bf_code filename |> Bf.Code.to_string in
     io_list |> List.iter (fun (ipt, opt) ->
@@ -31,6 +30,6 @@ let test_run ReusableCases.{ name; filename; io_list; } =
     )
   )
 
-let test = "bfi" >::: List.map test_run ReusableCases.cases
+let test = "bfi" >::: List.map test_run Testcase.cases
 
 let () = run_test_tt_main test

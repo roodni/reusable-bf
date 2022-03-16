@@ -1,5 +1,5 @@
-import "./bfi_lib.bfr"
-import "./str.bfr"
+import "../../../sample/bfi_lib.bfr"
+import "../../../sample/hello.bfr"
 
 main { x: cell; } in
 , x

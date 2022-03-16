@@ -32,9 +32,9 @@ dune exec main -- -b file.b
 
 ## 実行例
 
-* `sample/rev.bfr`: 改行が入力されるまでの入力を逆順に出力するプログラム
+* `sample/hello.bfr`: ハローワールド
 ```
-dune exec main -- -r sample/rev.bfr
+dune exec main -- -r sample/hello.bfr
 ```
 
 * `sample/bfi.bfr`: brainfuckインタプリタ
@@ -42,15 +42,15 @@ dune exec main -- -r sample/rev.bfr
 ```
 mkdir _sandbox
 dune exec main -- sample/bfi.bfr > _sandbox/bfi.b
-dune exec main -- sample/rev.bfr > _sandbox/rev.txt
-echo '\rats' >> _sandbox/rev.txt
+dune exec main -- sample/hello.bfr > _sandbox/hello.b
+echo '\' >> _sandbox/hello.b
 
-# rev.txt を実行する
-dune exec main -- -b _sandbox/bfi.b < _sandbox/rev.txt
+# hello.b を実行する
+dune exec main -- -b _sandbox/bfi.b < _sandbox/hello.b
 
-# 自分自身を実行して rev.txt を入力に与える
-cp _sandbox/bfi.b _sandbox/bfi.txt
-echo '\' >> _sandbox/bfi.txt
-cat _sandbox/rev.txt >> _sandbox/bfi.txt
-dune exec main -- -b _sandbox/bfi.b < _sandbox/bfi.txt
+# 自分自身を実行して hello.b を入力に与える
+cp _sandbox/bfi.b _sandbox/input.txt
+echo '\' >> _sandbox/input.txt
+cat _sandbox/hello.b >> _sandbox/input.txt
+dune exec main -- -b _sandbox/bfi.b < _sandbox/input.txt
 ```

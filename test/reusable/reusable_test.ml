@@ -1,9 +1,7 @@
-open Batteries
 open OUnit2
 open Lib
-open TestLib
 
-let test_run ReusableCases.{ name; filename; io_list; } =
+let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
     let dirname = Filename.dirname filename in
     let program = Reusable.load_program filename in
@@ -44,6 +42,6 @@ let test_run ReusableCases.{ name; filename; io_list; } =
 
 
 
-let test = "reusable" >::: List.map test_run ReusableCases.cases
+let test = "reusable" >::: List.map test_run Testcase.cases
 
 let () = run_test_tt_main test

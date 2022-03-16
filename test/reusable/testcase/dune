@@ -1,4 +1,4 @@
 (library
- (name testLib)
+ (name testcase)
  (libraries batteries lib)
  (flags (:standard -warn-error -a)))

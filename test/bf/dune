@@ -1,3 +1,3 @@
 (tests
- (names bfTest parseTest)
- (libraries lib batteries ounit2))
+ (names bf_test parse_test)
+ (libraries lib ounit2))

@@ -1,4 +1,6 @@
-(test
- (name reusableTest)
- (libraries lib testLib batteries ounit2)
- (deps (source_tree %{project_root}/sample)))
+(tests
+ (names reusable_test bfi_test)
+ (libraries lib testcase ounit2)
+ (deps
+  (source_tree %{project_root}/test/reusable/code)
+  (source_tree %{project_root}/sample)))

@@ -28,47 +28,47 @@ let cases = [
   {
     name = "rev";
     io_list = [ ("hello\n", "olleh") ];
-		filename = filename_from_current "sample/rev.bfr";
+		filename = filename_from_current "test/reusable/code/rev.bfr";
   };
   {
     name = "rev2";
     io_list = [ ("hello\na", "olleh") ];
-    filename = filename_from_current "sample/rev2.bfr";
+    filename = filename_from_current "test/reusable/code/rev2.bfr";
   };
   {
     name = "echo";
     io_list = [ ("Hello, world!#test", "Hello, world!#") ];
-    filename = filename_from_current "sample/echo.bfr"
+    filename = filename_from_current "test/reusable/code/echo.bfr"
   };
   {
     name = "hygienic";
     io_list = [ ("", "O") ];
-    filename = filename_from_current "sample/hygienic.bfr";
+    filename = filename_from_current "test/reusable/code/hygienic.bfr";
   };
   {
     name = "rev3";
     io_list = [ ("hello\na", "olleh") ];
-    filename = filename_from_current "sample/rev3.bfr";
+    filename = filename_from_current "test/reusable/code/rev3.bfr";
   };
   {
     name = "prime";
     io_list = [ ("", "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 ")];
-    filename = filename_from_current "sample/prime.bfr";
+    filename = filename_from_current "test/reusable/code/prime.bfr";
   };
   {
     name = "switch_nat";
     io_list = [ ("0", "B"); ("1", "F"); ("2", "R"); ("3", "3"); ("7", "7") ];
-    filename = filename_from_current "sample/switch_nat.bfr";
+    filename = filename_from_current "test/reusable/code/switch_nat.bfr";
   };
   {
-    name = "str";
+    name = "hello";
     io_list = [ ("", "hello world\n") ];
-    filename = filename_from_current "sample/str.bfr";
+    filename = filename_from_current "sample/hello.bfr";
   };
   {
     name = "sort";
     io_list = [ ("", "34567") ];
-    filename = filename_from_current "sample/sort.bfr"
+    filename = filename_from_current "test/reusable/code/sort.bfr"
   };
   {
     name = "switch";
@@ -79,11 +79,11 @@ let cases = [
       (">", "SHR"); ("<", "SHL");
       ("a", "OTHER"); ("\n", "OTHER");
     ];
-    filename = filename_from_current "sample/switch.bfr"
+    filename = filename_from_current "test/reusable/code/switch.bfr"
   };
   {
     name = "import";
     io_list = [ ("", "BC123") ];
-    filename = filename_from_current "sample/import_a.bfr"
+    filename = filename_from_current "test/reusable/code/import_a.bfr"
   }
 ]

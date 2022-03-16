@@ -225,7 +225,7 @@ module Exe = struct
   exception Err of string
 
   let run ~printer ~input ~cell_type executable =
-    let tape_size = 100000 in
+    let tape_size = 300000 in
     let tape = Array.make tape_size 0 in
     let mut_p = ref 0 in
     let mut_p_max = ref 0 in
@@ -319,9 +319,10 @@ module Exe = struct
     run
       ~printer:(fun c ->
           print_char c;
-          if c = '\n'
+          flush stdout;
+          (* if c = '\n'
             then (flush stdout; flushed := true)
-            else flushed := false
+            else flushed := false *)
         )
       ~input:(fun () ->
           if not !flushed then begin
