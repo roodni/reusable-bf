@@ -9,8 +9,7 @@ let reusable_to_bf_code filename =
   Named.codegen layout code
 
 module BfI = struct
-  let filename = Testcase.filename_from_current "sample/bfi.bfr"
-
+  let filename = "../../sample/bfi.bfr"
   let bf_exe = reusable_to_bf_code filename |> Bf.Exe.from_code
 end
 
