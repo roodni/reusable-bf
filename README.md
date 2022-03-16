@@ -10,7 +10,7 @@ brainfuckにコンパイルされるプログラミング言語
 https://opam.ocaml.org/
 
 ```
-opam install dune menhir ounit2 fileutils batteries
+opam install dune menhir fileutils ounit2
 ```
 
 ## 実行

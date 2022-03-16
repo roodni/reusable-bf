@@ -18,37 +18,32 @@ module Sel = struct
     | None -> Base v
     | Some sel -> LstMem (sel, 0, v)
 
-  let rec to_dfn_key = function
-    | Base nv -> [ nv ]
-    | LstMem (sel, _, nv) -> (to_dfn_key sel) @ [ nv ]
-    | LstPtr (sel, _) -> to_dfn_key sel
-
   let rec to_nsel_or_nptr sel =
     let rec to_nsel_lst index child sel =
       match sel with
-      | Base nv -> Named.Sel.Lst (nv, index, child)
+      | Base nv ->  Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child }
       | LstMem (LstPtr (sel, p), i, nv) ->
-          let child = Named.Sel.Lst (nv, index, child) in
+          let child = Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
           to_nsel_lst_ptr p i child sel
       | LstMem (sel, i, nv) ->
-          let child = Named.Sel.Lst (nv, index, child) in
+          let child = Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
           to_nsel_lst i child sel
       | LstPtr _ -> assert false
     and to_nsel_lst_ptr ptr index child sel =
       match sel with
-      | Base nv -> Named.Sel.LstPtr (nv, ptr, index, child)
+      | Base nv ->  Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child }
       | LstMem (LstPtr (sel, p), i, nv) ->
-          let child = Named.Sel.LstPtr (nv, ptr, index, child) in
+          let child = Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
           to_nsel_lst_ptr p i child sel
       | LstMem (sel, i, nv) ->
-          let child = Named.Sel.LstPtr (nv, ptr, index, child) in
+          let child = Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
           to_nsel_lst i child sel
       | LstPtr _ -> assert false
     in
     match sel with
-    | Base nv -> NSel (Named.Sel.V nv)
-    | LstMem (LstPtr (sel, ptr), index, nv) -> NSel (to_nsel_lst_ptr ptr index (Named.Sel.V nv) sel)
-    | LstMem (sel, index, nv) -> NSel (to_nsel_lst index (Named.Sel.V nv) sel)
+    | Base nv -> NSel (Named.Sel.Member nv)
+    | LstMem (LstPtr (sel, ptr), index, nv) -> NSel (to_nsel_lst_ptr ptr index (Named.Sel.Member nv) sel)
+    | LstMem (sel, index, nv) -> NSel (to_nsel_lst index (Named.Sel.Member nv) sel)
     | LstPtr (sel, ptr) -> begin
         let nsel = to_nsel_or_nptr sel in
         match nsel with
@@ -91,9 +86,8 @@ module NVarEnv : sig
   val to_list : t -> (Var.t * binded) list
   val lookup : Var.t -> t -> binded option
 
-  (** [gen_using_field dfn parent field]
-      [parent]は[field]を展開する位置を[Named.Var.t]のlistで表す *)
-  val gen_using_field : Named.Dfn.t -> Named.Var.t list -> Field.t -> Named.Dfn.t * t
+  (** Fieldを読んでNamedのFieldを拡張してNVarEnvを作成する *)
+  val gen_using_field : Named.Field.main -> Named.Field.t -> Field.t -> t
 
 end = struct
   type t = (Var.t * binded) list
@@ -109,28 +103,34 @@ end = struct
   let to_list (t: t) = t
   let lookup (v: Var.t) (t: t) = List.assoc_opt v t
 
-  let rec gen_using_field (dfn: Named.Dfn.t) (parent: Named.Var.t list) (field: Field.t)
-      : Named.Dfn.t * t =
-    List.fold_left_map (fun dfn field_mem ->
-      let var, mtype = field_mem.v in
-      let nvar = Named.Var.gen_named (Var.to_string var) in
-      let key = parent @ [ nvar ] in
-      match mtype with
-      | Field.Cell ->
-          let dfn = Named.Dfn.extend key Named.Dfn.Cell dfn in
-          let env_elm = (var, withinfo field_mem.i (nvar, Cell)) in
-          (dfn, env_elm)
-      | Field.Index ->
-          let dfn = Named.Dfn.extend key Named.Dfn.Ptr dfn in
-          let env_elm = (var, withinfo field_mem.i (nvar, Index)) in
-          (dfn, env_elm)
-      | Field.Array { length; mem; } ->
-          let nlst = Named.Dfn.Lst { length; mem = Named.Dfn.empty; } in
-          let dfn = Named.Dfn.extend key nlst dfn in
-          let dfn, mem = gen_using_field dfn key mem in
-          let env_elm = (var, withinfo field_mem.i (nvar, Array { length; mem })) in
-          (dfn, env_elm)
-    ) dfn field
+  let rec gen_using_field (nmain: Named.Field.main) nfield field =
+    field |> List.fold_left
+      (fun env { i=info; v=(var, mtype) } ->
+        match mtype with
+        | Field.Cell ->
+            let nvar = Named.Var.gen_named (Var.to_string var) in
+            Named.Field.extend nfield nvar (Named.Field.Cell { ifable=false });
+            (var, withinfo info (nvar, Cell)) :: env
+        | Field.Index ->
+            let nvar = Named.Var.gen_named (Var.to_string var) in
+            Named.Field.extend nfield nvar Named.Field.Index;
+            (var, withinfo info (nvar, Index)) :: env
+        | Field.Array { length=Some length; mem } ->
+            let nvar = Named.Var.gen_named (Var.to_string var) in
+            let nmembers = Named.Field.empty () in
+            let narray = Named.Field.Array { length; members=nmembers } in
+            Named.Field.extend nfield nvar narray;
+            let env_members = gen_using_field nmain nmembers mem in
+            (var, withinfo info (nvar, Array { length=Some length; mem=env_members })) :: env
+        | Field.Array { length=None; mem } ->
+            assert (nfield == nmain.finite); (* 本当はassertではダメ *)
+            let env_members = gen_using_field nmain nmain.infarray mem in
+            (var,
+              withinfo
+                info
+                (Named.Var.infarray, Array { length=None; mem=env_members })
+            ) :: env
+      ) []
 
 end
 
@@ -469,17 +469,18 @@ type codegen_ctx = {
   diving_vars: (Sel.t * NVarEnv.t) list
 }
 
-let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t list =
+let codegen (eval_envs : eval_envs) (main: main) : Named.Field.main * Named.Code.t =
   let open Value in
   let field, st_list = main in
-  let dfn, nvar_env = NVarEnv.gen_using_field Named.Dfn.empty [] field in
+  let nmain = Named.Field.empty_main () in
+  let nvar_env = NVarEnv.gen_using_field nmain nmain.finite field in
   let va_env_main = env_extend_with_nvar_env None nvar_env eval_envs.va_env in
   let eval_envs = { eval_envs with va_env = va_env_main } in
-  let ctx = { eval_envs; diving = None; diving_vars = [] } in
-  let rec codegen ctx states st_list =
+  let ctx = { eval_envs; diving=None; diving_vars=[] } in
+  let rec codegen (ctx: codegen_ctx) (st_list: stmt list) =
     let { eval_envs; diving; diving_vars } = ctx in
-    let states, code_list =
-      List.fold_left_map (fun dfn stmt ->
+    let (), code_list =
+      List.fold_left_map (fun () stmt ->
         let { i = info; v = stmt } = stmt in
         match stmt with
         | StAdd (sign, ex_sel, ex_i_opt) -> begin
@@ -489,45 +490,46 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
               | None -> 1
               | Some ex_i -> eval eval_envs ex_i |>  to_int ex_i.i
             in
-            let code = [ Named.Cmd.Add (i * sign, nsel) ] in
-            (dfn, code)
+            let code = [ Named.Code.Add (i * sign, nsel) ] in
+            ((), code)
           end
         | StPut ex_sel ->
             let nsel = eval eval_envs ex_sel |> to_nsel ex_sel.i in
-            let code = [ Named.Cmd.Put nsel ] in
-            (dfn, code)
+            let code = [ Named.Code.Put nsel ] in
+            ((), code)
         | StGet ex_sel ->
             let nsel = eval eval_envs ex_sel |> to_nsel ex_sel.i in
-            let code = [ Named.Cmd.Get nsel ] in
-            (dfn, code)
+            let code = [ Named.Code.Get nsel ] in
+            ((), code)
         | StWhile (ex_sel, st_list) -> begin
             match eval eval_envs ex_sel |> to_nsel_or_nptr ex_sel.i with
             | Sel.NSel nsel ->
-                let states, code_loop = codegen ctx dfn st_list in
-                let code = [ Named.Cmd.Loop (nsel, code_loop) ] in
-                (states, code)
+                let (), code_loop = codegen ctx st_list in
+                let code = [ Named.Code.Loop (nsel, code_loop) ] in
+                ((), code)
             | Sel.NPtr (nsel, ptr) ->
-                let states, code_loop = codegen ctx dfn st_list in
-                let code = [ Named.Cmd.LoopPtr (nsel, ptr, code_loop) ] in
-                (states, code)
+                let (), code_loop = codegen ctx st_list in
+                let code = [ Named.Code.LoopPtr (nsel, ptr, code_loop) ] in
+                ((), code)
           end
         | StIf (ex_sel, st_list_then, st_list_else) ->
             let nsel = eval eval_envs ex_sel |> to_nsel ex_sel.i in
-            let dfn_key = Named.Sel.to_dfn_key nsel in
-            let dfn =
-              match Named.Dfn.lookup dfn_key dfn with
-              | None -> assert false (* evalが成功するセレクタ式ならば登録されているはず *)
-              | Some Named.Dfn.CellIfable -> dfn
-              | Some Cell ->  Named.Dfn.extend dfn_key Named.Dfn.CellIfable dfn
-              | Some (Lst _ | Ptr) -> error_at ex_sel.i "selector(cell) expected"
+            let nmtype = Named.Sel.find_field nmain nsel in
+            let () =
+              match nmtype with
+              | Named.Field.Cell cell ->
+                  cell.ifable <- true
+              | _ ->
+                  (* Named.Field.mtype のパターンマッチでエラーを報告するのは良くない *)
+                  error_at ex_sel.i "selector(cell) expected"
             in
-            let dfn, code_then = codegen ctx dfn st_list_then in
-            let dfn, code_else = match st_list_else with
-              | None -> (dfn, [])
-              | Some st_list_else -> codegen ctx dfn st_list_else
+            let (), code_then = codegen ctx st_list_then in
+            let (), code_else = match st_list_else with
+              | None -> ((), [])
+              | Some st_list_else -> codegen ctx st_list_else
             in
-            let code = [ Named.Cmd.If (nsel, code_then, code_else) ] in
-            (dfn, code)
+            let code = [ Named.Code.If (nsel, code_then, code_else) ] in
+            ((), code)
         | StShift (sign, ex_ptr, ex_i_opt) ->
             let sel, _ = eval eval_envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
             let nsel, ptr = Sel.to_nptr ex_ptr.i sel in
@@ -540,7 +542,7 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
               List.filter_map (fun (sel_diving, nvar_env) ->
                 if sel = sel_diving then (* 変数をコピーする *)
                   NVarEnv.to_list nvar_env |>
-                  List.map (fun (_, { v = (nvar, mtype); i = _ }) ->
+                  List.map (fun (_, { v=(nvar, mtype); i=_ }) ->
                     match mtype with
                     | NVarEnv.Array _ | Index ->
                         (* varの時点で弾かれるので到達できないはず *)
@@ -548,7 +550,7 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
                     | NVarEnv.Cell ->
                         let nsel_origin = Sel.LstMem (sel, 0, nvar) |> Sel.to_nsel unknown_info in
                         let nsel_dest = Sel.LstMem (sel, i, nvar) |> Sel.to_nsel unknown_info in
-                        [ Named.Cmd.Loop (nsel_origin,
+                        [ Named.Code.Loop (nsel_origin,
                           [ Add (-1, nsel_origin);
                             Add (1, nsel_dest); ]) ]
                   ) |> List.flatten |> Option.some
@@ -557,14 +559,19 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
                 else None
               ) |> List.flatten
             in
-            let code_shift = [ Named.Cmd.Shift (i, nsel, ptr) ] in
-            (dfn, code_move_var @ code_shift)
+            let code_shift = [ Named.Code.Shift (i, nsel, ptr) ] in
+            ((), code_move_var @ code_shift)
         | StAlloc (field, st_list) ->
-            let dfn_key_diving = match diving with
-              | None -> []
-              | Some sel -> Sel.to_dfn_key sel
+            let nfield = match diving with
+              | None -> nmain.finite
+              | Some sel ->
+                  let nsel, _ =  Sel.to_nptr info sel in
+                  let nmtype = Named.Sel.find_field nmain nsel in
+                  match nmtype with
+                  | Named.Field.Array { members; _ } -> members
+                  | _ -> assert false (* divingに登録されているセレクタは(たぶん)配列を指している *)
             in
-            let dfn, nvar_env = NVarEnv.gen_using_field dfn dfn_key_diving field in
+            let nvar_env = NVarEnv.gen_using_field nmain nfield field in
             let va_env = env_extend_with_nvar_env diving nvar_env eval_envs.va_env in
             let eval_envs = { eval_envs with va_env } in
             let diving_vars = match diving with
@@ -572,7 +579,7 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
               | Some sel -> (sel, nvar_env) :: diving_vars
             in
             let ctx = { ctx with eval_envs; diving_vars; } in
-            let dfn, code_child = codegen ctx dfn st_list in
+            let (), code_child = codegen ctx st_list in
             (* 変数が使用したセルをゼロにする *)
             let code_clean =
               NVarEnv.to_list nvar_env |>
@@ -585,28 +592,28 @@ let codegen (eval_envs : eval_envs) (main: main) : Named.Dfn.t * Named.Cmd.t lis
                 | NVarEnv.Cell ->
                     let sel = Sel.base_or_mem diving nvar in
                     let nsel = Sel.to_nsel unknown_info sel in
-                    [ Named.Cmd.Loop (nsel, [ Add (-1, nsel) ]) ]
+                    [ Named.Code.Loop (nsel, [ Add (-1, nsel) ]) ]
               ) |> List.flatten
             in
-            (dfn, code_child @ code_clean)
+            ((), code_child @ code_clean)
         | StLet (binding, st_list) ->
             let eval_envs = eval_let_binding ~export:false ctx.eval_envs binding in
-            codegen { ctx with eval_envs } dfn st_list
+            codegen { ctx with eval_envs } st_list
         | StExpand ex_block ->
             let eval_envs, st_list = eval eval_envs ex_block |> to_block ex_block.i in
-            codegen { ctx with eval_envs } dfn st_list
+            codegen { ctx with eval_envs } st_list
         | StDive (ex_ptr, st_list) ->
             let sel, _ = eval eval_envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
             let _ = Sel.to_nptr ex_ptr.i sel in
             (* ↑インデックスであることを確認している *)
-            codegen { ctx with diving = Some sel } dfn st_list
-      ) states st_list
+            codegen { ctx with diving = Some sel } st_list
+      ) () st_list
     in
-    (states, List.flatten code_list)
+    ((), List.flatten code_list)
   in
-  codegen ctx dfn st_list
+  (nmain, codegen ctx st_list |> snd)
 
-let codegen_all (dirname: string) (program: program) : Named.Dfn.t * Named.Cmd.t list =
+let codegen_all (dirname: string) (program: program) : Named.Field.main * Named.Code.t =
   let toplevels, main = program in
   match main with
   | None -> error_at unknown_info "main not found"

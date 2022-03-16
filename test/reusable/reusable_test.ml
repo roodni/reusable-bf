@@ -1,13 +1,14 @@
 open OUnit2
 open Lib
+open Printf
 
 let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
     let dirname = Filename.dirname filename in
     let program = Reusable.load_program filename in
-    let dfn, cmd_list = Reusable.codegen_all dirname program in
-    let layout = Named.Layout.of_dfn dfn in
-    let bf_code = Named.codegen layout cmd_list in
+    let field, named_code = Reusable.codegen_all dirname program in
+    let layout = Named.Layout.from_field field in
+    let bf_code = Named.gen_bf layout named_code in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string
@@ -20,12 +21,13 @@ let test_run Testcase.{ name; filename; io_list; } =
         match res with
         | Ok () -> ()
         | Error msg ->
+            print_newline ();
             print_endline "--- error ---";
             print_endline msg;
             failed := true
       end;
       if opt <> opt_act then begin
-        print_endline @@ Bf.Code.to_string bf_code;
+        print_newline ();
         print_endline "--- expected output ---";
         print_endline opt;
         print_endline "--- but got ---";
@@ -34,7 +36,10 @@ let test_run Testcase.{ name; filename; io_list; } =
       end;
       if !failed then begin
         print_newline ();
+        print_endline @@ Bf.Code.to_string bf_code;
         Bf.Exe.Dump.dump dump;
+        printf "^^^ %s ^^^\n" name;
+        flush_all ();
         assert_bool "fail" false
       end
     )

@@ -23,17 +23,17 @@ let () =
       let dirname = Filename.dirname !filename in
       let program = Reusable.load_program !filename in
 
-      let dfn, cmd_list = Reusable.codegen_all dirname program in
-      let layout = Named.Layout.of_dfn dfn in
+      let field, code = Reusable.codegen_all dirname program in
+      let layout = Named.Layout.from_field field in
 
-      if !flag_verbose then begin
+      (* if !flag_verbose then begin
         print_endline "[";
         print_endline "--- layout ---";
         Named.Layout.print layout;
         print_endline "]";
-      end;
+      end; *)
 
-      Named.codegen layout cmd_list
+      Named.gen_bf layout code
     end
   in
 

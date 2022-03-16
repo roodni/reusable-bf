@@ -1,3 +1,3 @@
 (tests
- (names tape_test output_test)
+ (names tape_test)
  (libraries lib ounit2))

@@ -22,10 +22,10 @@ let layout =
     });
   ]
 let program =
-  let ap_a = Sel.LstPtr (a, p, 0, Sel.V a) in
-  let a = Sel.V a in
-  let open Cmd in [
-    Add (3, ap_a);
+  let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
+  let a = Sel.Member a in
+  [
+    Code.Add (3, ap_a);
     Shift (1, a, p);
     Add (5, ap_a);
     Shift (1, a, p);
@@ -37,7 +37,7 @@ let program =
 let expected = [0; 0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
-    let bf = codegen layout program in
+    let bf = gen_bf layout program in
     let _, dump, _ =
       Bf.Exe.run_string
         ~cell_type:Bf.Overflow256

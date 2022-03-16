@@ -1,12 +1,11 @@
-open Batteries
 open Printf
 
 module Var: sig
   type t
-
   val gen: unit -> t
   val gen_named: string -> t
   val to_string: t -> string
+  val infarray: t
 end = struct
   type t = int
   let num = ref 0
@@ -19,102 +18,97 @@ end = struct
     Hashtbl.add nametable id name;
     id
   let to_string (t: t) =
-    let name = match Hashtbl.find_option nametable t with
+    let name = match Hashtbl.find_opt nametable t with
       | None -> ""
       | Some name -> name
     in
     sprintf "%s#%d" name t
-
+  let infarray = gen_named "<infarray>"
 end
 
+(** 変数名とテープ位置の確保の仕方(mtype)の対応 *)
+module Field = struct
+  type t = (Var.t, mtype) Hashtbl.t
+  and mtype =
+    | Cell of { mutable ifable: bool }
+    | Array of { length: int; members: t }
+    | Index
+  type main = { finite: t; infarray: t }
 
-module Dfn = struct
-  type t = (Var.t * kind) list
-  and kind =
-    | Cell
-    | CellIfable
-    | Lst of lst
-    | Ptr
-  and lst = {
-    length: int option;
-    mem: t;
-  }
+  (** インデックスとそれ以外を分離する *)
+  let partition_index (field: t) =
+    let indexes, other =
+      field |> Hashtbl.to_seq |> List.of_seq
+        |> List.partition (fun (_, mtype) -> mtype = Index)
+    in
+    (indexes |> List.to_seq |> Hashtbl.of_seq,
+      other |> List.to_seq |> Hashtbl.of_seq)
+  
+  let empty (): t = Hashtbl.create 30
+  let lookup (field: t) var = Hashtbl.find field var
+  let extend (field: t) var mtype = Hashtbl.replace field var mtype
 
-  let of_list t: (Var.t * kind) list = t
-  let to_list (t: t): (Var.t * kind) list = t
-
-  let partition_ptr (t: t): t * t =
-    List.partition_map (fun (v, kind) ->
-      match kind with
-      | Ptr -> Left (v, kind)
-      | kind -> Right (v, kind)
-    ) t
-  let partition_inf_lst (t: t): (Var.t * lst) list * t =
-    List.partition_map (fun (v, kind) ->
-      match kind with
-      | Lst ({ length = None; _ } as lst) -> Left (v, lst)
-      | kind -> Right (v, kind)
-    ) t
-
-  let empty: t = []
-
-  let rec lookup (key: Var.t list) (dfn: t): kind option =
-    match key with
-    | [] -> assert false
-    | v :: [] -> List.assoc_opt v dfn
-    | v :: key -> begin
-        match List.assoc_opt v dfn with
-        | None -> None
-        | Some (Cell | CellIfable | Ptr) -> None
-        | Some (Lst lst) -> lookup key lst.mem
-      end
-
-  let rec extend (key: Var.t list) (kind: kind) (dfn: t): t =
-    match key with
-    | [] -> assert false
-    | v :: [] ->
-        let dfn = List.remove_assoc v dfn in
-        (v, kind) :: dfn
-    | v :: key -> begin
-        let lst =
-          match List.assoc_opt v dfn with
-          | None -> assert false
-          | Some (Cell | CellIfable | Ptr) -> assert false
-          | Some (Lst lst) -> lst
-        in
-        let mem = extend key kind lst.mem in
-        let dfn = List.remove_assoc v dfn in
-        (v, Lst { lst with mem }) :: dfn
-      end
-
+  let empty_main (): main = { finite=empty (); infarray=empty () }
+  let lookup_main (main: main) var =
+    if var = Var.infarray
+      then Array { members=main.infarray; length=(-1); }
+      else lookup main.finite var
 end
 
-
+(** 変数名を使ってテープ位置を指すセレクタ *)
 module Sel = struct
   type t =
-    | V of Var.t
-    | Lst of Var.t * int * t
-    | LstPtr of Var.t * Var.t * int * t
+    | Member of Var.t
+    | Array of { name: Var.t; index_opt: Var.t option; offset: int; member: t }
 
-  (* Cmd.Shift用 リストへのセレクタとポインタ名からポインタへのセレクタを得る *)
-  let rec ptr_for_shift lst ptr index =
-    match lst with
-    | V lst -> LstPtr (lst, ptr, index, V ptr)
-    | Lst (v, i, lst) -> Lst (v, i, ptr_for_shift lst ptr index)
-    | LstPtr (v, p, i, lst) -> LstPtr (v, p, i, ptr_for_shift lst ptr index)
+  (** 配列へのセレクタとインデックス名から、自分自身を経由して自分にアクセスするインデックスのセレクタを取得する *)
+  let rec index_on_itself array index offset =
+    match array with
+    | Member v -> Array { name=v; index_opt=Some index; offset; member=Member index }
+    | Array array_mid -> Array { array_mid with member=index_on_itself array_mid.member index offset }
 
-  let rec to_dfn_key = function
-    | V v -> [ v ]
-    | Lst (v, _, sel)
-    | LstPtr (v, _, _, sel) -> v :: (to_dfn_key sel)
+  (** セレクタの指すテープ位置のmtypeを取得する *)
+  let find_field (fmain: Field.main) (sel: t) =
+    let rec find_field field = function
+      | Member v ->
+          if fmain.finite == field
+            then Field.lookup_main fmain v
+            else Field.lookup field v
+      | Array { name; member; _ } ->
+          let mtype =
+            if fmain.finite == field
+              then Field.lookup_main fmain name
+              else Field.lookup field name
+          in begin
+            match mtype with
+            | Field.Array { members; _ } -> find_field members member
+            | _ -> assert false
+          end
+    in
+    find_field fmain.finite sel
 
   let rec pretty = function
-    | V v -> Var.to_string v
-    | Lst (v, i, sel) -> sprintf "%s:(%d)%s" (Var.to_string v) i (pretty sel)
-    | LstPtr (v, p, i, sel) -> sprintf "%s@%s:(%d)%s" (Var.to_string v) (Var.to_string p) i (pretty sel)
+    | Member v -> Var.to_string v
+    | Array { name; index_opt=None; offset; member } ->
+        sprintf "%s:(%d)%s" (Var.to_string name) offset (pretty member)
+    | Array { name; index_opt=Some index; offset; member } ->
+        sprintf "%s@%s:(%d)%s" (Var.to_string name) (Var.to_string index) offset (pretty member)
 end
 
+(** 中間言語のコード *)
+module Code = struct
+  type t = cmd list
+  and cmd =
+    | Add of int * Sel.t
+    | Put of Sel.t
+    | Get of Sel.t
+    | Loop of Sel.t * t
+    | LoopPtr of (Sel.t * Var.t * t)
+    | Shift of int * Sel.t * Var.t
+    | If of Sel.t * t * t
+end
 
+(** 変数名と確保されたテープ位置の対応 *)
 module Layout = struct
   type t = (Var.t * loc) list
   and loc = {
@@ -133,76 +127,42 @@ module Layout = struct
   }
 
   (** 定義された変数をセルに割り当てる *)
-  let of_dfn (dfn: Dfn.t): t =
-    let dfn_inf_lst, dfn = Dfn.partition_inf_lst dfn in
-    let rec allocate (ofs_available: int) (dfn: Dfn.t): t * int =
+  let from_field (field: Field.main): t =
+    let Field.{ finite; infarray } = field in
+    let rec allocate (field: Field.t) (ofs_available: int): t * int =
       (* 左から詰める *)
-      List.fold_left (fun (layout, ofs_available) (var, kind) ->
+      Hashtbl.fold (fun var kind (layout, ofs_available) ->
         let loc, ofs_available =
           match kind with
-          | Dfn.Cell -> ({ offset = ofs_available; kind = Cell }, ofs_available + 1)
-          | Ptr -> ({ offset = ofs_available; kind = Ptr }, ofs_available + 1)
-          | CellIfable -> ({ offset = ofs_available; kind = CellIfable }, ofs_available + 3)
-          | Lst { mem; length = Some length } ->
-              let ptrs, mem = Dfn.partition_ptr mem in
+          | Field.Cell { ifable=false } -> ({ offset = ofs_available; kind = Cell }, ofs_available + 1)
+          | Cell { ifable=true } -> ({ offset = ofs_available; kind = CellIfable }, ofs_available + 3)
+          | Index -> ({ offset = ofs_available; kind = Ptr }, ofs_available + 1)
+          | Array { members; length } ->
+              let indexes, members = Field.partition_index members in
               (* メンバを左から詰める *)
-              let mem, ofs_ptr_start = allocate 0 mem in
-              let header_start =  -ofs_ptr_start in
+              let layout, ofs_index_start = allocate members 0 in
+              let header_start =  -ofs_index_start in
               (* ポインタを詰める *)
-              let mem_ptr, elm_size = allocate ofs_ptr_start ptrs in
-              let mem = mem @ mem_ptr in
-              let lst = { mem; header_start; elm_size } in
-              ( { offset = ofs_available; kind = Lst lst },
+              let layout_indexes, elm_size = allocate indexes ofs_index_start in
+              let layout = layout @ layout_indexes in
+              let arr = { mem=layout; header_start; elm_size } in
+              ( { offset = ofs_available; kind = Lst arr },
                 ofs_available + elm_size*(length + 1) + header_start )
-          | Lst { length = None; _} -> assert false
         in
         ((var, loc) :: layout, ofs_available)
-      ) ([], ofs_available) dfn
+      ) field ([], ofs_available)
     in
-    let layout, ofs_inf_lst_start = allocate 0 dfn in
-    let elm_size_inf_lst, mem_inf_lst_list =
-      List.fold_left_map (fun ofs_available (v, lst) ->
-        let Dfn.{ mem; _ } = lst in
-        let mem, ofs_available = allocate ofs_available mem in
-        (ofs_available, (v, mem))
-      ) 0 dfn_inf_lst
+    let layout, ofs_infarray_start = allocate finite 0 in
+    let infarray = (Var.infarray, Field.Array { members=infarray; length=1 })
+      |> Seq.return |> Hashtbl.of_seq
     in
-    let layout_inf_lst =
-      mem_inf_lst_list |> List.map (fun (v, mem) ->
-        let lst = {
-          mem;
-          header_start = 0;
-          elm_size =elm_size_inf_lst;
-        } in
-        (v, { offset = ofs_inf_lst_start; kind = Lst lst })
-      )
-    in
-    layout @ layout_inf_lst
+    let layout_infarray, _ = allocate infarray ofs_infarray_start in
+    layout @ layout_infarray
 
   let loc_of_var (layout: t) (v: Var.t) = List.assoc_opt v layout
-
-  let rec print ?(d=0) t =
-    let indent = String.repeat "      " d in
-    List.iter (fun (var, { offset; kind }) ->
-      printf "%s%s:\n" indent (Var.to_string var);
-      printf "%s  offset: %d\n" indent offset;
-      printf "%s  kind: " indent;
-      match kind with
-      | Cell -> printf "Cell\n"
-      | Ptr -> printf "Ptr\n"
-      | CellIfable -> printf "Cell(if-able)\n"
-      | Lst { mem; header_start; elm_size } ->
-          printf "Lst {\n";
-          printf "%s    header_start: %d\n" indent header_start;
-          printf "%s    elm_size: %d\n" indent elm_size;
-          printf "%s    mem:\n" indent;
-          print ~d:(d+1) mem;
-          printf "%s  }\n" indent
-    ) t;
-    flush stdout
 end
 
-
+(** ポインタ移動コードを生成するためのテープ位置 (コード生成に利用) *)
 module Pos = struct
   type t =
     | Cell of int
@@ -225,18 +185,18 @@ module Pos = struct
     | Cell offset -> Cell (offset + n)
     | Ptr ({ child_pos; _ } as ptr) -> Ptr { ptr with child_pos = shift_last n child_pos }
 
-  let of_sel (layout: Layout.t) (sel: Sel.t) =
+  let from_sel (layout: Layout.t) (sel: Sel.t) =
     let raise_not_found () =
       failwith @@ sprintf "not found: %s" (Sel.pretty sel)
     in
     let rec of_sel layout sel =
       match sel with
-      | Sel.V cell -> begin
-          match Layout.loc_of_var layout cell with
+      | Sel.Member m -> begin
+          match Layout.loc_of_var layout m with
           | None -> raise_not_found ()
           | Some loc -> Cell loc.offset
         end
-      | Sel.Lst (lst, i, sel) ->
+      | Array { name=lst; index_opt=None; offset=i; member=sel } ->
           let loc = match Layout.loc_of_var layout lst with
             | None -> raise_not_found ()
             | Some loc -> loc
@@ -249,7 +209,7 @@ module Pos = struct
           in
           let offset = loc.offset + header_start + (1 + i) * elm_size in
           of_sel mem sel |> shift offset
-      | Sel.LstPtr (lst, ptr, i, sel) ->
+      | Array { name=lst; index_opt=Some ptr; offset=i; member=sel } ->
           let loc, lst =
             match Layout.loc_of_var layout lst with
             | None -> raise_not_found ()
@@ -274,7 +234,7 @@ module Pos = struct
     of_sel layout sel
 
   (** リストのポインタを遡って根本のoffset_of_headまで戻るコードを生成する *)
-  let rec codegen_root { offset_in_lst; size; child_pos; _ }: Bf.Code.t =
+  let rec gen_bf_move_root { offset_in_lst; size; child_pos; _ }: Bf.Code.t =
     let origin_offset = match child_pos with
       | Cell offset -> offset
       | Ptr { offset_of_head; _ } -> offset_of_head
@@ -287,15 +247,15 @@ module Pos = struct
     ] in
     match child_pos with
     | Cell _ -> code
-    | Ptr ptr -> codegen_root ptr @ code
+    | Ptr ptr -> gen_bf_move_root ptr @ code
 
-  (** [codegen_move origin dest]  [origin]から[dest]に移動するコードを生成する *)
-  let rec codegen_move (origin: t) (dest: t): Bf.Code.t =
+  (** [gen_bf_move origin dest]  [origin]から[dest]に移動するコードを生成する *)
+  let rec gen_bf_move (origin: t) (dest: t): Bf.Code.t =
     match origin, dest with
     | Ptr origin, Ptr dest when origin.offset_of_head = dest.offset_of_head ->
-        codegen_move origin.child_pos dest.child_pos
+        gen_bf_move origin.child_pos dest.child_pos
     | Ptr origin, dest ->
-        codegen_root origin @ codegen_move (Cell origin.offset_of_head) dest
+        gen_bf_move_root origin @ gen_bf_move (Cell origin.offset_of_head) dest
     | Cell origin, Ptr dest ->
         let code = [
           Bf.Code.Shift (dest.offset_of_head + dest.size - origin);
@@ -303,91 +263,78 @@ module Pos = struct
             Bf.Code.Shift dest.size
           ]
         ] in
-        code @ codegen_move (Cell dest.offset_in_lst) (dest.child_pos)
+        code @ gen_bf_move (Cell dest.offset_in_lst) (dest.child_pos)
     | Cell origin, Cell dest -> [ Bf.Code.Shift (dest - origin) ]
 end
 
-
-module Cmd = struct
-  type t =
-    | Add of int * Sel.t
-    | Put of Sel.t
-    | Get of Sel.t
-    | Loop of Sel.t * t_list
-    | LoopPtr of (Sel.t * Var.t * t_list)
-    | Shift of int * Sel.t * Var.t
-    | If of Sel.t * t_list * t_list
-  and t_list = t list
-end
-
-let codegen (layout: Layout.t) (cmd_list: Cmd.t_list): Bf.Code.t =
-  let rec codegen (pos_init: Pos.t) (cmd_list: Cmd.t_list) =
+let gen_bf (layout: Layout.t) (code: Code.t): Bf.Code.t =
+  let rec gen_bf (pos_init: Pos.t) (code: Code.t) =
     let pos, bf_cmd_list_list = List.fold_left_map (fun pos cmd ->
         match cmd with
-        | Cmd.Add (0, _) -> (pos, [])
-        | Cmd.Add (n, sel) ->
-            let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Add n ])
+        | Code.Add (0, _) -> (pos, [])
+        | Add (n, sel) ->
+            let pos_dest = Pos.from_sel layout sel in
+            (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Add n ])
         | Put sel ->
-            let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Put ])
+            let pos_dest = Pos.from_sel layout sel in
+            (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Put ])
         | Get sel ->
-            let pos_dest = Pos.of_sel layout sel in
-            (pos_dest, Pos.codegen_move pos pos_dest @ [ Bf.Code.Get ])
+            let pos_dest = Pos.from_sel layout sel in
+            (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Get ])
         | Loop (sel, cmd_list) ->
-            let pos_cond = Pos.of_sel layout sel in
-            let code_move1 = Pos.codegen_move pos pos_cond in
-            let pos, code_loop = codegen pos_cond cmd_list in
-            let code_move2 = Pos.codegen_move pos pos_cond in
+            let pos_cond = Pos.from_sel layout sel in
+            let code_move1 = Pos.gen_bf_move pos pos_cond in
+            let pos, code_loop = gen_bf pos_cond cmd_list in
+            let code_move2 = Pos.gen_bf_move pos pos_cond in
             (pos_cond, code_move1 @ [ Bf.Code.Loop (code_loop @ code_move2) ])
         | LoopPtr (lst, ptr, cmd_list) ->
-            let sel_cond = Sel.ptr_for_shift lst ptr (-1) in
-            codegen pos [ Cmd.Loop (sel_cond, cmd_list) ]
+            let sel_cond = Sel.index_on_itself lst ptr (-1) in
+            gen_bf pos [ Loop (sel_cond, cmd_list) ]
         | Shift (n, lst, p) -> begin
-            (* let pos_ptr = Pos.of_sel layout sel in
+            (* let pos_ptr = Pos.from_sel layout sel in
             let pos_ptr_prev = Pos.shift (-layout_lst.elm_size) pos_ptr in *)
-            let pos_ptr = Sel.ptr_for_shift lst p 0 |> Pos.of_sel layout in
-            let pos_ptr_prev = Sel.ptr_for_shift lst p (-1) |> Pos.of_sel layout in
+            let pos_ptr = Sel.index_on_itself lst p 0 |> Pos.from_sel layout in
+            let pos_ptr_prev = Sel.index_on_itself lst p (-1) |> Pos.from_sel layout in
             match n with
             | 0 -> (pos, [])
             | 1 ->
-                let code_move = Pos.codegen_move pos pos_ptr in
+                let code_move = Pos.gen_bf_move pos pos_ptr in
                 let code = code_move @ [ Bf.Code.Add 1 ] in
                 (pos_ptr_prev, code)
             | -1 ->
-                let code_move = Pos.codegen_move pos pos_ptr_prev in
+                let code_move = Pos.gen_bf_move pos pos_ptr_prev in
                 let code = code_move @ [ Bf.Code.Add (-1) ] in
                 (pos_ptr, code)
             | _ -> failwith "not implemented"
           end
         | If (cond, cmd_list_then, cmd_list_else) ->
-            let pos_cond = Pos.of_sel layout cond in
+            let pos_cond = Pos.from_sel layout cond in
             let pos_flag = Pos.shift_last 1 pos_cond in
             let pos_zero = Pos.shift_last 1 pos_flag in
-            let pos_then_end, code_then = codegen pos_flag cmd_list_then in
-            let pos_else_end, code_else = codegen pos_flag cmd_list_else in
+            let pos_then_end, code_then = gen_bf pos_flag cmd_list_then in
+            let pos_else_end, code_else = gen_bf pos_flag cmd_list_else in
             let code =
-              Pos.codegen_move pos pos_flag @
+              Pos.gen_bf_move pos pos_flag @
               [
                 Bf.Code.Add 1;
                 Bf.Code.Shift (-1);
                 Bf.Code.Loop (
                   [ Bf.Code.Shift 1; Bf.Code.Add (-1); ] @
                   code_then @
-                  Pos.codegen_move pos_then_end pos_flag
+                  Pos.gen_bf_move pos_then_end pos_flag
                 );
                 Bf.Code.Shift 1;
                 Bf.Code.Loop (
                   [ Bf.Code.Add (-1) ] @
                   code_else @
-                  Pos.codegen_move pos_else_end pos_zero
+                  Pos.gen_bf_move pos_else_end pos_zero
                 );
               ]
             in
             (pos_zero, code)
-      ) pos_init cmd_list
+      ) pos_init code
     in
     (pos, List.flatten bf_cmd_list_list)
   in
-  let _, code = codegen Pos.init cmd_list in
+  let _, code = gen_bf Pos.init code in
   code

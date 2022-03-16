@@ -4,9 +4,9 @@ open Lib
 let reusable_to_bf_code filename =
   let dirname = Filename.dirname filename in
   let program = Reusable.load_program filename in
-  let dfn, code = Reusable.codegen_all dirname program in
-  let layout = Named.Layout.of_dfn dfn in
-  Named.codegen layout code
+  let field, code = Reusable.codegen_all dirname program in
+  let layout = Named.Layout.from_field field in
+  Named.gen_bf layout code
 
 module BfI = struct
   let filename = "../../sample/bfi.bfr"
