@@ -9,17 +9,15 @@ let a = Var.gen_named "a"
 let p = Var.gen_named "p"
 let layout =
   let open Layout in [
-    (a, {
-      offset = 1;
-      kind = Lst {
-        mem = [
-          (a, { offset = 0; kind = Cell });
-          (p, { offset = 1; kind = Ptr });
+    ( a,
+      Array {
+        offset_of_body = 1;
+        size_of_members = 2;
+        members = [
+          (a, Cell 0);
+          (p, Cell 1);
         ];
-        header_start = -1;
-        elm_size = 2;
-      }
-    });
+      } );
   ]
 let program =
   let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
@@ -34,7 +32,7 @@ let program =
     Add (-1, ap_a);
   ]
 
-let expected = [0; 0; 3; 1; 4; 0; 7]
+let expected = [0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
     let bf = gen_bf layout program in
