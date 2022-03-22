@@ -6,14 +6,14 @@ open Syntax
 (** Named.Selをラップする *)
 module Sel = struct
   type t =
-    | Base of Named.Var.t
-    | LstMem of t * int * Named.Var.t
-    | LstPtr of t * Named.Var.t
+    | Base of Named.Id.t
+    | LstMem of t * int * Named.Id.t
+    | LstPtr of t * Named.Id.t
   type nsel_or_nptr =
     | NSel of Named.Sel.t
-    | NPtr of Named.Sel.t * Named.Var.t
+    | NPtr of Named.Sel.t * Named.Id.t
 
-  let base_or_mem (parent: t option) (v: Named.Var.t) =
+  let base_or_mem (parent: t option) (v: Named.Id.t) =
     match parent with
     | None -> Base v
     | Some sel -> LstMem (sel, 0, v)
@@ -74,7 +74,7 @@ end
 (** VarとNamed.Varの対応 *)
 module NVarEnv : sig
   type t
-  and binded = (Named.Var.t * mtype) withinfo
+  and binded = (Named.Id.t * mtype) withinfo
   and mtype =
     | Cell
     | Index
@@ -91,7 +91,7 @@ module NVarEnv : sig
 
 end = struct
   type t = (Var.t * binded) list
-  and binded = (Named.Var.t * mtype) withinfo
+  and binded = (Named.Id.t * mtype) withinfo
   and mtype =
     | Cell
     | Index
@@ -108,15 +108,15 @@ end = struct
       (fun env { i=info; v=(var, mtype) } ->
         match mtype with
         | Field.Cell ->
-            let nvar = Named.Var.gen_named (Var.to_string var) in
+            let nvar = Named.Id.gen_named (Var.to_string var) in
             Named.Field.extend nfield nvar (Named.Field.Cell { ifable=false });
             (var, withinfo info (nvar, Cell)) :: env
         | Field.Index ->
-            let nvar = Named.Var.gen_named (Var.to_string var) in
+            let nvar = Named.Id.gen_named (Var.to_string var) in
             Named.Field.extend nfield nvar Named.Field.Index;
             (var, withinfo info (nvar, Index)) :: env
         | Field.Array { length=Some length; mem } ->
-            let nvar = Named.Var.gen_named (Var.to_string var) in
+            let nvar = Named.Id.gen_named (Var.to_string var) in
             let nmembers = Named.Field.empty () in
             let narray = Named.Field.Array { length; members=nmembers } in
             Named.Field.extend nfield nvar narray;
@@ -128,7 +128,7 @@ end = struct
             (var,
               withinfo
                 info
-                (Named.Var.infarray, Array { length=None; mem=env_members })
+                (Named.Id.infarray, Array { length=None; mem=env_members })
             ) :: env
       ) []
 

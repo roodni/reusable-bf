@@ -5,8 +5,8 @@ open Lib.Named
 
 (* テープの状態を比較するテスト *)
 
-let a = Var.gen_named "a"
-let p = Var.gen_named "p"
+let a = Id.gen_named "a"
+let p = Id.gen_named "p"
 let layout =
   let open Layout in [
     ( a,

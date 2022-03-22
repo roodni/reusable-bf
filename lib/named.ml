@@ -1,6 +1,6 @@
 open Printf
 
-module Var: sig
+module Id: sig
   type t
   val gen: unit -> t
   val gen_named: string -> t
@@ -28,7 +28,7 @@ end
 
 (** 変数名とテープ位置の確保の仕方(mtype)の対応 *)
 module Field = struct
-  type t = (Var.t, mtype) Hashtbl.t
+  type t = (Id.t, mtype) Hashtbl.t
   and mtype =
     | Cell of { mutable ifable: bool }
     | Array of { length: int; members: t }
@@ -45,35 +45,35 @@ module Field = struct
       other |> List.to_seq |> Hashtbl.of_seq)
 
   let empty (): t = Hashtbl.create 30
-  let lookup (field: t) var = Hashtbl.find field var
-  let extend (field: t) var mtype = Hashtbl.replace field var mtype
+  let lookup (field: t) id = Hashtbl.find field id
+  let extend (field: t) id mtype = Hashtbl.replace field id mtype
 
   let empty_main (): main = { finite=empty (); infarray=empty () }
-  let lookup_main (main: main) var =
-    if var = Var.infarray
+  let lookup_main (main: main) id =
+    if id = Id.infarray
       then Array { members=main.infarray; length=(-1); }
-      else lookup main.finite var
+      else lookup main.finite id
 end
 
 (** 変数名を使ってテープ位置を指すセレクタ *)
 module Sel = struct
   type t =
-    | Member of Var.t
-    | Array of { name: Var.t; index_opt: Var.t option; offset: int; member: t }
+    | Member of Id.t
+    | Array of { name: Id.t; index_opt: Id.t option; offset: int; member: t }
 
   (** 配列へのセレクタとインデックス名から、自分自身を経由して自分にアクセスするインデックスのセレクタを取得する *)
   let rec index_on_itself array index offset =
     match array with
-    | Member v -> Array { name=v; index_opt=Some index; offset; member=Member index }
+    | Member id -> Array { name=id; index_opt=Some index; offset; member=Member index }
     | Array array_mid -> Array { array_mid with member=index_on_itself array_mid.member index offset }
 
   (** セレクタの指すテープ位置のmtypeを取得する *)
   let find_field (fmain: Field.main) (sel: t) =
     let rec find_field field = function
-      | Member v ->
+      | Member id ->
           if fmain.finite == field
-            then Field.lookup_main fmain v
-            else Field.lookup field v
+            then Field.lookup_main fmain id
+            else Field.lookup field id
       | Array { name; member; _ } ->
           let mtype =
             if fmain.finite == field
@@ -88,11 +88,11 @@ module Sel = struct
     find_field fmain.finite sel
 
   let rec pretty = function
-    | Member v -> Var.to_string v
+    | Member id -> Id.to_string id
     | Array { name; index_opt=None; offset; member } ->
-        sprintf "%s:(%d)%s" (Var.to_string name) offset (pretty member)
+        sprintf "%s:(%d)%s" (Id.to_string name) offset (pretty member)
     | Array { name; index_opt=Some index; offset; member } ->
-        sprintf "%s@%s:(%d)%s" (Var.to_string name) (Var.to_string index) offset (pretty member)
+        sprintf "%s@%s:(%d)%s" (Id.to_string name) (Id.to_string index) offset (pretty member)
 end
 
 (** 中間言語のコード *)
@@ -103,14 +103,14 @@ module Code = struct
     | Put of Sel.t
     | Get of Sel.t
     | Loop of Sel.t * t
-    | LoopPtr of (Sel.t * Var.t * t)
-    | Shift of int * Sel.t * Var.t
+    | LoopPtr of (Sel.t * Id.t * t)
+    | Shift of int * Sel.t * Id.t
     | If of Sel.t * t * t
 end
 
 (** 変数名と確保されたテープ位置の対応 *)
 module Layout = struct
-  type t = (Var.t * loc) list
+  type t = (Id.t * loc) list
   and loc =
     | Cell of int
     | Ifable of { offset_of_cond: int; cond_to_else: int; else_to_endif: int; }
@@ -125,7 +125,7 @@ module Layout = struct
     let Field.{ finite; infarray } = field in
     let rec allocate (field: Field.t) (ofs_available: int): t * int =
       (* 左から詰める *)
-      Hashtbl.fold (fun var kind (layout, ofs_available) ->
+      Hashtbl.fold (fun id kind (layout, ofs_available) ->
         let loc, ofs_available =
           match kind with
           | Field.Cell { ifable=false } -> (Cell ofs_available, ofs_available + 1)
@@ -143,17 +143,17 @@ module Layout = struct
               ( Array { offset_of_body; size_of_members; members },
                 offset_of_body + size_of_members*length )
         in
-        ((var, loc) :: layout, ofs_available)
+        ((id, loc) :: layout, ofs_available)
       ) field ([], ofs_available)
     in
     let layout, ofs_infarray_start = allocate finite 0 in
-    let infarray = (Var.infarray, Field.Array { members=infarray; length=1 })
+    let infarray = (Id.infarray, Field.Array { members=infarray; length=1 })
       |> Seq.return |> Hashtbl.of_seq
     in
     let layout_infarray, _ = allocate infarray ofs_infarray_start in
     layout @ layout_infarray
 
-  let lookup (layout: t) v = List.assoc v layout
+  let lookup (layout: t) id = List.assoc id layout
 end
 
 (** ポインタ移動コードを生成するためのテープ位置 (コード生成に利用) *)
