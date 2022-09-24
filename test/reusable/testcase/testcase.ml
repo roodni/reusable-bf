@@ -65,5 +65,10 @@ let cases = [
     name = "import";
     io_list = [ ("", "BC123") ];
     filename = "code/import_a.bfr"
+  };
+  {
+    name = "nested_array";
+    io_list = [ ("", "XYPQqRSrs012MNmn") ];
+    filename = "code/nested_array.bfr"
   }
 ]
