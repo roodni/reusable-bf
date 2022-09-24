@@ -4,14 +4,18 @@ open Support.Error
 
 let () =
   let flag_run = ref false in
-  let flag_verbose = ref false in
   let flag_bf = ref false in
+  let flag_show_layouts = ref false in
+  let flag_dump_tape = ref false in
   let filename = ref "-" in
-  Arg.parse [
-    ("-r", Set flag_run, "run");
-    ("-v", Set flag_verbose, "verbose");
-    ("-b", Set flag_bf, "bf");
-  ] (fun s -> filename := s ) "usage";
+  Arg.parse
+    [ ("-r", Set flag_run, " Run after compile");
+      ("-b", Set flag_bf, " Load a brainfuck program instead of bf-reusable");
+      ("--show-layouts", Set flag_show_layouts, " Show cell layouts");
+      ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
+    ]
+    (fun s -> filename := s )
+    (sprintf "Usage: %s <options> <file>" Sys.argv.(0));
 
   let bf_code =
     if !flag_bf then begin
@@ -26,18 +30,19 @@ let () =
       let field, code = Reusable.codegen_all dirname program in
       let layout = Named.Layout.from_field field in
 
-      (* if !flag_verbose then begin
+      if !flag_show_layouts then begin
         print_endline "[";
-        print_endline "--- layout ---";
-        Named.Layout.print layout;
-        print_endline "]";
-      end; *)
+        Format.printf "@[layout = ";
+        Named.Layout.show Format.std_formatter layout;
+        Format.print_flush ();
+        print_endline "\n]";
+      end;
 
       Named.gen_bf layout code
     end
   in
 
-  if (!flag_verbose || not !flag_run) && not !flag_bf then begin
+  if not !flag_run && not !flag_bf then begin
     print_endline @@ Bf.Code.to_string bf_code;
   end;
 
@@ -47,7 +52,7 @@ let () =
         ~cell_type:WrapAround256
         (Bf.Exe.from_code bf_code)
     in
-    if !flag_verbose then begin
+    if !flag_dump_tape then begin
       print_newline ();
       Bf.Exe.Dump.dump dump;
     end else begin

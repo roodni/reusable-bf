@@ -14,9 +14,10 @@ let layout =
         offset_of_body = 1;
         size_of_members = 2;
         members = [
-          (a, Cell 0);
-          (p, Cell 1);
+          (a, Cell { offset=0; is_index=false });
+          (p, Cell { offset=1; is_index=false });
         ];
+        length = None;
       } );
   ]
 let program =

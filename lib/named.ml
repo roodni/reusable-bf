@@ -18,12 +18,10 @@ end = struct
     Hashtbl.add nametable id name;
     id
   let to_string (t: t) =
-    let name = match Hashtbl.find_opt nametable t with
-      | None -> ""
-      | Some name -> name
-    in
-    sprintf "%s#%d" name t
-  let infarray = gen_named "<infarray>"
+    match Hashtbl.find_opt nametable t with
+    | None -> sprintf "#%d" t
+    | Some name -> name
+  let infarray = gen_named "[unlimited array]"
 end
 
 (** 変数名とテープ位置の確保の仕方(mtype)の対応 *)
@@ -112,12 +110,13 @@ end
 module Layout = struct
   type t = (Id.t * loc) list
   and loc =
-    | Cell of int
+    | Cell of { offset: int; is_index: bool; }
     | Ifable of { offset_of_cond: int; cond_to_else: int; else_to_endif: int; }
     | Array of {
         offset_of_body: int; (* メンバを格納するエリアの左端 (さらに左側にはインデックスだけを含むヘッダがある) *)
         size_of_members: int;
-        members: t
+        members: t;
+        length: int option;
       }
 
   (** 定義された変数をセルに割り当てる *)
@@ -128,10 +127,12 @@ module Layout = struct
       Hashtbl.fold (fun id kind (layout, ofs_available) ->
         let loc, ofs_available =
           match kind with
-          | Field.Cell { ifable=false } -> (Cell ofs_available, ofs_available + 1)
+          | Field.Cell { ifable=false } ->
+              (Cell { offset=ofs_available; is_index=false }, ofs_available + 1)
           | Cell { ifable=true } ->
               (Ifable { offset_of_cond=ofs_available; cond_to_else=1; else_to_endif=1 }, ofs_available + 3)
-          | Index -> (Cell ofs_available, ofs_available + 1)
+          | Index ->
+              (Cell { offset=ofs_available; is_index=true }, ofs_available + 1)
           | Array { members; length } ->
               let indexes, members = Field.partition_index members in
               (* メンバを左から詰める *)
@@ -140,7 +141,10 @@ module Layout = struct
               let layout_indexes, size_of_members = allocate indexes ofs_index_start in
               let members = layout @ layout_indexes in
               let offset_of_body = ofs_available + size_of_members - ofs_index_start in
-              ( Array { offset_of_body; size_of_members; members },
+              ( Array {
+                  offset_of_body; size_of_members; members;
+                  length=(if id = Id.infarray then None else Some length);
+                },
                 offset_of_body + size_of_members*length )
         in
         ((id, loc) :: layout, ofs_available)
@@ -154,6 +158,50 @@ module Layout = struct
     layout @ layout_infarray
 
   let lookup (layout: t) id = List.assoc id layout
+
+  let show ppf layout =
+    let loc_to_offset = function
+      | Cell { offset; _ } -> offset
+      | Ifable { offset_of_cond; _ } -> offset_of_cond
+      | Array { offset_of_body; _ } -> offset_of_body
+    in
+    let open Format in
+    let rec show layout =
+      let ordered_members =
+        layout |>
+          List.filter
+            (fun (_, loc) ->
+              match loc with
+              | Array { size_of_members=0; _ } -> false
+              | _ -> true )
+            |>
+          List.map (fun (id, loc) -> (loc_to_offset loc, (id, loc))) |>
+          List.sort
+            (fun (ofs1, _) (ofs2, _) -> Int.compare ofs1 ofs2)
+      in
+      fprintf ppf "{@;<1 2>@[<hv>";
+      List.iteri
+        (fun i (ofs, (id, loc)) ->
+          if i > 0 then pp_print_space ppf ();
+          fprintf ppf "%d -> @[<hv>%s: " ofs (Id.to_string id);
+          ( match loc with
+            | Cell { is_index=false; _ } -> fprintf ppf "cell";
+            | Cell { is_index=true; _ } -> fprintf ppf "index";
+            | Ifable _ -> fprintf ppf "cell?";
+            | Array { size_of_members; members; length; _ } ->
+                let length_s = match length with
+                  | Some l -> string_of_int l
+                  | None -> "_"
+                in
+                fprintf ppf "array(%s) <%d>" length_s size_of_members;
+                show members
+          );
+          fprintf ppf ";@]";
+        )
+        ordered_members;
+      fprintf ppf "@]@ }";
+    in
+    show layout;
 end
 
 (** ポインタ移動コードを生成するためのテープ位置 (コード生成に利用) *)
@@ -199,7 +247,7 @@ module Pos = struct
   let rec from_sel layout = function
     | Sel.Member m -> begin
         match Layout.lookup layout m with
-        | Layout.Cell offset -> SCell (Cell offset)
+        | Layout.Cell { offset; _ } -> SCell (Cell offset)
         | Ifable { offset_of_cond; cond_to_else; else_to_endif } ->
             SIfable {
               pos_cond = Cell offset_of_cond;
@@ -213,17 +261,17 @@ module Pos = struct
     | Array { name; index_opt=None; offset; member } -> begin
         match Layout.lookup layout name with
         | Cell _ | Ifable _ -> assert false
-        | Layout.Array { offset_of_body; size_of_members; members } ->
+        | Layout.Array { offset_of_body; size_of_members; members; _ } ->
             from_sel members member
             |> selected_map (shift_root (offset_of_body + size_of_members*offset))
       end
     | Array { name; index_opt=Some index; offset; member } -> begin
         match Layout.lookup layout name with
         | Cell _ | Ifable _ -> assert false
-        | Layout.Array { offset_of_body; size_of_members; members } ->
+        | Layout.Array { offset_of_body; size_of_members; members; _ } ->
             let offset_of_index_in_array =
               match Layout.lookup members index with
-              | Cell offset -> offset
+              | Cell { offset; _ } -> offset
               | Ifable _ | Array _ -> assert false
             in
             from_sel members member
