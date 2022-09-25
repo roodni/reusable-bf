@@ -87,7 +87,7 @@ module NVarEnv : sig
   val lookup : Var.t -> t -> binded option
 
   (** Fieldを読んでNamedのFieldを拡張してNVarEnvを作成する *)
-  val gen_using_field : Named.Field.main -> Named.Field.t -> Field.t -> t
+  val gen_using_field : ?parent_name:string -> Named.Field.main -> Named.Field.t -> Field.t -> t
 
 end = struct
   type t = (Var.t * binded) list
@@ -103,20 +103,24 @@ end = struct
   let to_list (t: t) = t
   let lookup (v: Var.t) (t: t) = List.assoc_opt v t
 
-  let rec gen_using_field (nmain: Named.Field.main) nfield field =
+  let rec gen_using_field ?parent_name (nmain: Named.Field.main) nfield field =
     field |> List.fold_left
       (fun env { i=info; v=(var, mtype) } ->
+        let nvar =
+          Named.Id.gen_named
+            ( match parent_name with
+              | None -> Var.to_string var
+              | Some parent_name ->
+                  sprintf "%s.%s" parent_name (Var.to_string var) )
+        in
         match mtype with
         | Field.Cell ->
-            let nvar = Named.Id.gen_named (Var.to_string var) in
             Named.Field.extend nfield nvar (Named.Field.Cell { ifable=false });
             (var, withinfo info (nvar, Cell)) :: env
         | Field.Index ->
-            let nvar = Named.Id.gen_named (Var.to_string var) in
             Named.Field.extend nfield nvar Named.Field.Index;
             (var, withinfo info (nvar, Index)) :: env
         | Field.Array { length=Some length; mem } ->
-            let nvar = Named.Id.gen_named (Var.to_string var) in
             let nmembers = Named.Field.empty () in
             let narray = Named.Field.Array { length; members=nmembers } in
             Named.Field.extend nfield nvar narray;
@@ -124,7 +128,7 @@ end = struct
             (var, withinfo info (nvar, Array { length=Some length; mem=env_members })) :: env
         | Field.Array { length=None; mem } ->
             assert (nfield == nmain.finite); (* 本当はassertではダメ *)
-            let env_members = gen_using_field nmain nmain.infarray mem in
+            let env_members = gen_using_field ~parent_name:(Var.to_string var) nmain nmain.infarray mem in
             (var,
               withinfo
                 info
