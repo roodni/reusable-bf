@@ -1,0 +1,186 @@
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+let gen_del x = [
+  ! x [ - x ]
+]
+
+let gen_repeat src block = [
+  ! src [
+     - src
+     *block
+  ]
+]
+
+let gen_repeat_restore src block = [
+  $alloc { backup: cell; } in
+  *gen_repeat src [
+    + backup
+    *block
+  ]
+  *gen_repeat backup [ + src ]
+]
+
+let gen_reset_index i = [
+  ! i [ < i ]
+]
+
+let gen_set_index src i = [
+  *gen_reset_index i
+  *gen_repeat src [ > i ]
+]
+
+
+let gen_input dest ed = [
+  $alloc { x: cell; } in
+  , x
+  - x ed
+  ! x [
+    - x ('0' - ed)
+    *gen_repeat dest [ + x 10 ]
+    *gen_repeat x [ + dest ]
+    , x
+    - x ed
+  ]
+]
+
+let gen_puts = fun l -> [
+  $alloc { c: cell; } in
+  *fix
+    (fun loop prev l ->
+      match l with
+      | nil -> []
+      | hd :: tl -> [
+          + c (hd - prev)
+          . c
+          *loop hd tl
+        ])
+    0 l
+]
+
+
+main {
+  queens: array_unlimited {
+    col: cell;
+    i: index;
+  };
+  f_col: array_unlimited {
+    flag: cell;
+    i: index;
+  };
+  f_sum: array_unlimited {
+    flag: cell;
+    i: index;
+  };
+  f_diff: array_unlimited {
+    flag: cell;
+    i: index;
+  };
+  n: cell;
+  row_rest: cell;
+  rowi: cell;
+} in
+
+
+*gen_input n '\n'
+
+*gen_repeat_restore n [
+  + row_rest
+  + queens:(0)col
+]
+- queens:(0)col
+
+! row_rest [
+  *gen_reset_index queens@i
+  *gen_repeat_restore rowi [ > queens@i ]
+
+  *gen_reset_index f_col@i
+  *gen_reset_index f_sum@i
+  *gen_reset_index f_diff@i
+
+  + queens@i:col
+  ? queens@i:col
+    [ # クイーンが盤上にある
+      - queens@i:col
+      *gen_repeat_restore n [ > f_diff@i ]
+      *gen_repeat_restore queens@i:col [
+        > f_col@i
+        > f_sum@i
+        < f_diff@i
+      ]
+      *gen_repeat_restore rowi [
+        > f_sum@i
+        > f_diff@i
+      ]
+
+      $alloc { dup: cell; } in
+      ? f_col@i:flag [ + dup ] []
+      ? f_sum@i:flag [ + dup ] []
+      ? f_diff@i:flag [ + dup ] []
+      ? dup
+        [ # 重複あり
+          - queens@i:col
+        ]
+        [ # 重複なし
+          + f_col@i:flag
+          + f_sum@i:flag
+          + f_diff@i:flag
+
+          + rowi
+          - row_rest
+
+          - n
+          *gen_repeat_restore n [ + queens@i:(1)col ]
+          + n
+        ]
+    ]
+    [ # クイーンが左端から出た
+      ? rowi
+        [ # バックトラック
+          - rowi
+          + row_rest
+          *gen_repeat_restore n [ > f_diff@i ]
+          *gen_repeat_restore queens@i:(-1)col [
+            > f_col@i
+            > f_sum@i
+            < f_diff@i
+          ]
+          *gen_repeat_restore rowi [
+            > f_sum@i
+            > f_diff@i
+          ]
+          - f_col@i:flag
+          - f_sum@i:flag
+          - f_diff@i:flag
+          - queens@i:(-1)col
+        ]
+        [ # 詰み
+          *gen_del row_rest
+        ]
+    ]
+]
+
+
+# 出力
+? rowi
+  [ # 通常
+    *gen_reset_index queens@i
+    $alloc { i: cell; j: cell; } in
+    *gen_repeat_restore n [ + i ]
+    ! i [
+      - i
+      *gen_repeat_restore n [ + j ]
+      ! j [
+        - j
+        *gen_repeat_restore j [ - queens@i:col ]
+        ? queens@i:col
+          [ *gen_puts ". " ]
+          [ *gen_puts "Q " ]
+        *gen_repeat_restore j [ + queens@i:col ]
+      ]
+      > queens@i
+      *gen_puts "\n"
+    ]
+  ]
+  [ *gen_puts "NO ANSWER\n" ]

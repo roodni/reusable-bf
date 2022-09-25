@@ -70,5 +70,17 @@ let cases = [
     name = "nested_array";
     io_list = [ ("", "XYPQqRSrs012MNmn") ];
     filename = "code/nested_array.bfr"
+  };
+  {
+    name = "queens";
+    io_list =
+      [ ("2\n", "NO ANSWER\n");
+        ( "4\n",
+          ". Q . . \n" ^
+          ". . . Q \n" ^
+          "Q . . . \n" ^
+          ". . Q . \n" )
+      ];
+    filename = "code/queens.bfr"
   }
 ]

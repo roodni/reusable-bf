@@ -13,7 +13,7 @@ let test_run Testcase.{ name; filename; io_list; } =
       let res, dump, opt_act =
         Bf.Exe.run_string
           ~input:(Stream.of_string ipt)
-          ~cell_type:Bf.Overflow256
+          ~cell_type:Bf.WrapAround256
           (Bf.Exe.from_code bf_code)
       in
       let failed = ref false in

@@ -5,6 +5,7 @@ module Id: sig
   val gen: unit -> t
   val gen_named: string -> t
   val to_string: t -> string
+  val to_definition_order: t -> int
   val infarray: t
 end = struct
   type t = int
@@ -21,6 +22,7 @@ end = struct
     match Hashtbl.find_opt nametable t with
     | None -> sprintf "#%d" t
     | Some name -> name
+  let to_definition_order (t: t): int = t
   let infarray = gen_named "[unlimited array]"
 end
 
@@ -46,10 +48,20 @@ module Field = struct
   let lookup (field: t) id = Hashtbl.find field id
   let extend (field: t) id mtype = Hashtbl.replace field id mtype
 
+  let fold f (field: t) init =
+    Hashtbl.to_seq field |>
+      List.of_seq |>
+      List.sort
+        (fun (id1, _) (id2, _) ->
+          Int.compare (Id.to_definition_order id1) (Id.to_definition_order id2)) |>
+      List.fold_left
+        (fun accu (id, mtype) -> f id mtype accu)
+        init
+
   let empty_main (): main = { finite=empty (); infarray=empty () }
   let lookup_main (main: main) id =
     if id = Id.infarray
-      then Array { members=main.infarray; length=(-1); }
+      then Array { members=main.infarray; length=1; }
       else lookup main.finite id
 end
 
@@ -119,43 +131,101 @@ module Layout = struct
         length: int option;
       }
 
-  (** 定義された変数をセルに割り当てる *)
+  (** セル割り付け *)
   let from_field (field: Field.main): t =
-    let Field.{ finite; infarray } = field in
+    (* 左から詰める *)
     let rec allocate (field: Field.t) (ofs_available: int): t * int =
-      (* 左から詰める *)
-      Hashtbl.fold (fun id kind (layout, ofs_available) ->
-        let loc, ofs_available =
-          match kind with
-          | Field.Cell { ifable=false } ->
-              (Cell { offset=ofs_available; is_index=false }, ofs_available + 1)
-          | Cell { ifable=true } ->
-              (Ifable { offset_of_cond=ofs_available; cond_to_else=1; else_to_endif=1 }, ofs_available + 3)
-          | Index ->
-              (Cell { offset=ofs_available; is_index=true }, ofs_available + 1)
-          | Array { members; length } ->
-              let indexes, members = Field.partition_index members in
-              (* メンバを左から詰める *)
-              let layout, ofs_index_start = allocate members 0 in
-              (* ポインタを詰める *)
-              let layout_indexes, size_of_members = allocate indexes ofs_index_start in
-              let members = layout @ layout_indexes in
-              let offset_of_body = ofs_available + size_of_members - ofs_index_start in
-              ( Array {
-                  offset_of_body; size_of_members; members;
-                  length=(if id = Id.infarray then None else Some length);
-                },
-                offset_of_body + size_of_members*length )
+      (* 割り付け先送りコストを格納するテーブル *)
+      let cost_table =
+        Field.fold (fun id _ l -> (id, 0) :: l) field [] |>
+          List.to_seq |> Hashtbl.of_seq
+      in
+      (* テーブルから優先順に取り出して配置する *)
+      let rec pickup_loop ~ifable_space_allocated layout ofs_available =
+        (* mtype > 先送りコスト > 定義順 で最優先のものを取り出す *)
+        let precedence id cost =
+          let mtype_precedence =
+            match Field.lookup field id with
+            | Field.Cell { ifable=true; _ } when ifable_space_allocated -> 40
+            | Field.Cell _ -> 30
+            | Field.Array _ -> 20
+            | Field.Index -> 10
+          in
+          ( mtype_precedence,
+            cost,
+            - Id.to_definition_order id
+          )
         in
-        ((id, loc) :: layout, ofs_available)
-      ) field ([], ofs_available)
+        let top =
+          Hashtbl.fold
+            (fun next_id next_cost cur ->
+              let next_precedence = precedence next_id next_cost in
+              let next = Some (next_id, next_precedence) in
+              match cur with
+              | None -> next
+              | Some (_, cur_precedence) ->
+                  if next_precedence > cur_precedence then next else cur
+            )
+            cost_table None
+        in
+        match top with
+        | None ->
+            (* 全てのセルを配置した *)
+            (layout, ofs_available)
+        | Some (top_id, _) ->
+            (* 最優先のセルをテーブルから削除し配置する *)
+            Hashtbl.remove cost_table top_id;
+            let top_mtype = Field.lookup field top_id in
+            let top_loc, ofs_available =
+              match top_mtype with
+              | Field.Cell { ifable=false; _ } ->
+                  (Cell { offset=ofs_available; is_index=false }, ofs_available + 1)
+              | Field.Cell { ifable=true; _ } ->
+                  if ifable_space_allocated then
+                    (Ifable { offset_of_cond=ofs_available; cond_to_else=(-1); else_to_endif=(-1) }, ofs_available + 1)
+                  else
+                    (Ifable { offset_of_cond=ofs_available; cond_to_else=1; else_to_endif=1 }, ofs_available + 3)
+              | Index ->
+                  (Cell { offset=ofs_available; is_index=true }, ofs_available + 1)
+              | Array { members; length; } ->
+                  (* メンバを配置する *)
+                  let layout_members, size_of_members = allocate members 0 in
+                  (* メンバのインデックスで最も左にあるものの位置 *)
+                  let ofs_first_index =
+                    layout_members |>
+                      List.filter_map
+                        (fun (_, loc) ->
+                          match loc with
+                          | Cell { is_index=true; offset } -> Some offset
+                          | _ -> None ) |>
+                      List.fold_left min size_of_members
+                  in
+                  let offset_of_body = ofs_available + size_of_members - ofs_first_index in
+                  ( Array {
+                      members = layout_members;
+                      length = (if top_id = Id.infarray then None else Some length);
+                      size_of_members; offset_of_body;
+                    },
+                    offset_of_body + size_of_members * length
+                  )
+            in
+            let ifable_space_allocated =
+              not ifable_space_allocated &&
+              match top_mtype with Field.Cell { ifable=true; _ } -> true | _ -> false
+            in
+            pickup_loop ~ifable_space_allocated ((top_id, top_loc) :: layout) ofs_available
+      in
+      pickup_loop ~ifable_space_allocated:false [] ofs_available
     in
-    let layout, ofs_infarray_start = allocate finite 0 in
-    let infarray = (Id.infarray, Field.Array { members=infarray; length=1 })
-      |> Seq.return |> Hashtbl.of_seq
+    (* 有限の構造と無限配列に分けて配置する *)
+    let Field.{ finite; infarray } = field in
+    let layout_finite, ofs_uarray_start = allocate finite 0 in
+    let uarray =
+      (Id.infarray, Field.Array { members=infarray; length=1 }) |>
+        Seq.return |> Hashtbl.of_seq
     in
-    let layout_infarray, _ = allocate infarray ofs_infarray_start in
-    layout @ layout_infarray
+    let layout_uarray, _ = allocate uarray ofs_uarray_start in
+    layout_finite @ layout_uarray
 
   let lookup (layout: t) id = List.assoc id layout
 

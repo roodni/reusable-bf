@@ -20,7 +20,7 @@ let test_run Testcase.{ name; filename; io_list; } =
       let ipt = bf_code ^ "\\" ^ ipt in
       let res, _, opt_act =
         Bf.Exe.run_string
-          ~cell_type:Bf.Overflow256
+          ~cell_type:Bf.WrapAround256
           ~input:(Stream.of_string ipt)
           BfI.bf_exe
       in
