@@ -388,7 +388,11 @@ module Pos = struct
   let rec gen_bf_move origin dest: Bf.Code.t =
     match origin, dest with
     | Index origin, Index dest
-      when origin.offset_of_index_in_array = dest.offset_of_index_in_array ->
+      when
+        (* TODO: もし配列がheadを共有する実装になると再びバグるので要修正 *)
+        origin.offset_of_head_in_parent = dest.offset_of_head_in_parent &&
+        origin.offset_of_index_in_array = dest.offset_of_index_in_array
+      ->
         gen_bf_move origin.child_pos dest.child_pos
     | Index origin, dest ->
         gen_bf_move_root origin

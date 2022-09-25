@@ -1,0 +1,26 @@
+# バグ発見:
+# ポインタ操作のコード生成時、
+# インデックスのoffset_of_index_in_arrayが同じとき
+# 配列が異なっても同一インデックスとして扱われた
+main {
+  reset: cell;
+  a: array_unlimited {
+    b: array(3) {
+      m: cell;
+      i: index;
+    };
+  };
+} [
+  > a:(1)b@i
+  + reset
+
+  + a:(0)b@i:m '0'
+  . a:(0)b@i:m
+
+  # ここをコメントアウトすると正しく動いた
+  # + reset
+
+  # ここで a:(0)b@i と a:(1)b@i が同じインデックス下にあるものとして扱われた
+  + a:(1)b@i:m '1'
+  . a:(1)b@i:m
+]

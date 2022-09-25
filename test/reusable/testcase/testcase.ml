@@ -82,5 +82,10 @@ let cases = [
           ". . Q . \n" )
       ];
     filename = "code/queens.bfr"
+  };
+  {
+    name = "bugfix: indexed to indexed";
+    io_list = [ ("", "01") ];
+    filename = "code/indexed_to_indexed.bfr"
   }
 ]
