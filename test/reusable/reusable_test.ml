@@ -7,7 +7,7 @@ let test_run Testcase.{ name; filename; io_list; } =
     let dirname = Filename.dirname filename in
     let program = Reusable.load_program filename in
     let field, named_code = Reusable.codegen_all dirname program in
-    let layout = Named.Layout.from_field field in
+    let layout = Named.Layout.from_field named_code field in
     let bf_code = Named.gen_bf layout named_code in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =

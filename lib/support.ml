@@ -13,6 +13,14 @@ module Pervasive = struct
       (1 -- n) |> List.iter (fun _ -> Buffer.add_string buf s);
       Buffer.contents buf
   end
+
+  module Hashtbl = struct
+    include Hashtbl
+    let find_default tbl key default =
+      find_opt tbl key |> Option.value ~default
+    let add_assign_int tbl key n =
+      replace tbl key (find_default tbl key 0 + n)
+  end
 end
 
 module Error = struct

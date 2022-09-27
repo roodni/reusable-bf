@@ -1,4 +1,5 @@
 open Printf
+open Support.Pervasive
 
 module Id: sig
   type t
@@ -35,15 +36,6 @@ module Field = struct
     | Index
   type main = { finite: t; infarray: t }
 
-  (** インデックスとそれ以外を分離する *)
-  let partition_index (field: t) =
-    let indexes, other =
-      field |> Hashtbl.to_seq |> List.of_seq
-        |> List.partition (fun (_, mtype) -> mtype = Index)
-    in
-    (indexes |> List.to_seq |> Hashtbl.of_seq,
-      other |> List.to_seq |> Hashtbl.of_seq)
-
   let empty (): t = Hashtbl.create 30
   let lookup (field: t) id = Hashtbl.find field id
   let extend (field: t) id mtype = Hashtbl.replace field id mtype
@@ -70,6 +62,10 @@ module Sel = struct
   type t =
     | Member of Id.t
     | Array of { name: Id.t; index_opt: Id.t option; offset: int; member: t }
+
+  let head_id = function
+    | Member id -> id
+    | Array { name; _ } -> name
 
   (** 配列へのセレクタとインデックス名から、自分自身を経由して自分にアクセスするインデックスのセレクタを取得する *)
   let rec index_on_itself array index offset =
@@ -118,6 +114,155 @@ module Code = struct
     | If of Sel.t * t * t
 end
 
+module MovementCounter = struct
+  type t = (Id.t * Id.t, int) Hashtbl.t
+  let leftside = Id.gen_named "[left]"
+  let rightside = Id.gen_named "[right]"
+  let add (tbl: t) id1 id2 = Hashtbl.add_assign_int tbl (id1, id2) 1
+  let dec (tbl: t) id1 id2 = Hashtbl.add_assign_int tbl (id1, id2) (-1)
+  let get (tbl: t) id1 id2 =
+    Hashtbl.find_default tbl (id1, id2) 0 +
+    Hashtbl.find_default tbl (id2, id1) 0
+  let dump (tbl: t) =
+    let tbl = Hashtbl.copy tbl in
+    Hashtbl.to_seq_keys tbl
+    |> List.of_seq |> List.sort compare
+    |> List.iter
+      (fun (origin, dest) ->
+        if Hashtbl.mem tbl (origin, dest) then begin
+          printf "(%s, %s) -> %d\n"
+            (Id.to_string origin)
+            (Id.to_string dest)
+            (get tbl origin dest);
+          Hashtbl.remove tbl (origin, dest);
+          Hashtbl.remove tbl (dest, origin);
+        end
+      )
+  let rec add_id_to_sel_until_index (tbl: t) id sel =
+    match sel with
+    | Sel.Member m -> add tbl id m; sel
+    | Array { name; index_opt=None; member; _ } ->
+        add tbl id name;
+        add_id_to_sel_until_index tbl id member
+    | Array { name; index_opt=Some idx; _ } ->
+        add tbl id name;
+        add tbl id idx;
+        sel
+  let rec add_sel_updown (tbl: t) (dir: [`Up | `Down]) sel =
+    match sel with
+    | Sel.Member _ -> ()
+    | Array { index_opt=None; _ } -> assert false
+    | Array { index_opt=Some idx; offset; member; _ } ->
+        let offset = offset - (match dir with `Up -> 1 | `Down -> 0) in
+        let idx_dest, mem_origin =
+          if offset > 0 then (rightside, leftside) else
+          if offset < 0 then (leftside, rightside)
+          else (idx, idx)
+        in
+        let next_idx_or_mem_sel =
+          if idx_dest <> idx then add tbl idx idx_dest;
+          add_id_to_sel_until_index tbl mem_origin member;
+        in
+        add_sel_updown tbl dir next_idx_or_mem_sel
+  let rec add_sel_to_sel (tbl: t) (origin: Sel.t) (dest: Sel.t) =
+    match origin, dest with
+    | Array { name=o_name; index_opt=o_idx_opt; offset=o_offset; member=o_member },
+      Array { name=d_name; index_opt=d_idx_opt; offset=d_offset; member=d_member }
+      when o_name = d_name -> begin
+      (* 両者のセレクタの表層が同じ配列である *)
+        match o_idx_opt, d_idx_opt with
+        | _ when o_idx_opt = d_idx_opt ->
+          (* インデックスが同じ、または両方ともインデックスでない *)
+            if o_offset = d_offset then
+              (* インデックスとオフセットが同じならその配列を無視できる *)
+              add_sel_to_sel tbl o_member d_member
+            else begin
+              (* オフセットが違うなら影響を考慮する *)
+              let origin_to, dest_from =
+                if o_offset < d_offset then (rightside, leftside)
+                  else (leftside, rightside)
+              in
+              let o_next = add_id_to_sel_until_index tbl origin_to o_member in
+              add_sel_updown tbl `Up o_next;
+              let d_next = add_id_to_sel_until_index tbl dest_from d_member in
+              add_sel_updown tbl `Down d_next;
+            end
+        | None, None -> assert false
+        | None, Some d_idx ->
+          (* 下りの表層だけがインデックスである *)
+            let origin_to = if o_offset = 0 then d_idx else leftside in
+            let o_next = add_id_to_sel_until_index tbl origin_to o_member in
+            add_sel_updown tbl `Up o_next;
+            add_sel_updown tbl `Down dest;
+        | Some _, None ->
+          (* 上りの表層だけがインデックスである *)
+            add_sel_updown tbl `Up origin;
+            let d_next = add_id_to_sel_until_index tbl leftside d_member in
+            add_sel_updown tbl `Down d_next;
+        | Some o_idx, Some d_idx ->
+          (* 両者が異なるインデックスである *)
+            add_sel_updown tbl `Up origin;
+            add tbl o_idx d_idx;
+            add_sel_updown tbl `Down dest;
+      end
+    | origin, dest ->
+      (* 両者のセレクタが同じ配列を指していない *)
+        let o_head = Sel.head_id origin in
+        let d_head = Sel.head_id dest in
+        let o_next = add_id_to_sel_until_index tbl d_head origin in
+        add_sel_updown tbl `Up o_next;
+        let d_next = add_id_to_sel_until_index tbl o_head dest in
+        add_sel_updown tbl `Down d_next;
+        (* 表層同士の移動が2重カウントされるのを打ち消す *)
+        dec tbl o_head d_head
+  let from_code (code: Code.t): t =
+    let tbl = Hashtbl.create 200 in
+    let rec scan_code (initial_sel: Sel.t) (code: Code.t) =
+      List.fold_left
+        (fun curr_sel cmd ->
+          match cmd with
+          | Code.Add (0, _) -> curr_sel
+          | Add (_, sel) | Put sel | Get sel ->
+              add_sel_to_sel tbl curr_sel sel;
+              sel
+          | Loop (cond_sel, code) ->
+              add_sel_to_sel tbl curr_sel cond_sel;
+              let wend_sel = scan_code cond_sel code in
+              add_sel_to_sel tbl wend_sel cond_sel;
+              cond_sel
+          | LoopPtr (array, idx, code) ->
+              (* 添字オフセットが0でないセレクタが指すセルのカウントは未実装 *)
+              let cond_sel = Sel.index_on_itself array idx (-1) in
+              scan_code curr_sel [ Code.Loop (cond_sel, code) ]
+          | Shift (n, array, idx) -> begin
+              let index_sel = Sel.index_on_itself array idx 0 in
+              let prev_index_sel = Sel.index_on_itself array idx (-1) in
+              match n with
+              | 0 -> curr_sel
+              | 1 ->
+                  add_sel_to_sel tbl curr_sel index_sel;
+                  prev_index_sel
+              | -1 ->
+                  add_sel_to_sel tbl curr_sel prev_index_sel;
+                  index_sel
+              | _ -> assert false
+            end
+          | If (cond_sel, code_then, code_else) ->
+              add_sel_to_sel tbl curr_sel cond_sel;
+              let sel = scan_code cond_sel code_then in
+              add_sel_to_sel tbl sel cond_sel;
+              let sel = scan_code cond_sel code_else in
+              add_sel_to_sel tbl sel cond_sel;
+              cond_sel
+        )
+        initial_sel
+        code
+    in
+    ignore @@ scan_code (Sel.Member leftside) code;
+    tbl
+end
+
+
 (** 変数名と確保されたテープ位置の対応 *)
 module Layout = struct
   type t = (Id.t * loc) list
@@ -132,13 +277,23 @@ module Layout = struct
       }
 
   (** セル割り付け *)
-  let from_field (field: Field.main): t =
+  let from_field (code: Code.t) (field: Field.main): t =
     (* 左から詰める *)
+    let mcounter = MovementCounter.from_code code in
     let rec allocate (field: Field.t) (ofs_available: int): t * int =
       (* 割り付け先送りコストを格納するテーブル *)
       let cost_table =
-        Field.fold (fun id _ l -> (id, 0) :: l) field [] |>
-          List.to_seq |> Hashtbl.of_seq
+        Field.fold
+          (fun id _ l ->
+            let initial_cost =
+              MovementCounter.get mcounter MovementCounter.leftside id
+                - MovementCounter.get mcounter MovementCounter.rightside id
+                - MovementCounter.get mcounter Id.infarray id
+            in
+            (id, initial_cost) :: l
+          )
+          field []
+        |> List.to_seq |> Hashtbl.of_seq
       in
       (* テーブルから優先順に取り出して配置する *)
       let rec pickup_loop ~ifable_space_allocated layout ofs_available =
@@ -146,10 +301,10 @@ module Layout = struct
         let precedence id cost =
           let mtype_precedence =
             match Field.lookup field id with
-            | Field.Cell { ifable=true; _ } when ifable_space_allocated -> 40
+            | Field.Array _ -> 90
+            | Field.Cell { ifable=true; _ } when ifable_space_allocated -> 60
             | Field.Cell _ -> 30
-            | Field.Array _ -> 20
-            | Field.Index -> 10
+            | Field.Index -> 20
           in
           ( mtype_precedence,
             cost,
@@ -158,23 +313,32 @@ module Layout = struct
         in
         let top =
           Hashtbl.fold
-            (fun next_id next_cost cur ->
+            (fun next_id next_cost curr ->
               let next_precedence = precedence next_id next_cost in
               let next = Some (next_id, next_precedence) in
-              match cur with
+              match curr with
               | None -> next
-              | Some (_, cur_precedence) ->
-                  if next_precedence > cur_precedence then next else cur
+              | Some (_, curr_precedence) ->
+                  if next_precedence > curr_precedence then next else curr
             )
             cost_table None
         in
+        (* セルを配置する *)
         match top with
         | None ->
             (* 全てのセルを配置した *)
             (layout, ofs_available)
         | Some (top_id, _) ->
-            (* 最優先のセルをテーブルから削除し配置する *)
+            (* コストのテーブルを更新する *)
             Hashtbl.remove cost_table top_id;
+            Hashtbl.to_seq_keys cost_table
+              |> List.of_seq
+              |> List.iter
+                (fun id ->
+                  Hashtbl.add_assign_int cost_table id
+                    (MovementCounter.get mcounter top_id id)
+                );
+            (* 左に詰める *)
             let top_mtype = Field.lookup field top_id in
             let top_loc, ofs_available =
               match top_mtype with
@@ -192,13 +356,13 @@ module Layout = struct
                   let layout_members, size_of_members = allocate members 0 in
                   (* メンバのインデックスで最も左にあるものの位置 *)
                   let ofs_first_index =
-                    layout_members |>
-                      List.filter_map
-                        (fun (_, loc) ->
-                          match loc with
-                          | Cell { is_index=true; offset } -> Some offset
-                          | _ -> None ) |>
-                      List.fold_left min size_of_members
+                    layout_members
+                    |> List.filter_map
+                      (fun (_, loc) ->
+                        match loc with
+                        | Cell { is_index=true; offset } -> Some offset
+                        | _ -> None )
+                    |> List.fold_left min size_of_members
                   in
                   let offset_of_body = ofs_available + size_of_members - ofs_first_index in
                   ( Array {
@@ -221,8 +385,8 @@ module Layout = struct
     let Field.{ finite; infarray } = field in
     let layout_finite, ofs_uarray_start = allocate finite 0 in
     let uarray =
-      (Id.infarray, Field.Array { members=infarray; length=1 }) |>
-        Seq.return |> Hashtbl.of_seq
+      (Id.infarray, Field.Array { members=infarray; length=1 })
+      |> Seq.return |> Hashtbl.of_seq
     in
     let layout_uarray, _ = allocate uarray ofs_uarray_start in
     layout_finite @ layout_uarray

@@ -28,14 +28,20 @@ let () =
       let program = Reusable.load_program !filename in
 
       let field, code = Reusable.codegen_all dirname program in
-      let layout = Named.Layout.from_field field in
+      let layout = Named.Layout.from_field code field in
 
       if !flag_show_layouts then begin
         print_endline "[";
         Format.printf "@[layout = ";
         Named.Layout.show Format.std_formatter layout;
         Format.print_flush ();
-        print_endline "\n]";
+        print_newline ();
+
+        let tbl = Named.MovementCounter.from_code code in
+        Named.MovementCounter.dump tbl;
+        print_newline ();
+
+        print_endline "]";
       end;
 
       Named.gen_bf layout code

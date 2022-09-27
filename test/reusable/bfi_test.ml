@@ -5,7 +5,7 @@ let reusable_to_bf_code filename =
   let dirname = Filename.dirname filename in
   let program = Reusable.load_program filename in
   let field, code = Reusable.codegen_all dirname program in
-  let layout = Named.Layout.from_field field in
+  let layout = Named.Layout.from_field code field in
   Named.gen_bf layout code
 
 module BfI = struct
