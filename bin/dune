@@ -1,6 +1,6 @@
-(executable
- (public_name main)
- (name main)
+(executables
+ (public_names main measurelen)
+ (names main measurelen)
  (libraries lib))
 
 (env

@@ -87,5 +87,10 @@ let cases = [
     name = "bugfix: indexed to indexed";
     io_list = [ ("", "01") ];
     filename = "code/indexed_to_indexed.bfr"
+  };
+  {
+    name = "bizzbuzz";
+    io_list = [ ("16\n", "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz 16 ") ];
+    filename = "code/fizzbuzz.bfr"
   }
 ]

@@ -10,7 +10,7 @@ module Code = struct
     | Shift of int
     | Loop of t
 
-  let to_string code =
+  let to_buffer code =
     let buf = Buffer.create 10000 in
     let rec loop code =
       List.iter
@@ -31,8 +31,9 @@ module Code = struct
         code
     in
     loop code;
-    Buffer.contents buf
-  ;;
+    buf
+
+  let to_string code = Buffer.contents (to_buffer code)
 
   exception ParseError
 

@@ -1,9 +1,10 @@
 # bf-reusable
 
-brainfuckにコンパイルされるプログラミング言語
+brainfuckのコードを生成するために作られたプログラミング言語
 
 ## 資料
 * https://www.slideshare.net/roodni/brainfuckbfreusable
+  * 情報がやや古いです
 
 ## 依存ソフトウェア
 

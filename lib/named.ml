@@ -260,6 +260,7 @@ module MovementCounter = struct
     in
     ignore @@ scan_code (Sel.Member leftside) code;
     tbl
+  (* let from_code _code = Hashtbl.create 30 *)
 end
 
 
