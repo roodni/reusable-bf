@@ -140,7 +140,9 @@ module MovementCounter = struct
       )
   let rec add_id_to_sel_until_index (tbl: t) id sel =
     match sel with
-    | Sel.Member m -> add tbl id m; sel
+    | Sel.Member m ->
+        if m <> id then add tbl id m;
+        sel
     | Array { name; index_opt=None; member; _ } ->
         add tbl id name;
         add_id_to_sel_until_index tbl id member
@@ -214,7 +216,7 @@ module MovementCounter = struct
         let d_next = add_id_to_sel_until_index tbl o_head dest in
         add_sel_updown tbl `Down d_next;
         (* 表層同士の移動が2重カウントされるのを打ち消す *)
-        dec tbl o_head d_head
+        if o_head <> d_head then dec tbl o_head d_head
   let from_code (code: Code.t): t =
     let tbl = Hashtbl.create 200 in
     let rec scan_code (initial_sel: Sel.t) (code: Code.t) =

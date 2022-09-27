@@ -37,9 +37,9 @@ let () =
         Format.print_flush ();
         print_newline ();
 
-        let tbl = Named.MovementCounter.from_code code in
+        (* let tbl = Named.MovementCounter.from_code code in
         Named.MovementCounter.dump tbl;
-        print_newline ();
+        print_newline (); *)
 
         print_endline "]";
       end;
