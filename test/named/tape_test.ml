@@ -1,7 +1,6 @@
 open OUnit2
-open Lib
-open Lib.Support.Pervasive
-open Lib.Named
+open Named
+open Support.Pervasive
 
 (* テープの状態を比較するテスト *)
 
@@ -36,10 +35,10 @@ let program =
 let expected = [0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
-    let bf = gen_bf layout program in
+    let bf = Codegen.gen_bf layout program in
     let _, dump, _ =
       Bf.Exe.run_string
-        ~cell_type:Bf.Overflow256
+        ~cell_type:Bf.Exe.Overflow256
         ~input:(Stream.of_string "")
         (Bf.Exe.from_code bf)
     in

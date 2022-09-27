@@ -1,5 +1,5 @@
 open OUnit2
-open Lib.Bf
+open Bf
 
 let test = "parse" >::: [
   "add shift" >:: (fun _ ->

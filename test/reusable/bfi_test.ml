@@ -1,26 +1,24 @@
 open OUnit2
-open Lib
 
-let reusable_to_bf_code filename =
-  let dirname = Filename.dirname filename in
-  let program = Reusable.load_program filename in
-  let field, code = Reusable.codegen_all dirname program in
-  let layout = Named.Layout.from_field code field in
-  Named.gen_bf layout code
 
 module BfI = struct
   let filename = "../../sample/bfi.bfr"
-  let bf_exe = reusable_to_bf_code filename |> Bf.Exe.from_code
+  let bf_exe =
+    Reusable.Codegen.gen_bf_from_source filename
+    |> Bf.Exe.from_code
 end
 
 let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
-    let bf_code = reusable_to_bf_code filename |> Bf.Code.to_string in
+    let bf_code =
+      Reusable.Codegen.gen_bf_from_source filename
+      |> Bf.Code.to_string
+    in
     io_list |> List.iter (fun (ipt, opt) ->
       let ipt = bf_code ^ "\\" ^ ipt in
       let res, _, opt_act =
         Bf.Exe.run_string
-          ~cell_type:Bf.WrapAround256
+          ~cell_type:Bf.Exe.WrapAround256
           ~input:(Stream.of_string ipt)
           BfI.bf_exe
       in

@@ -1,0 +1,167 @@
+open Support.Error
+open Syntax
+
+type codegen_ctx = {
+  envs: Eval.envs;
+  diving: Sel.t option;
+  diving_vars: (Sel.t * NVarEnv.t) list
+}
+
+let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Named.Code.t =
+  let open Eval.Value in
+  let field, st_list = main in
+  let nmain = Named.Field.empty_main () in
+  let nvar_env = NVarEnv.gen_using_field nmain nmain.finite field in
+  let va_env_main = env_extend_with_nvar_env None nvar_env envs.va_env in
+  let envs = { envs with va_env = va_env_main } in
+  let ctx = { envs; diving=None; diving_vars=[] } in
+  let rec codegen (ctx: codegen_ctx) (st_list: stmt list) =
+    let { envs; diving; diving_vars } = ctx in
+    let (), code_list =
+      List.fold_left_map (fun () stmt ->
+        let { i = info; v = stmt } = stmt in
+        match stmt with
+        | StAdd (sign, ex_sel, ex_i_opt) -> begin
+            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            let i =
+              match ex_i_opt with
+              | None -> 1
+              | Some ex_i -> Eval.eval envs ex_i |>  to_int ex_i.i
+            in
+            let code = [ Named.Code.Add (i * sign, nsel) ] in
+            ((), code)
+          end
+        | StPut ex_sel ->
+            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            let code = [ Named.Code.Put nsel ] in
+            ((), code)
+        | StGet ex_sel ->
+            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            let code = [ Named.Code.Get nsel ] in
+            ((), code)
+        | StWhile (ex_sel, st_list) -> begin
+            match Eval.eval envs ex_sel |> to_nsel_or_nptr ex_sel.i with
+            | Sel.NSel nsel ->
+                let (), code_loop = codegen ctx st_list in
+                let code = [ Named.Code.Loop (nsel, code_loop) ] in
+                ((), code)
+            | Sel.NPtr (nsel, ptr) ->
+                let (), code_loop = codegen ctx st_list in
+                let code = [ Named.Code.LoopPtr (nsel, ptr, code_loop) ] in
+                ((), code)
+          end
+        | StIf (ex_sel, st_list_then, st_list_else) ->
+            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            let nmtype = Named.Sel.find_field nmain nsel in
+            let () =
+              match nmtype with
+              | Named.Field.Cell cell ->
+                  cell.ifable <- true
+              | _ ->
+                  (* Named.Field.mtype のパターンマッチでエラーを報告するのは良くない *)
+                  error_at ex_sel.i "selector(cell) expected"
+            in
+            let (), code_then = codegen ctx st_list_then in
+            let (), code_else = match st_list_else with
+              | None -> ((), [])
+              | Some st_list_else -> codegen ctx st_list_else
+            in
+            let code = [ Named.Code.If (nsel, code_then, code_else) ] in
+            ((), code)
+        | StShift (sign, ex_ptr, ex_i_opt) ->
+            let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
+            let nsel, ptr = Sel.to_nptr ex_ptr.i sel in
+            let i = sign * match ex_i_opt with
+              | None -> 1
+              | Some ex_i -> Eval.eval envs ex_i |> to_int ex_i.i
+            in
+            if abs i <> 1 then error_at info "2 or more shift is not implemented";
+            let code_move_var = diving_vars |>
+              List.filter_map (fun (sel_diving, nvar_env) ->
+                if sel = sel_diving then (* 変数をコピーする *)
+                  NVarEnv.to_list nvar_env |>
+                  List.map (fun (_, { v=(nvar, mtype); i=_ }) ->
+                    match mtype with
+                    | NVarEnv.Array _ | Index ->
+                        (* varの時点で弾かれるので到達できないはず *)
+                        error_at info "Shifting local array is not implemented"
+                    | NVarEnv.Cell ->
+                        let nsel_origin = Sel.LstMem (sel, 0, nvar) |> Sel.to_nsel unknown_info in
+                        let nsel_dest = Sel.LstMem (sel, i, nvar) |> Sel.to_nsel unknown_info in
+                        [ Named.Code.Loop (nsel_origin,
+                          [ Add (-1, nsel_origin);
+                            Add (1, nsel_dest); ]) ]
+                  ) |> List.flatten |> Option.some
+                else if Sel.has_ptr ptr sel_diving then
+                    error_at info "Shift is prohibited because a local cell interferes"
+                else None
+              ) |> List.flatten
+            in
+            let code_shift = [ Named.Code.Shift (i, nsel, ptr) ] in
+            ((), code_move_var @ code_shift)
+        | StAlloc (field, st_list) ->
+            let nfield = match diving with
+              | None -> nmain.finite
+              | Some sel ->
+                  let nsel, _ =  Sel.to_nptr info sel in
+                  let nmtype = Named.Sel.find_field nmain nsel in
+                  match nmtype with
+                  | Named.Field.Array { members; _ } -> members
+                  | _ -> assert false (* divingに登録されているセレクタは(たぶん)配列を指している *)
+            in
+            let nvar_env = NVarEnv.gen_using_field nmain nfield field in
+            let va_env = env_extend_with_nvar_env diving nvar_env envs.va_env in
+            let envs = { envs with va_env } in
+            let diving_vars = match diving with
+              | None -> diving_vars
+              | Some sel -> (sel, nvar_env) :: diving_vars
+            in
+            let ctx = { ctx with envs; diving_vars; } in
+            let (), code_child = codegen ctx st_list in
+            (* 変数が使用したセルをゼロにする *)
+            let code_clean =
+              NVarEnv.to_list nvar_env |>
+              List.map (fun (_, { v = (nvar, mtype); i }) ->
+                match mtype with
+                | NVarEnv.Array _ -> error_at i "Allocating local arrays is not implemented"
+                | NVarEnv.Index ->
+                    assert false
+                    (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
+                | NVarEnv.Cell ->
+                    let sel = Sel.base_or_mem diving nvar in
+                    let nsel = Sel.to_nsel unknown_info sel in
+                    [ Named.Code.Loop (nsel, [ Add (-1, nsel) ]) ]
+              ) |> List.flatten
+            in
+            ((), code_child @ code_clean)
+        | StLet (binding, st_list) ->
+            let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
+            codegen { ctx with envs } st_list
+        | StExpand ex_block ->
+            let envs, st_list = Eval.eval envs ex_block |> to_block ex_block.i in
+            codegen { ctx with envs } st_list
+        | StDive (ex_ptr, st_list) ->
+            let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
+            let _ = Sel.to_nptr ex_ptr.i sel in
+            (* ↑インデックスであることを確認している *)
+            codegen { ctx with diving = Some sel } st_list
+      ) () st_list
+    in
+    ((), List.flatten code_list)
+  in
+  (nmain, codegen ctx st_list |> snd)
+
+let gen_named (dirname: string) (program: program) : Named.Field.main * Named.Code.t =
+  let toplevels, main = program in
+  match main with
+  | None -> error_at unknown_info "main not found"
+  | Some main ->
+      let envs = Eval.eval_toplevels dirname [] Eval.empty_envs toplevels in
+      gen_named_from_main envs main
+
+let gen_bf_from_source path =
+  let dirname = Filename.dirname path in
+  let program = Eval.load_program path in
+  let field, code = gen_named dirname program in
+  let layout = Named.Layout.from_field code field in
+  Named.Codegen.gen_bf layout code

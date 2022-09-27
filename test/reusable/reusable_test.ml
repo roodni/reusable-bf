@@ -1,19 +1,14 @@
 open OUnit2
-open Lib
 open Printf
 
 let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
-    let dirname = Filename.dirname filename in
-    let program = Reusable.load_program filename in
-    let field, named_code = Reusable.codegen_all dirname program in
-    let layout = Named.Layout.from_field named_code field in
-    let bf_code = Named.gen_bf layout named_code in
+    let bf_code = Reusable.Codegen.gen_bf_from_source filename in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string
           ~input:(Stream.of_string ipt)
-          ~cell_type:Bf.WrapAround256
+          ~cell_type:Bf.Exe.WrapAround256
           (Bf.Exe.from_code bf_code)
       in
       let failed = ref false in

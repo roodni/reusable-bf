@@ -1,5 +1,4 @@
 open Printf
-open Lib
 open Support.Error
 
 let () =
@@ -25,9 +24,9 @@ let () =
       code
     end else begin
       let dirname = Filename.dirname !filename in
-      let program = Reusable.load_program !filename in
+      let program = Reusable.Eval.load_program !filename in
 
-      let field, code = Reusable.codegen_all dirname program in
+      let field, code = Reusable.Codegen.gen_named dirname program in
       let layout = Named.Layout.from_field code field in
 
       if !flag_show_layouts then begin
@@ -44,7 +43,7 @@ let () =
         print_endline "]";
       end;
 
-      Named.gen_bf layout code
+      Named.Codegen.gen_bf layout code
     end
   in
 

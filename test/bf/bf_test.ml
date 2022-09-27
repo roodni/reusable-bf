@@ -1,5 +1,5 @@
 open OUnit2
-open Lib.Bf
+open Bf
 
 type case = {
   name: string;
@@ -14,7 +14,7 @@ let test_run { name; program; input; output; is_ok; ptr_max } =
   name >:: fun _ ->
     let res, dump, output_actual =
       Exe.run_string
-        ~cell_type:Overflow256
+        ~cell_type:Exe.Overflow256
         ~input:(Stream.of_string input)
         (Exe.from_code program)
     in

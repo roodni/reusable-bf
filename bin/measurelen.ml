@@ -1,4 +1,3 @@
-open Lib
 open Printf
 
 let programs = [
@@ -12,12 +11,10 @@ let programs = [
 let () =
   List.iter
     (fun (name, path) ->
-      let dirname = Filename.dirname path in
-      let program = Reusable.load_program path in
-      let field, code = Reusable.codegen_all dirname program in
-      let layout = Named.Layout.from_field code field in
-      let bf = Named.gen_bf layout code in
-      let buf = Bf.Code.to_buffer bf in
+      let buf =
+        Reusable.Codegen.gen_bf_from_source path
+        |> Bf.Code.to_buffer
+      in
       printf "%s:\t%d\n" name (Buffer.length buf)
     )
     programs

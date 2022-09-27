@@ -1,5 +1,4 @@
 %{
-module Lib = struct end (* おまじない *)
 open Support.Error
 open Syntax
 %}

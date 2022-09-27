@@ -1,7 +1,8 @@
 (library
- (name lib)
- (libraries fileutils)
+ (name reusable)
+ (libraries support bf named fileutils)
  (flags (:standard -warn-error -a)))
+
 
 (menhir
  (modules parser)
