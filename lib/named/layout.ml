@@ -15,7 +15,7 @@ and loc =
 let lookup (layout: t) id = List.assoc id layout
 
 (** セル割り付け *)
-let from_field (code: Code.t) (field: Field.main): t =
+let from_field (code: 'a Code.t) (field: Field.main): t =
   (* 左から詰める *)
   let mcounter = MovementCounter.from_code code in
   let rec allocate (field: Field.t) (ofs_available: int): t * int =

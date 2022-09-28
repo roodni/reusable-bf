@@ -7,7 +7,7 @@ type codegen_ctx = {
   diving_vars: (Sel.t * NVarEnv.t) list
 }
 
-let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Named.Code.t =
+let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * unit Named.Code.t =
   let open Eval.Value in
   let field, st_list = main in
   let nmain = Named.Field.empty_main () in
@@ -15,7 +15,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
   let va_env_main = env_extend_with_nvar_env None nvar_env envs.va_env in
   let envs = { envs with va_env = va_env_main } in
   let ctx = { envs; diving=None; diving_vars=[] } in
-  let rec codegen (ctx: codegen_ctx) (st_list: stmt list) =
+  let rec codegen (ctx: codegen_ctx) (st_list: stmt list): unit * unit Named.Code.t =
     let { envs; diving; diving_vars } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt ->
@@ -28,26 +28,36 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
               | None -> 1
               | Some ex_i -> Eval.eval envs ex_i |>  to_int ex_i.i
             in
-            let code = [ Named.Code.Add (i * sign, nsel) ] in
+            let code =
+              Named.Code.from_list [ Add (i * sign, nsel) ]
+            in
             ((), code)
           end
         | StPut ex_sel ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let code = [ Named.Code.Put nsel ] in
+            let code =
+              Named.Code.from_list [ Named.Code.Put nsel ]
+            in
             ((), code)
         | StGet ex_sel ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let code = [ Named.Code.Get nsel ] in
+            let code =
+              Named.Code.from_list [ Get nsel ] in
             ((), code)
         | StWhile (ex_sel, st_list) -> begin
             match Eval.eval envs ex_sel |> to_nsel_or_nptr ex_sel.i with
             | Sel.NSel nsel ->
                 let (), code_loop = codegen ctx st_list in
-                let code = [ Named.Code.Loop (nsel, code_loop) ] in
+                let code =
+                  Named.Code.from_list
+                    [ Loop (nsel, code_loop) ]
+                in
                 ((), code)
             | Sel.NPtr (nsel, ptr) ->
                 let (), code_loop = codegen ctx st_list in
-                let code = [ Named.Code.LoopPtr (nsel, ptr, code_loop) ] in
+                let code =
+                  Named.Code.from_list [ LoopPtr (nsel, ptr, code_loop) ]
+                in
                 ((), code)
           end
         | StIf (ex_sel, st_list_then, st_list_else) ->
@@ -66,7 +76,8 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
               | None -> ((), [])
               | Some st_list_else -> codegen ctx st_list_else
             in
-            let code = [ Named.Code.If (nsel, code_then, code_else) ] in
+            let code =
+              Named.Code.from_list [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_ptr, ex_i_opt) ->
             let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
@@ -88,16 +99,22 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
                     | NVarEnv.Cell ->
                         let nsel_origin = Sel.LstMem (sel, 0, nvar) |> Sel.to_nsel unknown_info in
                         let nsel_dest = Sel.LstMem (sel, i, nvar) |> Sel.to_nsel unknown_info in
-                        [ Named.Code.Loop (nsel_origin,
-                          [ Add (-1, nsel_origin);
-                            Add (1, nsel_dest); ]) ]
+                        let open Named.Code in
+                        [ Loop
+                            ( nsel_origin,
+                              [ Add (-1, nsel_origin);
+                                Add (1, nsel_dest); ]
+                              |> from_list )
+                        ] |> from_list
                   ) |> List.flatten |> Option.some
                 else if Sel.has_ptr ptr sel_diving then
                     error_at info "Shift is prohibited because a local cell interferes"
                 else None
               ) |> List.flatten
             in
-            let code_shift = [ Named.Code.Shift (i, nsel, ptr) ] in
+            let code_shift =
+              Named.Code.from_list [ Shift (i, nsel, ptr) ]
+            in
             ((), code_move_var @ code_shift)
         | StAlloc (field, st_list) ->
             let nfield = match diving with
@@ -130,7 +147,9 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
                 | NVarEnv.Cell ->
                     let sel = Sel.base_or_mem diving nvar in
                     let nsel = Sel.to_nsel unknown_info sel in
-                    [ Named.Code.Loop (nsel, [ Add (-1, nsel) ]) ]
+                    let open Named.Code in
+                      [ Loop (nsel, from_list [ Add (-1, nsel) ]) ]
+                      |> from_list
               ) |> List.flatten
             in
             ((), code_child @ code_clean)
@@ -149,9 +168,10 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * Nam
     in
     ((), List.flatten code_list)
   in
-  (nmain, codegen ctx st_list |> snd)
+  let (), cmd_list = codegen ctx st_list in
+  (nmain, cmd_list)
 
-let gen_named (dirname: string) (program: program) : Named.Field.main * Named.Code.t =
+let gen_named (dirname: string) (program: program) : Named.Field.main * 'a Named.Code.t =
   let toplevels, main = program in
   match main with
   | None -> error_at unknown_info "main not found"

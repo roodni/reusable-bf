@@ -115,11 +115,12 @@ let rec add_sel_to_sel (tbl: t) (origin: Sel.t) (dest: Sel.t) =
       (* 表層同士の移動が2重カウントされるのを打ち消す *)
       if o_head <> d_head then dec tbl o_head d_head
 
-let from_code (code: Code.t): t =
+let from_code (code: 'a Code.t): t =
+  let code = Code.delete_annot code in
   let tbl = Hashtbl.create 200 in
-  let rec scan_code (initial_sel: Sel.t) (code: Code.t) =
+  let rec scan_code initial_sel code =
     List.fold_left
-      (fun curr_sel cmd ->
+      (fun curr_sel Code.{ cmd; _ } ->
         match cmd with
         | Code.Add (0, _) -> curr_sel
         | Add (_, sel) | Put sel | Get sel ->
@@ -132,7 +133,9 @@ let from_code (code: Code.t): t =
             cond_sel
         | LoopPtr (array, idx, code) ->
             let cond_sel = Sel.index_on_itself array idx (-1) in
-            scan_code curr_sel [ Code.Loop (cond_sel, code) ]
+            scan_code
+              curr_sel
+              (Code.from_list [ Loop (cond_sel, code) ])
         | Shift (n, array, idx) -> begin
             let index_sel = Sel.index_on_itself array idx 0 in
             let prev_index_sel = Sel.index_on_itself array idx (-1) in
