@@ -4,14 +4,14 @@ open OUnit2
 module BfI = struct
   let filename = "../../sample/bfi.bfr"
   let bf_exe =
-    Reusable.Codegen.gen_bf_from_source filename
+    Reusable.IrGen.gen_bf_from_source filename
     |> Bf.Exe.from_code
 end
 
 let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
     let bf_code =
-      Reusable.Codegen.gen_bf_from_source filename
+      Reusable.IrGen.gen_bf_from_source filename
       |> Bf.Code.to_string
     in
     io_list |> List.iter (fun (ipt, opt) ->

@@ -182,4 +182,4 @@ let gen_bf_from_source path =
   let program = Eval.load_program path in
   let field, code = gen_named dirname program in
   let layout = Named.Layout.from_field code field in
-  Named.Codegen.gen_bf layout code
+  Named.BfGen.gen_bf layout code

@@ -34,7 +34,7 @@ let program =
 let expected = [0; 3; 1; 4; 0; 7]
 
 let test = "shift" >:: (fun _ ->
-    let bf = Codegen.gen_bf layout program in
+    let bf = BfGen.gen_bf layout program in
     let _, dump, _ =
       Bf.Exe.run_string
         ~cell_type:Bf.Exe.Overflow256

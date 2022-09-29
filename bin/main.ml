@@ -26,7 +26,7 @@ let () =
       let dirname = Filename.dirname !filename in
       let program = Reusable.Eval.load_program !filename in
 
-      let field, code = Reusable.Codegen.gen_named dirname program in
+      let field, code = Reusable.IrGen.gen_named dirname program in
       let layout = Named.Layout.from_field code field in
 
       if !flag_show_layouts then begin
@@ -43,7 +43,7 @@ let () =
         print_endline "]";
       end;
 
-      Named.Codegen.gen_bf layout code
+      Named.BfGen.gen_bf layout code
     end
   in
 
