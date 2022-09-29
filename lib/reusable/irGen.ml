@@ -87,35 +87,31 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | Some ex_i -> Eval.eval envs ex_i |> to_int ex_i.i
             in
             if abs i <> 1 then error_at info "2 or more shift is not implemented";
-            let code_move_var = diving_vars |>
-              List.filter_map (fun (sel_diving, nvar_env) ->
-                if sel = sel_diving then (* 変数をコピーする *)
-                  NVarEnv.to_list nvar_env |>
-                  List.map (fun (_, { v=(nvar, mtype); i=_ }) ->
-                    match mtype with
-                    | NVarEnv.Array _ | Index ->
-                        (* varの時点で弾かれるので到達できないはず *)
-                        error_at info "Shifting local array is not implemented"
-                    | NVarEnv.Cell ->
-                        let nsel_origin = Sel.LstMem (sel, 0, nvar) |> Sel.to_nsel unknown_info in
-                        let nsel_dest = Sel.LstMem (sel, i, nvar) |> Sel.to_nsel unknown_info in
-                        let open Named.Code in
-                        [ Loop
-                            ( nsel_origin,
-                              [ Add (-1, nsel_origin);
-                                Add (1, nsel_dest); ]
-                              |> from_list )
-                        ] |> from_list
-                  ) |> List.flatten |> Option.some
-                else if Sel.has_ptr ptr sel_diving then
-                    error_at info "Shift is prohibited because a local cell interferes"
-                else None
-              ) |> List.flatten
+            (* シフト時に移動させられるdiving中のセルid *)
+            let followers =
+              diving_vars
+              |> List.filter_map
+                (fun (sel_diving, nvar_env) ->
+                  if sel = sel_diving then (* 変数をコピーする *)
+                    NVarEnv.to_list nvar_env |>
+                    List.map
+                      (fun (_, { v=(nid, mtype); i=_ }) ->
+                        match mtype with
+                        | NVarEnv.Array _ | Index -> assert false
+                            (* allocを試みた時点で弾かれるので到達できない *)
+                        | NVarEnv.Cell -> nid
+                      )
+                    |> Option.some
+                  else if Sel.has_ptr ptr sel_diving then
+                    error_at info "Shift is prohibited because some allocated cells interfere"
+                  else None
+                )
+              |> List.flatten
             in
             let code_shift =
-              Named.Code.from_list [ Shift (i, nsel, ptr) ]
+              Named.Code.from_list [ Shift { n=i; index=(nsel, ptr); followers } ]
             in
-            ((), code_move_var @ code_shift)
+            ((), code_shift)
         | StAlloc (field, st_list) ->
             let nfield = match diving with
               | None -> nmain.finite
@@ -140,9 +136,8 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               NVarEnv.to_list nvar_env |>
               List.map (fun (_, { v = (nvar, mtype); i }) ->
                 match mtype with
-                | NVarEnv.Array _ -> error_at i "Allocating local arrays is not implemented"
-                | NVarEnv.Index ->
-                    assert false
+                | NVarEnv.Array _ -> error_at i "Allocating local arrays is prohibited"
+                | NVarEnv.Index -> assert false
                     (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
                 | NVarEnv.Cell ->
                     let sel = Sel.base_or_mem diving nvar in
@@ -150,7 +145,11 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
                     Named.Code.from_list [ Reset (nsel) ]
               ) |> List.flatten
             in
-            ((), code_clean @ code_child)
+            (* dive中であればスコープの終わりでもセルを初期化する *)
+            let code_clean_end =
+              if diving <> None then code_clean else Named.Code.from_list []
+            in
+            ((), List.flatten [code_clean; code_child; code_clean_end])
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
             codegen { ctx with envs } st_list

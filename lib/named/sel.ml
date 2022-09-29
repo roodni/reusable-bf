@@ -9,11 +9,11 @@ let head_id = function
   | Member id -> id
   | Array { name; _ } -> name
 
-(** 配列へのセレクタとインデックス名から、自分自身を経由して自分にアクセスするインデックスのセレクタを取得する *)
-let rec index_on_itself array index offset =
-  match array with
-  | Member id -> Array { name=id; index_opt=Some index; offset; member=Member index }
-  | Array array_mid -> Array { array_mid with member=index_on_itself array_mid.member index offset }
+let rec concat_member_to_index_tail (arr_sel, idx_id) mem_id offset =
+  match arr_sel with
+  | Member id -> Array { name=id; index_opt=Some idx_id; member=Member mem_id; offset }
+  | Array mid_array ->
+      Array { mid_array with member=concat_member_to_index_tail (mid_array.member, idx_id) mem_id offset }
 
 (** セレクタの指すテープ位置のmtypeを取得する *)
 let find_field (fmain: Field.main) (sel: t) =

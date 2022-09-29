@@ -1,0 +1,23 @@
+main {
+  a: array_unlimited {
+    i: index;
+  };
+  n: cell;
+} [
+  > a@i
+
+  + n 2
+  ! n [
+    - n
+
+    $dive a@i [
+      $alloc { x: cell; } in
+      < a@i
+      + x '!'
+      . x
+    ]
+
+    > a@i
+  ]
+
+]

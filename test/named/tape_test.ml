@@ -23,11 +23,11 @@ let program =
   let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
   let a = Sel.Member a in
   [ Code.Add (3, ap_a);
-    Shift (1, a, p);
+    Shift { n=1; index=(a, p); followers=[] };
     Add (5, ap_a);
-    Shift (1, a, p);
+    Shift { n=1; index=(a, p); followers=[] };
     Add (7, ap_a);
-    Shift (-1, a, p);
+    Shift { n=(-1); index=(a, p); followers=[] };
     Add (-1, ap_a);
   ] |> Code.from_list
 

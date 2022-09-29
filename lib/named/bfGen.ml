@@ -20,23 +20,35 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               let pos, bf_loop = gen_bf pos_cond code in
               let bf_move2 = Pos.gen_bf_move pos pos_cond in
               (pos_cond, bf_move1 @ [ Bf.Code.Loop (bf_loop @ bf_move2) ])
-          | LoopIndex (array, index, code) ->
-              let sel_cond = Sel.index_on_itself array index (-1) in
+          | LoopIndex params ->
               gen_bf
                 pos
-                (Code.from_list [ Loop (sel_cond, code) ])
-          | Shift (n, array, idx) -> begin
-              let pos_ptr = Sel.index_on_itself array idx 0 |> Pos.from_sel_to_cell layout in
-              let pos_ptr_prev = Sel.index_on_itself array idx (-1) |> Pos.from_sel_to_cell layout in
+                (Code.desugar_LoopIndex params)
+          | Shift { n; index; followers } -> begin
+              let idx_id = snd index in
+              let pos_ptr =
+                  Sel.concat_member_to_index_tail index idx_id 0
+                  |> Pos.from_sel_to_cell layout
+              and pos_ptr_prev =
+                Sel.concat_member_to_index_tail index idx_id (-1)
+                |> Pos.from_sel_to_cell layout
+              in
+              let pos, bf_shift_followers =
+                gen_bf pos (Code.shift_followers n index followers)
+              in
               match n with
               | 0 -> (pos, [])
               | 1 ->
                   let bf_move = Pos.gen_bf_move pos pos_ptr in
-                  let bf = bf_move @ [ Bf.Code.Add 1 ] in
+                  let bf =
+                    bf_shift_followers @ bf_move @ [ Bf.Code.Add 1 ]
+                  in
                   (pos_ptr_prev, bf)
               | -1 ->
                   let bf_move = Pos.gen_bf_move pos pos_ptr_prev in
-                  let bf = bf_move @ [ Bf.Code.Add (-1) ] in
+                  let bf =
+                    bf_shift_followers @ bf_move @ [ Bf.Code.Add (-1) ]
+                  in
                   (pos_ptr, bf)
               | _ -> failwith "not implemented"
             end

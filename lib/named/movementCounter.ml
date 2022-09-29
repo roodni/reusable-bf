@@ -131,14 +131,15 @@ let from_code (code: 'a Code.t): t =
             let wend_sel = scan_code cond_sel code in
             add_sel_to_sel tbl wend_sel cond_sel;
             cond_sel
-        | LoopIndex (array, idx, code) ->
-            let cond_sel = Sel.index_on_itself array idx (-1) in
-            scan_code
-              curr_sel
-              (Code.from_list [ Loop (cond_sel, code) ])
-        | Shift (n, array, idx) -> begin
-            let index_sel = Sel.index_on_itself array idx 0 in
-            let prev_index_sel = Sel.index_on_itself array idx (-1) in
+        | LoopIndex params ->
+            scan_code curr_sel (Code.desugar_LoopIndex params)
+        | Shift { n; index; followers } -> begin
+            let idx_id = snd index in
+            let index_sel = Sel.concat_member_to_index_tail index idx_id 0 in
+            let prev_index_sel = Sel.concat_member_to_index_tail index idx_id (-1) in
+            let curr_sel =
+              scan_code curr_sel (Code.shift_followers n index followers)
+            in
             match n with
             | 0 -> curr_sel
             | 1 ->

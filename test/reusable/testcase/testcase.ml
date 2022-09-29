@@ -84,13 +84,18 @@ let cases = [
     filename = "code/queens.bfr"
   };
   {
-    name = "bugfix: indexed to indexed";
+    name = "bug: similar indexed selectors";
     io_list = [ ("", "01") ];
-    filename = "code/indexed_to_indexed.bfr"
+    filename = "code/bug_similar_indexed_selectors.bfr"
   };
   {
     name = "bizzbuzz";
     io_list = [ ("16\n", "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz 16 ") ];
     filename = "code/fizzbuzz.bfr"
+  };
+  {
+    name = "bug: diving cell reset fail";
+    io_list = [ ("", "!!") ];
+    filename = "code/bug_diving_cell_reset_fail.bfr";
   }
 ]
