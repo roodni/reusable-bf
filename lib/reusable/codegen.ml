@@ -68,7 +68,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | Named.Field.Cell cell ->
                   cell.ifable <- true
               | _ ->
-                  (* Named.Field.mtype のパターンマッチでエラーを報告するのは良くない *)
+                  (* TODO: Named.Field.mtype のパターンマッチでエラーを報告するのは良くない。直す *)
                   error_at ex_sel.i "selector(cell) expected"
             in
             let (), code_then = codegen ctx st_list_then in

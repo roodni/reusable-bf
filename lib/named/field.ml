@@ -1,7 +1,7 @@
 (** 変数名とテープ位置の確保の仕方(mtype)の対応 *)
 type t = (Id.t, mtype) Hashtbl.t
 and mtype =
-  | Cell of { mutable ifable: bool }
+  | Cell of { mutable ifable: bool; mergeable: bool }
   | Array of { length: int; members: t }
   | Index
 type main = { finite: t; unlimited: t }

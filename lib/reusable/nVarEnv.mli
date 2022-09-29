@@ -12,8 +12,8 @@ and mtype =
       mem: t;
     }
 
-val to_list : t -> (Var.t * binded) list
-val lookup : Var.t -> t -> binded option
+val to_list: t -> (Var.t * binded) list
+val lookup: Var.t -> t -> binded option
 
 (** Fieldを読んでNamedのFieldを拡張してNVarEnvを作成する *)
-val gen_using_field : ?parent_name:string -> Named.Field.main -> Named.Field.t -> Field.t -> t
+val gen_using_field: Named.Field.main -> Named.Field.t -> Field.t -> t
