@@ -123,7 +123,7 @@ let from_code (code: 'a Code.t): t =
       (fun curr_sel Code.{ cmd; _ } ->
         match cmd with
         | Code.Add (0, _) -> curr_sel
-        | Add (_, sel) | Put sel | Get sel ->
+        | Add (_, sel) | Put sel | Get sel | Reset sel ->
             add_sel_to_sel tbl curr_sel sel;
             sel
         | Loop (cond_sel, code) ->
@@ -131,7 +131,7 @@ let from_code (code: 'a Code.t): t =
             let wend_sel = scan_code cond_sel code in
             add_sel_to_sel tbl wend_sel cond_sel;
             cond_sel
-        | LoopPtr (array, idx, code) ->
+        | LoopIndex (array, idx, code) ->
             let cond_sel = Sel.index_on_itself array idx (-1) in
             scan_code
               curr_sel

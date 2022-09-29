@@ -10,19 +10,21 @@ and 'a cmd =
   | Get of Sel.t
   | Shift of int * Sel.t * Id.t
   | Loop of Sel.t * 'a t
-  | LoopPtr of (Sel.t * Id.t * 'a t)
+  | LoopIndex of (Sel.t * Id.t * 'a t)
   | If of Sel.t * 'a t * 'a t
+  | Reset of Sel.t
 
 let rec cmd_annot_map f = function
   | Add (n, sel) -> Add (n, sel)
   | Put sel -> Put sel
   | Get sel -> Get sel
   | Shift (n, sel, id) -> Shift (n, sel, id)
+  | Reset sel -> Reset sel
     (* ↑コンストラクタで新しい値を構成しないと型が合わない *)
   | Loop (sel, code) ->
       Loop (sel, annot_map f code)
-  | LoopPtr (sel, id, code) ->
-      LoopPtr (sel, id, annot_map f code)
+  | LoopIndex (sel, id, code) ->
+      LoopIndex (sel, id, annot_map f code)
   | If (sel, thn, els) ->
       If (sel, annot_map f thn, annot_map f els)
 and  annot_map f code =

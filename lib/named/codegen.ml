@@ -20,7 +20,7 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               let pos, bf_loop = gen_bf pos_cond code in
               let bf_move2 = Pos.gen_bf_move pos pos_cond in
               (pos_cond, bf_move1 @ [ Bf.Code.Loop (bf_loop @ bf_move2) ])
-          | LoopPtr (array, index, code) ->
+          | LoopIndex (array, index, code) ->
               let sel_cond = Sel.index_on_itself array index (-1) in
               gen_bf
                 pos
@@ -64,6 +64,11 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
                 ]
               in
               (ifable.pos_endif, bf)
+          | Reset sel ->
+              [ Code.Loop
+                (sel, [ Code.Add (-1, sel) ] |> Code.from_list)
+              ] |> Code.from_list
+              |> gen_bf pos
         )
         pos_init
         code

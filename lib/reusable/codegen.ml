@@ -53,10 +53,10 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
                     [ Loop (nsel, code_loop) ]
                 in
                 ((), code)
-            | Sel.NPtr (nsel, ptr) ->
+            | Sel.NPtr (nsel, idx) ->
                 let (), code_loop = codegen ctx st_list in
                 let code =
-                  Named.Code.from_list [ LoopPtr (nsel, ptr, code_loop) ]
+                  Named.Code.from_list [ LoopIndex (nsel, idx, code_loop) ]
                 in
                 ((), code)
           end
@@ -135,7 +135,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
             in
             let ctx = { ctx with envs; diving_vars; } in
             let (), code_child = codegen ctx st_list in
-            (* 変数が使用したセルをゼロにする *)
+            (* 確保するセルをゼロで初期化する *)
             let code_clean =
               NVarEnv.to_list nvar_env |>
               List.map (fun (_, { v = (nvar, mtype); i }) ->
@@ -147,12 +147,10 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
                 | NVarEnv.Cell ->
                     let sel = Sel.base_or_mem diving nvar in
                     let nsel = Sel.to_nsel unknown_info sel in
-                    let open Named.Code in
-                      [ Loop (nsel, from_list [ Add (-1, nsel) ]) ]
-                      |> from_list
+                    Named.Code.from_list [ Reset (nsel) ]
               ) |> List.flatten
             in
-            ((), code_child @ code_clean)
+            ((), code_clean @ code_child)
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
             codegen { ctx with envs } st_list
