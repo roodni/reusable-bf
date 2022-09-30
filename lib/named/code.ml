@@ -13,7 +13,21 @@ and 'a cmd =
   | If of Sel.t * 'a t * 'a t
   | Reset of Sel.t
 
-let rec cmd_annot_map f = function
+(** アノテーション付きコマンド1つ単位で単純な書き換えを行う
+    コマンドの書き換えが未定義のとき再帰的に適用する
+*)
+let rec map f code =
+  List.map
+    (fun annotated ->
+      let cmd_opt, annot = f annotated in
+      let cmd =  match cmd_opt with
+        | None -> cmd_map f annotated.cmd
+        | Some cmd -> cmd
+      in
+      { cmd; annot }
+    )
+    code
+and cmd_map f = function
   | Add (n, sel) -> Add (n, sel)
   | Put sel -> Put sel
   | Get sel -> Get sel
@@ -21,16 +35,17 @@ let rec cmd_annot_map f = function
   | Shift params -> Shift params
     (* ↑コンストラクタで新しい値を構成しないと型が合わない *)
   | Loop (sel, code) ->
-      Loop (sel, annot_map f code)
+      Loop (sel, map f code)
   | LoopIndex (sel, id, code) ->
-      LoopIndex (sel, id, annot_map f code)
+      LoopIndex (sel, id, map f code)
   | If (sel, thn, els) ->
-      If (sel, annot_map f thn, annot_map f els)
-and annot_map f code =
-  List.map
-    (fun { annot; cmd } ->
-      { annot=f annot; cmd=cmd_annot_map f cmd })
-    code
+      If (sel, map f thn, map f els)
+
+(** アノテーションだけを書き換える *)
+let annot_map f code =
+  map (fun { annot; _ } -> (None, f annot)) code
+let cmd_annot_map f cmd =
+  cmd_map (fun { annot; _ } -> (None, f annot)) cmd
 
 let delete_annot code = annot_map (Fun.const ()) code
 
@@ -58,3 +73,16 @@ let shift_followers n (arr_sel, idx_id) followers =
 let desugar_LoopIndex (arr_sel, idx_id, loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
   from_list [ Loop (cond_sel, loop) ]
+
+(** イディオム[-]を専用コマンドに変換する *)
+let convert_idioms code =
+  map
+    (fun { cmd; _ } -> match cmd with
+      | Loop (sel1, [{ cmd=Add(-1, sel2); _ }])
+        when sel1 = sel2 ->
+          (Some (Reset sel1), ())
+      | Add _ | Put _ | Get _ | Shift _ | Reset _
+      | Loop _ | LoopIndex _ | If _ ->
+          (None, ())
+    )
+    code
