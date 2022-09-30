@@ -1,70 +1,102 @@
 open Printf
 open Support.Error
 
-let () =
-  let flag_run = ref false in
-  let flag_bf = ref false in
-  let flag_show_layouts = ref false in
-  let flag_dump_tape = ref false in
-  let filename = ref "-" in
+(* コマンドライン引数 *)
+let flag_bf = ref false
+let flag_run = ref false
+let flag_verbose = ref false
+let flag_show_layouts = ref false
+let flag_dump_tape = ref false
+let filename = ref "-"
+let parse_args () =
   Arg.parse
-    [ ("-r", Set flag_run, " Run after compile");
-      ("-b", Set flag_bf, " Load a brainfuck program instead of bf-reusable");
+    [ ("-b", Set flag_bf, " Load and run the brainfuck program instead of bf-reusable programs");
+      ("-r", Set flag_run, " Run the bf-reusable program after compilation");
+      ("-v", Set flag_verbose, " Show detailed compilation information");
       ("--show-layouts", Set flag_show_layouts, " Show cell layouts");
       ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
     ]
     (fun s -> filename := s )
     (sprintf "Usage: %s <options> <file>" Sys.argv.(0));
 
-  let bf_code =
-    if !flag_bf then begin
-      let channel = open_in !filename in
-      let code = Bf.Code.parse (Stream.of_channel channel) in
-      close_in channel;
-      code
-    end else begin
-      let dirname = Filename.dirname !filename in
-      let program = Reusable.Eval.load_program !filename in
+  if !flag_verbose then begin
+    flag_show_layouts := true;
+  end;
+;;
 
-      let field, code = Reusable.IrGen.gen_named dirname program in
-      let layout = Named.Layout.from_field code field in
-
-      if !flag_show_layouts then begin
-        print_endline "[";
-        Format.printf "@[layout = ";
-        Named.Layout.show Format.std_formatter layout;
-        Format.print_flush ();
-        print_newline ();
-
-        (* let tbl = Named.MovementCounter.from_code code in
-        Named.MovementCounter.dump tbl;
-        print_newline (); *)
-
-        print_endline "]";
-      end;
-
-      Named.BfGen.gen_bf layout code
-    end
+(** bfのコードを実行する *)
+let run_bf bf_code =
+  let exe = Bf.Exe.from_code bf_code in
+  let res, dump =
+    Bf.Exe.run_stdio ~cell_type:WrapAround256 exe
   in
+  if !flag_dump_tape then begin
+    print_newline ();
+    Bf.Exe.Dump.dump dump;
+  end;
+  begin
+    match res with
+    | Ok () -> ()
+    | Error e ->
+        eprintf "Execution error: %s\n" e;
+        exit 1;
+  end;
+;;
 
-  if not !flag_run && not !flag_bf then begin
-    print_endline @@ Bf.Code.to_string bf_code;
+(** bfのインタプリタとして使う場合の処理 *)
+let use_as_bf_interpreter () =
+  let bf_code =
+    let channel = open_in !filename in
+    let code = Bf.Code.parse (Stream.of_channel channel) in
+    close_in channel;
+    code
+  in
+  run_bf bf_code
+;;
+
+(** bf-reusableのコンパイラとして使う場合の処理 *)
+let use_as_bfr_compiler () =
+  let dirname = Filename.dirname !filename in
+  let program = Reusable.Eval.load_program !filename in
+  let field, code = Reusable.IrGen.gen_named dirname program in
+
+  let layout = Named.Layout.from_field code field in
+
+  let bf_code = Named.BfGen.gen_bf layout code in
+  let bf_code_buf = Bf.Code.to_buffer bf_code in
+
+  (* 詳細情報の出力 *)
+  if !flag_verbose || !flag_show_layouts then begin
+    print_endline "[";
+
+    if !flag_show_layouts then begin
+      Format.printf "@[Layout = ";
+      Named.Layout.show Format.std_formatter layout;
+      Format.print_flush ();
+      print_newline ();
+    end;
+
+    (* let tbl = Named.MovementCounter.from_code code in
+    Named.MovementCounter.dump tbl;
+    print_newline (); *)
+
+    printf "%d bytes\n" (Buffer.length bf_code_buf);
+
+    print_endline "]";
   end;
 
-  if !flag_run || !flag_bf then begin
-    let res, dump =
-      Bf.Exe.run_stdio
-        ~cell_type:WrapAround256
-        (Bf.Exe.from_code bf_code)
-    in
-    if !flag_dump_tape then begin
-      print_newline ();
-      Bf.Exe.Dump.dump dump;
-    end else begin
-      match res with
-      | Ok () -> ()
-      | Error e ->
-          eprintf "Execution error: %s" e;
-          exit 1
-    end
+  (* コンパイル結果の出力または実行 *)
+  if !flag_run then begin
+    run_bf bf_code;
+  end else begin
+    Buffer.output_buffer stdout bf_code_buf
   end
+;;
+
+(* entrypoint *)
+let () =
+  parse_args ();
+  if !flag_bf
+    then use_as_bf_interpreter ()
+    else use_as_bfr_compiler ();
+;;
