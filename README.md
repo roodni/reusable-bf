@@ -1,6 +1,31 @@
 # bf-reusable
 
-brainfuckのコードを生成するために作られたプログラミング言語
+brainfuckに変換されるプログラミング言語です。
+- 抽象化されたポインタ操作
+- brainfuckに近い命令セット
+- ML風のメタプログラミング機構
+
+## Hello, World!
+  ```
+  let fix f =
+    let g x = f (fun y -> x x y) in
+    g g
+
+  let gen_puts l = [
+    $alloc { c: cell; } in
+    *fix
+      (fun loop prev l ->
+        match l with
+        | nil -> []
+        | hd :: tl -> [
+            + c (hd - prev)  . c
+            *loop hd tl
+          ])
+      0 l
+  ]
+
+  main {} [ *gen_puts "Hello, World!\n" ]
+  ```
 
 ## 資料
 * https://www.slideshare.net/roodni/brainfuckbfreusable
