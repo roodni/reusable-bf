@@ -6,7 +6,7 @@ and mtype =
   | Index
 type main = { finite: t; unlimited: t }
 
-let uarray_id = Id.gen_named "[unlimited array]"
+let uarray_id = Id.gen_special "uarray"
 
 let empty (): t = Hashtbl.create 30
 let lookup (field: t) id = Hashtbl.find field id

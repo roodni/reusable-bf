@@ -1,6 +1,9 @@
 open Printf
 
 type t = int
+type name =
+  | Special of string
+  | Named of string
 
 let num = ref 0
 let nametable = Hashtbl.create 30
@@ -8,14 +11,25 @@ let nametable = Hashtbl.create 30
 let gen (): t =
   incr num;
   !num
-let gen_named (name: string): t =
+
+let gen_special name =
   let id = gen () in
-  Hashtbl.add nametable id name;
+  Hashtbl.add nametable id (Special name);
+  id
+let gen_named name =
+  let id = gen () in
+  Hashtbl.add nametable id (Named name);
   id
 
-let to_string (t: t) =
-  match Hashtbl.find_opt nametable t with
-  | None -> sprintf "#%d" t
-  | Some name -> name
+let simple_name id =
+  match Hashtbl.find nametable id with
+  | Special s -> sprintf "##%s" s
+  | Named n -> n
+let numbered_name id =
+  match Hashtbl.find nametable id with
+  | Special s -> sprintf "##%s" s
+  | Named n -> sprintf "%s#%d" n id
 
 let to_definition_order (t: t): int = t
+
+let compare = Int.compare

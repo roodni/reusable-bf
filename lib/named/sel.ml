@@ -8,6 +8,9 @@ type t =
 let head_id = function
   | Member id -> id
   | Array { name; _ } -> name
+let rec last_id = function
+  | Member id -> id
+  | Array { member; _ } -> last_id member
 
 let rec concat_member_to_index_tail (arr_sel, idx_id) mem_id offset =
   match arr_sel with
@@ -35,9 +38,12 @@ let find_field (fmain: Field.main) (sel: t) =
   in
   find_field fmain.finite sel
 
-let rec pretty = function
-  | Member id -> Id.to_string id
+let rec to_string = function
+  | Member id -> Id.numbered_name id
   | Array { name; index_opt=None; offset; member } ->
-      sprintf "%s:(%d)%s" (Id.to_string name) offset (pretty member)
+      sprintf "%s:(%d)%s" (Id.simple_name name) offset (to_string member)
   | Array { name; index_opt=Some index; offset; member } ->
-      sprintf "%s@%s:(%d)%s" (Id.to_string name) (Id.to_string index) offset (pretty member)
+      if offset = 0 then
+        sprintf "%s@%s:%s" (Id.simple_name name) (Id.simple_name index) (to_string member)
+      else
+        sprintf "%s@%s:(%d)%s" (Id.simple_name name) (Id.simple_name index) offset (to_string member)
