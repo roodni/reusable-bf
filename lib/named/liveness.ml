@@ -1,5 +1,7 @@
 (* 生存セル解析 *)
 
+open Support.Pervasive
+
 module CellSet = struct
   module IdSet = Set.Make(Id)
   include IdSet
@@ -92,9 +94,8 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let live_in = update_tables_and_compute_live_in CellSet.empty code in
   (live_in, code)
 
-let show_analysis_result ppf (analysis_result: analysis_result) =
+let show_analysis_result ppf (live_in, code: analysis_result) =
   let open Format in
-  let live_in, code = analysis_result in
   let rec print_code code =
     let print_block code =
       fprintf ppf "[ @[<v>";
@@ -140,3 +141,133 @@ let show_analysis_result ppf (analysis_result: analysis_result) =
   print_code code;
   fprintf ppf "@,@]";
 ;;
+
+(** 干渉グラフ *)
+module Graph = struct
+  type t = {
+    mutable nodes: CellSet.t;
+    edges: (Id.t, CellSet.t) Hashtbl.t;
+    children: (Id.t, t) Hashtbl.t
+  }
+
+  let mem_cell graph node = CellSet.mem node graph.nodes
+  let succ graph node =
+    assert (mem_cell graph node);
+    Hashtbl.find_default graph.edges node CellSet.empty
+  let add_edge graph n1 n2 =
+    let n1_succ = succ graph n1 in
+    let n2_succ = succ graph n2 in
+    Hashtbl.replace graph.edges n1 (CellSet.add n2 n1_succ);
+    Hashtbl.replace graph.edges n2 (CellSet.add n1 n2_succ);
+  ;;
+
+  (** Fieldからグラフの雛形を作成し、
+      さらに セルのid -> 所属グラフ の対応表を返す
+  *)
+  let init Field.{ finite; unlimited }: t * (Id.t -> t option) =
+    let cell_to_graph = Hashtbl.create 100 in
+    let rec from_field (field: Field.t): t =
+      let graph = {
+        nodes = CellSet.empty;
+        edges = Hashtbl.create 30;
+        children = Hashtbl.create 10;
+      } in
+      Field.fold
+        (fun (id: Id.t) (mtype: Field.mtype) (): unit ->
+          match mtype with
+          | Cell { mergeable=true; _ } ->
+              graph.nodes <- CellSet.add id graph.nodes;
+              Hashtbl.add cell_to_graph id graph;
+          | Cell { mergeable=false; _ } | Index -> ()
+          | Array { members; _ } ->
+              Hashtbl.add graph.children id (from_field members)
+        )
+        field
+        ();
+      graph
+    in
+    let graph = from_field finite in
+    Hashtbl.add graph.children Field.uarray_id (from_field unlimited);
+    ( graph,
+      (fun cell -> Hashtbl.find_opt cell_to_graph cell) )
+
+  (** 生存セル解析の結果をもとにグラフに辺を追加する *)
+  let set_edges
+      (cell_to_graph: Id.t -> t option) (live_in, code: analysis_result) =
+    let add_interfere def live_out =
+      match cell_to_graph def with
+      | None -> ()
+      | Some graph ->
+          CellSet.to_seq live_out
+          |> Seq.filter (mem_cell graph)
+          |> Seq.iter
+            (fun living_cell -> add_edge graph def living_cell)
+    in
+    (* 先頭のノードの入口生存セル同士は干渉している *)
+    CellSet.iter
+      (fun c -> add_interfere c live_in)
+      live_in;
+    (* 各ノードの干渉を追加する *)
+    let rec scan_code (code: code_with_liveness) =
+      List.iter
+        (fun Code.{ cmd; annot={ live_out } } ->
+          match cmd with
+          | Add (0, _) | Put _ | Shift _ ->
+              ()
+          | Add (_, sel) | Get sel | Reset sel ->
+              add_interfere (Sel.last_id sel) live_out;
+          | Loop (_, code) | LoopIndex (_, _, code) ->
+              scan_code code;
+          | If (_, thn, els) ->
+              scan_code thn;
+              scan_code els;
+        )
+        code
+    in
+    scan_code code
+  ;;
+
+  let create fmain analysis_result =
+    let graph, cell_to_graph = init fmain in
+    set_edges cell_to_graph analysis_result;
+    graph
+
+  let output_dot ppf graph =
+    let open Format in
+    let rec output_graph (graph: t) =
+      (* ノード *)
+      CellSet.iter
+        (fun n ->
+          fprintf ppf "%d [label=\"%s\"];@ " (Id.to_int n) (Id.numbered_name n);
+        )
+        graph.nodes;
+      (* エッジ *)
+      let rec output_edges = function
+        | [] -> ()
+        | n1 :: tl ->
+            let n1_succ = succ graph n1 in
+            List.iter
+              (fun n2 ->
+                if CellSet.mem n2 n1_succ then
+                  fprintf ppf "%d -- %d;@ " (Id.to_int n1) (Id.to_int n2;);
+              )
+              tl;
+            output_edges tl
+      in
+      CellSet.to_seq graph.nodes |> List.of_seq |> output_edges;
+      (* サブグラフ *)
+      Hashtbl.iter
+        (fun array_id graph ->
+          fprintf ppf "subgraph cluster_%d {@ " (Id.to_int array_id);
+          fprintf ppf "label = \"%s\";@ " (Id.simple_name array_id);
+          output_graph graph;
+          fprintf ppf "};@ ";
+        )
+        graph.children
+    in
+    fprintf ppf "graph {@ ";
+    fprintf ppf "graph [rankdir=LR];@ ";
+    output_graph graph;
+    fprintf ppf "}";
+  ;;
+end

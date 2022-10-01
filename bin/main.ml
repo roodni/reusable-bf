@@ -81,6 +81,13 @@ let use_as_bfr_compiler () =
       Named.Liveness.show_analysis_result Format.std_formatter liveness;
       Format.print_flush ();
       print_newline ();
+
+      let graph = Named.Liveness.Graph.create field liveness in
+      Format.printf "@[<hov>";
+      Named.Liveness.Graph.output_dot Format.std_formatter graph;
+      Format.printf "@]";
+      Format.print_flush ();
+      print_endline "\n";
     end;
 
     (* let tbl = Named.MovementCounter.from_code ir_code in
@@ -90,13 +97,14 @@ let use_as_bfr_compiler () =
     if !flag_show_layouts then begin
       Format.printf "@[<v>[LAYOUT] ";
       Named.Layout.show Format.std_formatter layout;
-      Format.printf "@]@,";
+      Format.printf "@]";
       Format.print_flush ();
-      print_newline ();
+      print_endline "\n";
     end;
 
     print_endline "[CODE SIZE]";
     printf "%d bytes\n" (Buffer.length bf_code_buf);
+    print_newline ();
 
     print_endline "]";
   end;

@@ -23,13 +23,13 @@ let gen_named name =
 
 let simple_name id =
   match Hashtbl.find nametable id with
-  | Special s -> sprintf "##%s" s
+  | Special s -> s
   | Named n -> n
 let numbered_name id =
   match Hashtbl.find nametable id with
-  | Special s -> sprintf "##%s" s
+  | Special s -> s
   | Named n -> sprintf "%s#%d" n id
 
-let to_definition_order (t: t): int = t
+let to_int (t: t): int = t
 
 let compare = Int.compare

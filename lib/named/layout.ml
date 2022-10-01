@@ -44,10 +44,7 @@ let from_field (code: 'a Code.t) (field: Field.main): t =
           | Field.Cell _ -> 30
           | Field.Index -> 20
         in
-        ( mtype_precedence,
-          cost,
-          - Id.to_definition_order id
-        )
+        (mtype_precedence, cost, - Id.to_int id)
       in
       let top =
         Hashtbl.fold
@@ -161,7 +158,7 @@ let show ppf layout =
           | Array { size_of_members; members; length; _ } ->
               let length_s = match length with
                 | Some l -> string_of_int l
-                | None -> "_"
+                | None -> "*"
               in
               fprintf ppf "array(%s) <%d>" length_s size_of_members;
               show members

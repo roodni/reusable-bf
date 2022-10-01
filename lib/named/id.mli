@@ -6,6 +6,6 @@ val gen_named: string -> t
 val simple_name: t -> string
 val numbered_name: t -> string
 
-val to_definition_order: t -> int
+val to_int: t -> int
 
 val compare: t -> t -> int
