@@ -1,6 +1,6 @@
 open Support.Pervasive
 
-(** 変数名と確保されたテープ位置の対応 *)
+(** メンバ名と確保されたテープ位置の対応 *)
 type t = (Id.t * loc) list
 and loc =
   | Cell of { offset: int; is_index: bool; }
@@ -14,10 +14,9 @@ and loc =
 
 let lookup (layout: t) id = List.assoc id layout
 
-(** セル割り付け *)
-let from_field (code: 'a Code.t) (field: Field.main): t =
+(** メンバを並べる *)
+let create (mcounter: MovementCounter.t) (field: Field.main): t =
   (* 左から詰める *)
-  let mcounter = MovementCounter.from_code code in
   let rec allocate (field: Field.t) (ofs_available: int): t * int =
     (* 割り付け先送りコストを格納するテーブル *)
     let cost_table =

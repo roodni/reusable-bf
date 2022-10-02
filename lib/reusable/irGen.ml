@@ -149,7 +149,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
             let code_clean_end =
               if diving <> None then code_clean else Named.Code.from_list []
             in
-            ((), List.flatten [code_clean; code_child; code_clean_end])
+            ((), code_clean @ code_child @ code_clean_end)
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
             codegen { ctx with envs } st_list
@@ -188,6 +188,8 @@ let gen_bf_from_source path =
     Named.Liveness.Graph.create_program_with_merged_cells
       graph field ir_code
   in
+  (* メンバ並び順最適化 *)
+  let mcounter = Named.MovementCounter.from_code ir_code in
   (* bf生成 *)
-  let layout = Named.Layout.from_field ir_code field in
+  let layout = Named.Layout.create mcounter field in
   Named.BfGen.gen_bf layout ir_code

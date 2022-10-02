@@ -164,4 +164,4 @@ let from_code (code: 'a Code.t): t =
   ignore @@ scan_code (Sel.Member leftside) code;
   tbl
 
-(* let from_code _code = Hashtbl.create 30 *)
+let empty (): t = Hashtbl.create 0
