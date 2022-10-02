@@ -1,5 +1,5 @@
 open OUnit2
-open Named
+open Ir
 open Support.Pervasive
 
 (* テープの状態を比較するテスト *)

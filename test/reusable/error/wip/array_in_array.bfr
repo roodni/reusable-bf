@@ -1,4 +1,4 @@
-# named で assertion failed
+# ir で assertion failed
 main {
   a: array(3) {
     b: array_unlimited {

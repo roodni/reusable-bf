@@ -1,6 +1,6 @@
 (library
  (name reusable)
- (libraries support bf named fileutils)
+ (libraries support bf ir fileutils)
  (flags (:standard -warn-error -a)))
 
 

@@ -64,17 +64,17 @@ let use_as_bf_interpreter () =
 let use_as_bfr_compiler () =
   let dirname = Filename.dirname !filename in
   let program = Reusable.Eval.load_program !filename in
-  let field, ir_code = Reusable.IrGen.gen_named dirname program in
+  let field, ir_code = Reusable.IrGen.gen_ir dirname program in
 
   (* 生存セル解析による最適化 *)
   let field, ir_code, liveness_opt =
     if !arg_optimize_level < 2 then (field, ir_code, None)
     else
-      let ir_code = Named.Code.convert_idioms ir_code in
-      let liveness = Named.Liveness.analyze field ir_code in
-      let graph = Named.Liveness.Graph.create field liveness in
+      let ir_code = Ir.Code.convert_idioms ir_code in
+      let liveness = Ir.Liveness.analyze field ir_code in
+      let graph = Ir.Liveness.Graph.create field liveness in
       let field, ir_code =
-        Named.Liveness.Graph.create_program_with_merged_cells graph field ir_code
+        Ir.Liveness.Graph.create_program_with_merged_cells graph field ir_code
       in
       (field, ir_code, Some (liveness, graph))
   in
@@ -82,13 +82,13 @@ let use_as_bfr_compiler () =
   (* セル並び順最適化 *)
   let mcounter =
     if !arg_optimize_level < 1
-      then Named.MovementCounter.empty ()
-      else Named.MovementCounter.from_code ir_code
+      then Ir.MovementCounter.empty ()
+      else Ir.MovementCounter.from_code ir_code
   in
 
   (* bf生成 *)
-  let layout = Named.Layout.create mcounter field in
-  let bf_code = Named.BfGen.gen_bf layout ir_code in
+  let layout = Ir.Layout.create mcounter field in
+  let bf_code = Ir.BfGen.gen_bf layout ir_code in
   let bf_code_buf = Bf.Code.to_buffer bf_code in
 
   (* 詳細情報の出力 *)
@@ -101,24 +101,24 @@ let use_as_bfr_compiler () =
       | None -> ()
       | Some (liveness, graph) ->
           print_endline "[LIVENESS]";
-          Named.Liveness.output_analysis_result Format.std_formatter liveness;
+          Ir.Liveness.output_analysis_result Format.std_formatter liveness;
           Format.print_flush ();
           print_endline "\n";
 
           Format.printf "@[<hov>";
-          Named.Liveness.Graph.output_dot Format.std_formatter graph;
+          Ir.Liveness.Graph.output_dot Format.std_formatter graph;
           Format.printf "@]";
           Format.print_flush ();
           print_endline "\n";
     end;
 
-    (* let tbl = Named.MovementCounter.from_code ir_code in
-    Named.MovementCounter.dump tbl;
+    (* let tbl = Ir.MovementCounter.from_code ir_code in
+    Ir.MovementCounter.dump tbl;
     print_newline (); *)
 
     if !flag_show_layouts then begin
       Format.printf "@[<v>[LAYOUT] ";
-      Named.Layout.output Format.std_formatter layout;
+      Ir.Layout.output Format.std_formatter layout;
       Format.printf "@]";
       Format.print_flush ();
       print_endline "\n";

@@ -1,7 +1,7 @@
 (executables
  (public_names main measurelen)
  (names main measurelen)
- (libraries support bf named reusable))
+ (libraries support bf ir reusable))
 
 (env
  (dev

@@ -1,0 +1,3 @@
+(tests
+ (names tape_test)
+ (libraries bf ir ounit2))

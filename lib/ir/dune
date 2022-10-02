@@ -1,4 +1,4 @@
 (library
- (name named)
+ (name ir)
  (libraries support bf)
  (flags (:standard -warn-error -a)))

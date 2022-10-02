@@ -1,6 +1,6 @@
 (tests
  (names reusable_test bfi_test)
- (libraries support bf named reusable testcase ounit2)
+ (libraries support bf ir reusable testcase ounit2)
  (deps
   (source_tree %{project_root}/test/reusable/code)
   (source_tree %{project_root}/sample)))

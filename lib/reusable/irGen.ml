@@ -7,15 +7,15 @@ type codegen_ctx = {
   diving_vars: (Sel.t * NVarEnv.t) list
 }
 
-let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * unit Named.Code.t =
+let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
   let open Eval.Value in
   let field, st_list = main in
-  let nmain = Named.Field.empty_main () in
+  let nmain = Ir.Field.empty_main () in
   let nvar_env = NVarEnv.gen_using_field nmain nmain.finite field in
   let va_env_main = env_extend_with_nvar_env None nvar_env envs.va_env in
   let envs = { envs with va_env = va_env_main } in
   let ctx = { envs; diving=None; diving_vars=[] } in
-  let rec codegen (ctx: codegen_ctx) (st_list: stmt list): unit * unit Named.Code.t =
+  let rec codegen (ctx: codegen_ctx) (st_list: stmt list): unit * unit Ir.Code.t =
     let { envs; diving; diving_vars } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt ->
@@ -29,46 +29,46 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | Some ex_i -> Eval.eval envs ex_i |>  to_int ex_i.i
             in
             let code =
-              Named.Code.from_list [ Add (i * sign, nsel) ]
+              Ir.Code.from_list [ Add (i * sign, nsel) ]
             in
             ((), code)
           end
         | StPut ex_sel ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
             let code =
-              Named.Code.from_list [ Named.Code.Put nsel ]
+              Ir.Code.from_list [ Ir.Code.Put nsel ]
             in
             ((), code)
         | StGet ex_sel ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
             let code =
-              Named.Code.from_list [ Get nsel ] in
+              Ir.Code.from_list [ Get nsel ] in
             ((), code)
         | StWhile (ex_sel, st_list) -> begin
             match Eval.eval envs ex_sel |> to_nsel_or_nptr ex_sel.i with
             | Sel.NSel nsel ->
                 let (), code_loop = codegen ctx st_list in
                 let code =
-                  Named.Code.from_list
+                  Ir.Code.from_list
                     [ Loop (nsel, code_loop) ]
                 in
                 ((), code)
             | Sel.NPtr (nsel, idx) ->
                 let (), code_loop = codegen ctx st_list in
                 let code =
-                  Named.Code.from_list [ LoopIndex (nsel, idx, code_loop) ]
+                  Ir.Code.from_list [ LoopIndex (nsel, idx, code_loop) ]
                 in
                 ((), code)
           end
         | StIf (ex_sel, st_list_then, st_list_else) ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let nmtype = Named.Sel.find_mtype nmain nsel in
+            let nmtype = Ir.Sel.find_mtype nmain nsel in
             let () =
               match nmtype with
-              | Named.Field.Cell cell ->
+              | Ir.Field.Cell cell ->
                   cell.ifable <- true
               | _ ->
-                  (* TODO: Named.Field.mtype のパターンマッチでエラーを報告するのは良くない。直す *)
+                  (* TODO: Ir.Field.mtype のパターンマッチでエラーを報告するのは良くない。直す *)
                   error_at ex_sel.i "selector(cell) expected"
             in
             let (), code_then = codegen ctx st_list_then in
@@ -77,7 +77,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | Some st_list_else -> codegen ctx st_list_else
             in
             let code =
-              Named.Code.from_list [ If (nsel, code_then, code_else) ] in
+              Ir.Code.from_list [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_ptr, ex_i_opt) ->
             let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
@@ -109,7 +109,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               |> List.flatten
             in
             let code_shift =
-              Named.Code.from_list [ Shift { n=i; index=(nsel, ptr); followers } ]
+              Ir.Code.from_list [ Shift { n=i; index=(nsel, ptr); followers } ]
             in
             ((), code_shift)
         | StAlloc (field, st_list) ->
@@ -117,9 +117,9 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | None -> nmain.finite
               | Some sel ->
                   let nsel, _ =  Sel.to_nptr info sel in
-                  let nmtype = Named.Sel.find_mtype nmain nsel in
+                  let nmtype = Ir.Sel.find_mtype nmain nsel in
                   match nmtype with
-                  | Named.Field.Array { members; _ } -> members
+                  | Ir.Field.Array { members; _ } -> members
                   | _ -> assert false (* divingに登録されているセレクタは(たぶん)配列を指している *)
             in
             let nvar_env = NVarEnv.gen_using_field nmain nfield field in
@@ -142,12 +142,12 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
                 | NVarEnv.Cell ->
                     let sel = Sel.base_or_mem diving nvar in
                     let nsel = Sel.to_nsel unknown_info sel in
-                    Named.Code.from_list [ Reset (nsel) ]
+                    Ir.Code.from_list [ Reset (nsel) ]
               ) |> List.flatten
             in
             (* dive中であればスコープの終わりでもセルを初期化する *)
             let code_clean_end =
-              if diving <> None then code_clean else Named.Code.from_list []
+              if diving <> None then code_clean else Ir.Code.from_list []
             in
             ((), code_clean @ code_child @ code_clean_end)
         | StLet (binding, st_list) ->
@@ -168,28 +168,28 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
   let (), cmd_list = codegen ctx st_list in
   (nmain, cmd_list)
 
-let gen_named (dirname: string) (program: program) : Named.Field.main * 'a Named.Code.t =
+let gen_ir (dirname: string) (program: program) : Ir.Field.main * 'a Ir.Code.t =
   let toplevels, main = program in
   match main with
   | None -> error_at unknown_info "main not found"
   | Some main ->
       let envs = Eval.eval_toplevels dirname [] Eval.empty_envs toplevels in
-      gen_named_from_main envs main
+      gen_ir_from_main envs main
 
 let gen_bf_from_source path =
   let dirname = Filename.dirname path in
   let program = Eval.load_program path in
-  let field, ir_code = gen_named dirname program in
+  let field, ir_code = gen_ir dirname program in
   (* 生存セル解析による最適化 *)
-  let ir_code = Named.Code.convert_idioms ir_code in
-  let liveness = Named.Liveness.analyze field ir_code in
-  let graph = Named.Liveness.Graph.create field liveness in
+  let ir_code = Ir.Code.convert_idioms ir_code in
+  let liveness = Ir.Liveness.analyze field ir_code in
+  let graph = Ir.Liveness.Graph.create field liveness in
   let field, ir_code =
-    Named.Liveness.Graph.create_program_with_merged_cells
+    Ir.Liveness.Graph.create_program_with_merged_cells
       graph field ir_code
   in
   (* メンバ並び順最適化 *)
-  let mcounter = Named.MovementCounter.from_code ir_code in
+  let mcounter = Ir.MovementCounter.from_code ir_code in
   (* bf生成 *)
-  let layout = Named.Layout.create mcounter field in
-  Named.BfGen.gen_bf layout ir_code
+  let layout = Ir.Layout.create mcounter field in
+  Ir.BfGen.gen_bf layout ir_code

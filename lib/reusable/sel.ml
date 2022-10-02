@@ -1,15 +1,15 @@
 open Support.Error
 
-(** Named.Selをラップする *)
+(** Ir.Selをラップする *)
 type t =
-  | Base of Named.Id.t
-  | LstMem of t * int * Named.Id.t
-  | LstPtr of t * Named.Id.t
+  | Base of Ir.Id.t
+  | LstMem of t * int * Ir.Id.t
+  | LstPtr of t * Ir.Id.t
 type nsel_or_nptr =
-  | NSel of Named.Sel.t
-  | NPtr of Named.Sel.t * Named.Id.t
+  | NSel of Ir.Sel.t
+  | NPtr of Ir.Sel.t * Ir.Id.t
 
-let base_or_mem (parent: t option) (v: Named.Id.t) =
+let base_or_mem (parent: t option) (v: Ir.Id.t) =
   match parent with
   | None -> Base v
   | Some sel -> LstMem (sel, 0, v)
@@ -17,29 +17,29 @@ let base_or_mem (parent: t option) (v: Named.Id.t) =
 let rec to_nsel_or_nptr sel =
   let rec to_nsel_lst index child sel =
     match sel with
-    | Base nv ->  Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child }
+    | Base nv ->  Ir.Sel.Array { name=nv; index_opt=None; offset=index; member=child }
     | LstMem (LstPtr (sel, p), i, nv) ->
-        let child = Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
+        let child = Ir.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
         to_nsel_lst_ptr p i child sel
     | LstMem (sel, i, nv) ->
-        let child = Named.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
+        let child = Ir.Sel.Array { name=nv; index_opt=None; offset=index; member=child } in
         to_nsel_lst i child sel
     | LstPtr _ -> assert false
   and to_nsel_lst_ptr ptr index child sel =
     match sel with
-    | Base nv ->  Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child }
+    | Base nv ->  Ir.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child }
     | LstMem (LstPtr (sel, p), i, nv) ->
-        let child = Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
+        let child = Ir.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
         to_nsel_lst_ptr p i child sel
     | LstMem (sel, i, nv) ->
-        let child = Named.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
+        let child = Ir.Sel.Array { name=nv; index_opt=Some ptr; offset=index; member=child } in
         to_nsel_lst i child sel
     | LstPtr _ -> assert false
   in
   match sel with
-  | Base nv -> NSel (Named.Sel.Member nv)
-  | LstMem (LstPtr (sel, ptr), index, nv) -> NSel (to_nsel_lst_ptr ptr index (Named.Sel.Member nv) sel)
-  | LstMem (sel, index, nv) -> NSel (to_nsel_lst index (Named.Sel.Member nv) sel)
+  | Base nv -> NSel (Ir.Sel.Member nv)
+  | LstMem (LstPtr (sel, ptr), index, nv) -> NSel (to_nsel_lst_ptr ptr index (Ir.Sel.Member nv) sel)
+  | LstMem (sel, index, nv) -> NSel (to_nsel_lst index (Ir.Sel.Member nv) sel)
   | LstPtr (sel, ptr) -> begin
       let nsel = to_nsel_or_nptr sel in
       match nsel with
@@ -48,7 +48,7 @@ let rec to_nsel_or_nptr sel =
     end
 
 (* to_nsel や to_nptr は例外を発生させるべきではなくて、infoも必要ない
-    Namedのリファクタリングに合わせて取り除く *)
+    Irのリファクタリングに合わせて取り除く *)
 let to_nsel info sel =
   match to_nsel_or_nptr sel with
   | NSel nsel -> nsel
