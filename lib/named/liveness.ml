@@ -147,7 +147,8 @@ module Graph = struct
   type t = {
     mutable nodes: CellSet.t;
     edges: (Id.t, CellSet.t) Hashtbl.t;
-    children: (Id.t, t) Hashtbl.t
+    children: (Id.t, t) Hashtbl.t;
+    mutable colored_groups_memo: Id.t list list option;
   }
 
   let mem_cell graph node = CellSet.mem node graph.nodes
@@ -169,8 +170,9 @@ module Graph = struct
     let rec from_field (field: Field.t): t =
       let graph = {
         nodes = CellSet.empty;
-        edges = Hashtbl.create 30;
+        edges = Hashtbl.create 100;
         children = Hashtbl.create 10;
+        colored_groups_memo = None;
       } in
       Field.fold
         (fun (id: Id.t) (mtype: Field.mtype) (): unit ->
@@ -227,6 +229,51 @@ module Graph = struct
     scan_code code
   ;;
 
+  (** グラフ彩色を行いセルを色で分類して返す *)
+  let coloring g =
+    match g.colored_groups_memo with
+    | Some groups -> groups (* 彩色済み *)
+    | None -> (* 未彩色 *)
+        let cell_to_color = Hashtbl.create (CellSet.cardinal g.nodes) in
+        (* 次数の大きい順に並べる *)
+        let degree_ordered =
+          CellSet.elements g.nodes
+          |> List.sort
+            (fun n1 n2 ->
+              -Int.compare
+                (CellSet.cardinal (succ g n1))
+                (CellSet.cardinal (succ g n2)) )
+        in
+        (* 貪欲彩色 *)
+        let color_num = ref 0 in
+        List.iter
+          (fun cell ->
+            let rec try_color i =
+              if !color_num <= i then color_num := i + 1;
+              let possible =
+                CellSet.for_all
+                  (fun succ_cell -> Hashtbl.find_opt cell_to_color succ_cell <> Some i)
+                  (succ g cell)
+              in
+              if possible
+                then Hashtbl.add cell_to_color cell i
+                else try_color (i + 1)
+            in
+            try_color 0
+          )
+          degree_ordered;
+        (* 色でグループ化して返す *)
+        let color_to_cells = Array.make !color_num [] in
+        CellSet.iter
+          (fun cell ->
+            let color = Hashtbl.find cell_to_color cell in
+            color_to_cells.(color) <- cell :: color_to_cells.(color)
+          )
+          g.nodes;
+        let groups = Array.to_list color_to_cells |> List.map List.rev in
+        g.colored_groups_memo <- Some groups;
+        groups
+
   let create fmain analysis_result =
     let graph, cell_to_graph = init fmain in
     set_edges cell_to_graph analysis_result;
@@ -236,25 +283,33 @@ module Graph = struct
     let open Format in
     let rec output_graph (graph: t) =
       (* ノード *)
+      let colored_groups = coloring graph in
+      let output_node n =
+        fprintf ppf "%d [label=\"%s\"];@ " (Id.to_int n) (Id.numbered_name n);
+      in
+      List.iter
+        (function
+          | [] -> assert false
+          | [cell] ->
+              output_node cell;
+          | (hd :: _) as group ->
+              fprintf ppf "subgraph cluster_%d {@ " (Id.to_int hd);
+              fprintf ppf "label = \"\";@ ";
+              List.iter output_node group;
+              fprintf ppf "};@ ";
+        )
+        colored_groups;
+      (* エッジ *)
       CellSet.iter
-        (fun n ->
-          fprintf ppf "%d [label=\"%s\"];@ " (Id.to_int n) (Id.numbered_name n);
+        (fun n1 ->
+          CellSet.iter
+            (fun n2 ->
+              if Id.compare n1 n2 < 0 then
+                fprintf ppf "%d -- %d;@ " (Id.to_int n1) (Id.to_int n2;);
+            )
+            (succ graph n1);
         )
         graph.nodes;
-      (* エッジ *)
-      let rec output_edges = function
-        | [] -> ()
-        | n1 :: tl ->
-            let n1_succ = succ graph n1 in
-            List.iter
-              (fun n2 ->
-                if CellSet.mem n2 n1_succ then
-                  fprintf ppf "%d -- %d;@ " (Id.to_int n1) (Id.to_int n2;);
-              )
-              tl;
-            output_edges tl
-      in
-      CellSet.to_seq graph.nodes |> List.of_seq |> output_edges;
       (* サブグラフ *)
       Hashtbl.iter
         (fun array_id graph ->

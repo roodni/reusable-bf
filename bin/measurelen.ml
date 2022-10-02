@@ -3,6 +3,7 @@ open Printf
 let programs = [
   ("rev3", "./test/reusable/code/rev3.bfr");
   ("nested", "./test/reusable/code/nested_array.bfr");
+  ("switch", "./test/reusable/code/switch.bfr");
   ("fizzbuzz", "./test/reusable/code/fizzbuzz.bfr");
   ("queens", "./test/reusable/code/queens.bfr");
   ("bfi", "./sample/bfi.bfr");
