@@ -62,7 +62,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
           end
         | StIf (ex_sel, st_list_then, st_list_else) ->
             let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let nmtype = Named.Sel.find_field nmain nsel in
+            let nmtype = Named.Sel.find_mtype nmain nsel in
             let () =
               match nmtype with
               | Named.Field.Cell cell ->
@@ -117,7 +117,7 @@ let gen_named_from_main (envs : Eval.envs) (main: main) : Named.Field.main * uni
               | None -> nmain.finite
               | Some sel ->
                   let nsel, _ =  Sel.to_nptr info sel in
-                  let nmtype = Named.Sel.find_field nmain nsel in
+                  let nmtype = Named.Sel.find_mtype nmain nsel in
                   match nmtype with
                   | Named.Field.Array { members; _ } -> members
                   | _ -> assert false (* divingに登録されているセレクタは(たぶん)配列を指している *)

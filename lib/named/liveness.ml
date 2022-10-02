@@ -8,7 +8,7 @@ module CellSet = struct
 
   let remove_sel sel cs = remove (Sel.last_id sel) cs
   let add_sel_if_mergeable fmain sel cs =
-    match Sel.find_field fmain sel with
+    match Sel.find_mtype fmain sel with
     | Field.Cell { mergeable=true; _ } -> add (Sel.last_id sel) cs
     | Cell { mergeable=false; _ } -> cs
     | _ -> assert false

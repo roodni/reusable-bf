@@ -29,8 +29,8 @@ let rec concat_member_to_index_tail (arr_sel, idx_id) mem_id offset =
       Array { mid_array with member=concat_member_to_index_tail (mid_array.member, idx_id) mem_id offset }
 
 (** セレクタの指すテープ位置のmtypeを取得する *)
-let find_field (fmain: Field.main) (sel: t) =
-  let rec find_field field = function
+let find_mtype (fmain: Field.main) (sel: t) =
+  let rec find_mtype field = function
     | Member id ->
         if fmain.finite == field
           then Field.lookup_main fmain id
@@ -42,11 +42,11 @@ let find_field (fmain: Field.main) (sel: t) =
             else Field.lookup field name
         in begin
           match mtype with
-          | Field.Array { members; _ } -> find_field members member
+          | Field.Array { members; _ } -> find_mtype members member
           | _ -> assert false
         end
   in
-  find_field fmain.finite sel
+  find_mtype fmain.finite sel
 
 let rec to_string = function
   | Member id -> Id.numbered_name id
