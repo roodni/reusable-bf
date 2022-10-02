@@ -94,7 +94,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let live_in = update_tables_and_compute_live_in CellSet.empty code in
   (live_in, code)
 
-let show_analysis_result ppf (live_in, code: analysis_result) =
+let output_analysis_result ppf (live_in, code: analysis_result) =
   let open Format in
   let rec print_code code =
     let print_block code =
@@ -139,7 +139,7 @@ let show_analysis_result ppf (live_in, code: analysis_result) =
   fprintf ppf "@[<v>";
   fprintf ppf "$entrypoint\t%s@," (CellSet.to_string live_in);
   print_code code;
-  fprintf ppf "@,@]";
+  fprintf ppf "@]";
 ;;
 
 (** 干渉グラフ *)

@@ -125,7 +125,7 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
   let layout_uarray, _ = allocate uarray ofs_uarray_start in
   layout_finite @ layout_uarray
 
-let show ppf layout =
+let output ppf layout =
   let loc_to_offset = function
     | Cell { offset; _ } -> offset
     | Ifable { offset_of_cond; _ } -> offset_of_cond

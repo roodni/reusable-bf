@@ -101,9 +101,9 @@ let use_as_bfr_compiler () =
       | None -> ()
       | Some (liveness, graph) ->
           print_endline "[LIVENESS]";
-          Named.Liveness.show_analysis_result Format.std_formatter liveness;
+          Named.Liveness.output_analysis_result Format.std_formatter liveness;
           Format.print_flush ();
-          print_newline ();
+          print_endline "\n";
 
           Format.printf "@[<hov>";
           Named.Liveness.Graph.output_dot Format.std_formatter graph;
@@ -118,7 +118,7 @@ let use_as_bfr_compiler () =
 
     if !flag_show_layouts then begin
       Format.printf "@[<v>[LAYOUT] ";
-      Named.Layout.show Format.std_formatter layout;
+      Named.Layout.output Format.std_formatter layout;
       Format.printf "@]";
       Format.print_flush ();
       print_endline "\n";
