@@ -60,12 +60,19 @@ let use_as_bf_interpreter () =
 
 (** bf-reusableのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
+  (* Reusable -> 中間言語 *)
   let dirname = Filename.dirname !filename in
   let program = Reusable.Eval.load_program !filename in
   let field, ir_code = Reusable.IrGen.gen_named dirname program in
 
-  let layout = Named.Layout.from_field ir_code field in
+  (* 生存セル解析による最適化 *)
+  let ir_code = Named.Code.convert_idioms ir_code in
+  let liveness = Named.Liveness.analyze field ir_code in
+  let graph = Named.Liveness.Graph.create field liveness in
+  let field, ir_code = Named.Liveness.Graph.create_program_with_merged_cells graph field ir_code in
 
+  (* 中間言語 -> bf *)
+  let layout = Named.Layout.from_field ir_code field in
   let bf_code = Named.BfGen.gen_bf layout ir_code in
   let bf_code_buf = Bf.Code.to_buffer bf_code in
 
@@ -76,13 +83,10 @@ let use_as_bfr_compiler () =
 
     if !flag_show_liveness then begin
       print_endline "[LIVENESS]";
-      let ir_code = Named.Code.convert_idioms ir_code in
-      let liveness = Named.Liveness.analyze field ir_code in
       Named.Liveness.show_analysis_result Format.std_formatter liveness;
       Format.print_flush ();
       print_newline ();
 
-      let graph = Named.Liveness.Graph.create field liveness in
       Format.printf "@[<hov>";
       Named.Liveness.Graph.output_dot Format.std_formatter graph;
       Format.printf "@]";

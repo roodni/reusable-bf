@@ -89,7 +89,7 @@ let cases = [
     filename = "code/bug_similar_indexed_selectors.bfr"
   };
   {
-    name = "bizzbuzz";
+    name = "fizzbuzz";
     io_list = [ ("16\n", "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz 16 ") ];
     filename = "code/fizzbuzz.bfr"
   };

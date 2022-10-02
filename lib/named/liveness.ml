@@ -325,4 +325,87 @@ module Graph = struct
     output_graph graph;
     fprintf ppf "}";
   ;;
+
+  (** 彩色に従ってセルを結合したフィールドとコードを返す *)
+  let create_program_with_merged_cells (g: t) (fmain: Field.main) (code: 'a Code.t) =
+    (* 結合されたセルのidとそれを持つフィールドを同時に生成する *)
+    let id_convert_tbl = Hashtbl.create 100 in
+    let rec create_mc_field (g: t) (field: Field.t): Field.t =
+      let mc_field = Field.empty () in
+      (* 同色のセルを結合して登録 *)
+      let colored_groups = coloring g in
+      List.iter
+        (fun (group: Id.t list) ->
+          let merged_id = Id.gen_merged group in
+          let merged_ifable = ref false in
+          List.iter
+            (fun id ->
+              (match Field.lookup field id with
+              | Cell { ifable=true; _ } -> merged_ifable := true;
+              | Cell { ifable=false; _ } -> ()
+              | Array _ | Index -> assert false
+              );
+              Hashtbl.add id_convert_tbl id merged_id;
+            )
+            group;
+          Field.extend mc_field
+            merged_id
+            (Field.Cell { ifable=(!merged_ifable); mergeable=false; });
+        )
+        colored_groups;
+      (* その他のメンバの転記 *)
+      Field.fold
+        (fun (id: Id.t) (mtype: Field.mtype) (): unit ->
+          (match mtype with
+          | Cell { mergeable=true; _ } ->
+              ()
+          | Cell { mergeable=false; _ } | Index ->
+              Field.extend mc_field id mtype;
+          | Array { length; members } ->
+              let members_graph = Hashtbl.find g.children id in
+              let members = create_mc_field members_graph members in
+              Field.extend mc_field id (Array { length; members })
+          );
+        )
+        field
+        ();
+      mc_field
+    in
+    let mc_fmain = Field.{
+      finite = create_mc_field g fmain.finite;
+      unlimited = create_mc_field (Hashtbl.find g.children Field.uarray_id) fmain.unlimited;
+      (* TODO: unlimited arrayの干渉グラフをfiniteのグラフの干渉グラフのサブグラフにするのをやめる *)
+    } in
+    let id_to_mc id =
+      match Hashtbl.find_opt id_convert_tbl id with
+      | Some id -> id
+      | None -> id
+    in
+    let convert_sel = Sel.convert_id id_to_mc in
+    (* コードのId書き換え *)
+    let rec convert_code (code: 'a Code.t): unit Code.t =
+      let open Code in
+      List.map
+        (fun { cmd; _ } ->
+          let cmd =
+            match cmd with
+            | Add (n, sel) -> Add (n, convert_sel sel)
+            | Put sel -> Put (convert_sel sel)
+            | Get sel -> Get (convert_sel sel)
+            | Reset sel -> Reset (convert_sel sel)
+            | Shift { n; index=(sel, id); followers } ->
+                Shift {
+                  n;
+                  index = (convert_sel sel, id_to_mc id);
+                  followers = List.map id_to_mc followers;
+                }
+            | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
+            | LoopIndex (sel, id, code) ->  LoopIndex (convert_sel sel, id_to_mc id, convert_code code)
+            | If (sel, thn, els) -> If (convert_sel sel, convert_code thn, convert_code els)
+          in
+          { cmd; annot=() }
+        )
+        code
+    in
+    (mc_fmain, convert_code code)
 end

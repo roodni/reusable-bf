@@ -2,6 +2,7 @@ type t
 
 val gen_special: string -> t
 val gen_named: string -> t
+val gen_merged: t list -> t
 
 val simple_name: t -> string
 val numbered_name: t -> string

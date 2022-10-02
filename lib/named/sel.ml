@@ -12,6 +12,16 @@ let rec last_id = function
   | Member id -> id
   | Array { member; _ } -> last_id member
 
+let rec convert_id (f: Id.t -> Id.t) = function
+  | Member id -> Member (f id)
+  | Array { name; index_opt; offset; member } ->
+      Array {
+        name = f name;
+        index_opt = Option.map f index_opt;
+        offset;
+        member = convert_id f member
+      }
+
 let rec concat_member_to_index_tail (arr_sel, idx_id) mem_id offset =
   match arr_sel with
   | Member id -> Array { name=id; index_opt=Some idx_id; member=Member mem_id; offset }

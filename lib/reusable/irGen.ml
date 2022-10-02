@@ -179,6 +179,15 @@ let gen_named (dirname: string) (program: program) : Named.Field.main * 'a Named
 let gen_bf_from_source path =
   let dirname = Filename.dirname path in
   let program = Eval.load_program path in
-  let field, code = gen_named dirname program in
-  let layout = Named.Layout.from_field code field in
-  Named.BfGen.gen_bf layout code
+  let field, ir_code = gen_named dirname program in
+  (* 生存セル解析による最適化 *)
+  let ir_code = Named.Code.convert_idioms ir_code in
+  let liveness = Named.Liveness.analyze field ir_code in
+  let graph = Named.Liveness.Graph.create field liveness in
+  let field, ir_code =
+    Named.Liveness.Graph.create_program_with_merged_cells
+      graph field ir_code
+  in
+  (* bf生成 *)
+  let layout = Named.Layout.from_field ir_code field in
+  Named.BfGen.gen_bf layout ir_code
