@@ -52,6 +52,66 @@ let from_list cmd_list =
     (fun cmd -> { cmd=cmd_annot_map (Fun.const ()) cmd; annot=() })
     cmd_list
 
+
+
+(** アノテーション込みでコードを出力する *)
+let output ppf output_annot code =
+  let open Format in
+  let rec print_code code =
+    let print_block code =
+      fprintf ppf "[ @[<v>";
+      print_code code;
+      fprintf ppf " ]@]";
+    in
+    List.iteri
+      (fun i { cmd; annot } ->
+        if i > 0 then fprintf ppf "@,";
+        (match cmd with
+        | Add (n, sel) ->
+            let cmdc = if n >= 0 then '+' else '-' in
+            fprintf ppf "%c %s %d" cmdc (Sel.to_string sel) (abs n);
+            output_annot ppf annot;
+        | Put sel ->
+            fprintf ppf ". %s" (Sel.to_string sel);
+            output_annot ppf annot;
+        | Get sel ->
+            fprintf ppf ", %s" (Sel.to_string sel);
+            output_annot ppf annot;
+        | Reset sel ->
+            fprintf ppf "$reset %s" (Sel.to_string sel);
+            output_annot ppf annot;
+        | Shift { n; index=(arr_sel, idx_id); _ } ->
+            let cmdc = if n >= 0 then '>' else '<' in
+            fprintf ppf "%c %s@%s %d"
+              cmdc (Sel.to_string arr_sel) (Id.simple_name idx_id) (abs n);
+            output_annot ppf annot;
+        | Loop (sel, code) ->
+            fprintf ppf "! %s" (Sel.to_string sel);
+            output_annot ppf annot;
+            fprintf ppf "@;<0 2>";
+            print_block code;
+        | LoopIndex (arr_sel, idx_id, code) ->
+            fprintf ppf "! %s@%s" (Sel.to_string arr_sel) (Id.simple_name idx_id);
+            output_annot ppf annot;
+            fprintf ppf "@;<0 2>";
+            print_block code;
+        | If (sel, thn_code, els_code) ->
+            fprintf ppf "? %s" (Sel.to_string sel);
+            output_annot ppf annot;
+            fprintf ppf "@;<0 2>";
+            print_block thn_code;
+            fprintf ppf "@;<0 2>";
+            print_block els_code;)
+      )
+      code
+  in
+  fprintf ppf "@[<v>";
+  print_code code;
+  fprintf ppf "@]";
+;;
+
+
+
 let shift_followers n (arr_sel, idx_id) followers =
   followers
   |> List.map
@@ -71,6 +131,7 @@ let shift_followers n (arr_sel, idx_id) followers =
 let desugar_LoopIndex (arr_sel, idx_id, loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
   from_list [ Loop (cond_sel, loop) ]
+
 
 (** イディオム[-]を専用コマンドに変換する *)
 let convert_idioms code =

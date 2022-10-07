@@ -13,13 +13,7 @@ module CellSet = struct
     | Cell { mergeable=false; _ } -> cs
     | _ -> assert false
 
-  let to_string cs =
-    let separated =
-      to_seq cs
-      |> Seq.map (fun id -> Id.numbered_name id)
-      |> List.of_seq |> String.concat ", "
-    in
-    Printf.sprintf "{%s}" separated
+  let to_string cs = elements cs |> Id.list_to_string
 end
 
 type table = { mutable live_out: CellSet.t }
@@ -96,49 +90,12 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
 
 let output_analysis_result ppf (live_in, code: analysis_result) =
   let open Format in
-  let rec print_code code =
-    let print_block code =
-      fprintf ppf "[ @[<v>";
-      print_code code;
-      fprintf ppf " ]@]";
-    in
-    List.iteri
-      (fun i Code.{ cmd; annot={live_out} } ->
-        let live_out_s = CellSet.to_string live_out in
-        if i > 0 then fprintf ppf "@,";
-        (match cmd with
-        | Add (n, sel) ->
-            let cmdc = if n >= 0 then '+' else '-' in
-            fprintf ppf "%c %s %d\t%s"
-              cmdc (Sel.to_string sel) (abs n) live_out_s;
-        | Put sel ->
-            fprintf ppf ". %s\t%s" (Sel.to_string sel) live_out_s;
-        | Get sel ->
-            fprintf ppf ", %s\t%s" (Sel.to_string sel) live_out_s;
-        | Reset sel ->
-            fprintf ppf "$reset %s\t%s" (Sel.to_string sel) live_out_s;
-        | Shift { n; index=(arr_sel, idx_id); _ } ->
-            let cmdc = if n >= 0 then '>' else '<' in
-            fprintf ppf "%c %s@%s %d\t%s"
-              cmdc (Sel.to_string arr_sel) (Id.simple_name idx_id) (abs n) live_out_s;
-        | Loop (sel, code) ->
-            fprintf ppf "! %s\t%s@;<0 2>" (Sel.to_string sel) live_out_s;
-            print_block code;
-        | LoopIndex (arr_sel, idx_id, code) ->
-            fprintf ppf "! %s@%s\t%s@;<0 2>" (Sel.to_string arr_sel) (Id.simple_name idx_id) live_out_s;
-            print_block code;
-        | If (sel, thn_code, els_code) ->
-            fprintf ppf "? %s\t%s@;<0 2>" (Sel.to_string sel) live_out_s;
-            print_block thn_code;
-            fprintf ppf "@;<0 2>";
-            print_block els_code;
-        );
-      )
-      code
-  in
   fprintf ppf "@[<v>";
   fprintf ppf "$entrypoint\t%s@," (CellSet.to_string live_in);
-  print_code code;
+  Code.output ppf
+    (fun ppf { live_out } ->
+      fprintf ppf "\t%s" (CellSet.to_string live_out); )
+    code;
   fprintf ppf "@]";
 ;;
 

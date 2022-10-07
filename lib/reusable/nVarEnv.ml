@@ -25,7 +25,7 @@ let gen_using_field (nmain: Ir.Field.main) nfield field =
             ( match parent_name with
               | None -> Var.to_string var
               | Some parent_name ->
-                  sprintf "%s.%s" parent_name (Var.to_string var) )
+                  sprintf "%s/%s" parent_name (Var.to_string var) )
         in
         match mtype with
         | Field.Cell ->
