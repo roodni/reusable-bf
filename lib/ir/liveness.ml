@@ -354,7 +354,9 @@ module Graph = struct
                 Shift {
                   n;
                   index = (convert_sel sel, id_to_mc id);
-                  followers = List.map id_to_mc followers;
+                  followers = List.map id_to_mc followers
+                    |> CellSet.of_list
+                    |> CellSet.elements
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
             | LoopIndex (sel, id, code) ->  LoopIndex (convert_sel sel, id_to_mc id, convert_code code)
