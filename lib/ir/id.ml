@@ -24,14 +24,26 @@ let gen_merged l =
 module SMap = Map.Make(String)
 
 let number_prefix = "%"
-let rec list_to_string l =
+
+let number_only_name id = sprintf "%s%d" number_prefix id
+let simple_name id =
+  match Hashtbl.find nametable id with
+  | Special s -> s
+  | Named n -> n
+  | Merged _ -> number_only_name id
+let numbered_name id =
+  match Hashtbl.find nametable id with
+  | Special s -> s
+  | Named n -> sprintf "%s%s%d" n number_prefix id
+  | Merged _ -> number_only_name id
+let numbered_names l =
   l
   |> List.fold_left
     (fun (sm: t list SMap.t) (id: t) ->
       let name = match Hashtbl.find nametable id with
         | Special s -> s
         | Named n -> n
-        | Merged l -> list_to_string l (* 入れ子のmergedの出力は雑 *)
+        | Merged _ -> number_only_name id
       in
       let l = SMap.find_opt name sm |> Option.value ~default:[] in
       SMap.add name (id :: l) sm
@@ -51,19 +63,10 @@ let rec list_to_string l =
         sprintf "%s%s(%s)" name number_prefix ids_s
     )
   |> String.concat ", "
-  |> sprintf "{%s}"
-;;
-
-let simple_name id =
+let detailed_name id =
   match Hashtbl.find nametable id with
-  | Special s -> s
-  | Named n -> n
-  | Merged l -> list_to_string l (* mergedのsimple出力には未対応 *)
-let numbered_name id =
-  match Hashtbl.find nametable id with
-  | Special s -> s
-  | Named n -> sprintf "%s%s%d" n number_prefix id
-  | Merged l -> list_to_string l
+  | Special _ | Named _ -> numbered_name id
+  | Merged l -> sprintf "{%s}%s" (numbered_names l) (number_only_name id)
 
 let to_int (t: t): int = t
 

@@ -13,7 +13,8 @@ module CellSet = struct
     | Cell { mergeable=false; _ } -> cs
     | _ -> assert false
 
-  let to_string cs = elements cs |> Id.list_to_string
+  let to_string cs =
+    elements cs |> List.map Id.number_only_name |> String.concat ", " |> Printf.sprintf "{%s}"
 end
 
 type table = { mutable live_out: CellSet.t }
@@ -26,11 +27,12 @@ type analysis_result = CellSet.t * code_with_liveness
 
 let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let code = Code.annot_map (fun _ -> create_table ()) code in
-  let rec update_tables_and_compute_live_in (succ_live_in: CellSet.t) (code: code_with_liveness): CellSet.t =
+  let rec update_tables_and_compute_live_in
+      (succ_live_in: CellSet.t) (code: code_with_liveness) : CellSet.t =
     code
     |> List.rev
     |> List.fold_left
-      (fun (succ_live_in: CellSet.t) Code.{ cmd; annot=tbl }: CellSet.t ->
+      (fun (succ_live_in: CellSet.t) Code.{ cmd; annot=tbl } : CellSet.t ->
         (* 各コマンドに対して
            - live_out のテーブルを更新する
            - live_in を計算する
@@ -100,7 +102,12 @@ let output_analysis_result ppf (live_in, code: analysis_result) =
 ;;
 
 (** 干渉グラフ *)
-module Graph = struct
+module Graph : sig
+  type t
+  val create: Field.main -> analysis_result -> t
+  val output_dot: Format.formatter -> t -> unit
+  val create_program_with_merged_cells: t -> Field.main -> 'a Code.t -> Field.main * unit Code.t
+end = struct
   type t = {
     mutable nodes: CellSet.t;
     edges: (Id.t, CellSet.t) Hashtbl.t;
@@ -307,7 +314,7 @@ module Graph = struct
             group;
           Field.extend mc_field
             merged_id
-            (Field.Cell { ifable=(!merged_ifable); mergeable=false; });
+            (Field.Cell { ifable=(!merged_ifable); mergeable=true; });
         )
         colored_groups;
       (* その他のメンバの転記 *)

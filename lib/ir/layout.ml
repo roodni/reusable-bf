@@ -149,7 +149,7 @@ let output ppf layout =
     List.iteri
       (fun i (ofs, (id, loc)) ->
         if i > 0 then pp_print_space ppf ();
-        fprintf ppf "%d -> @[<hv>%s: " ofs (Id.numbered_name id);
+        fprintf ppf "%d -> @[<hv>%s: " ofs (Id.detailed_name id);
         ( match loc with
           | Cell { is_index=false; _ } -> fprintf ppf "cell";
           | Cell { is_index=true; _ } -> fprintf ppf "index";

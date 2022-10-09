@@ -131,7 +131,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             in
             let ctx = { ctx with envs; diving_vars; } in
             let (), code_child = codegen ctx st_list in
-            (* 確保するセルをゼロで初期化する *)
+            (* 確保するセルに対するゼロ初期化 *)
             let code_clean =
               NVarEnv.to_list nvar_env |>
               List.map (fun (_, { v = (nvar, mtype); i }) ->
@@ -145,11 +145,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
                     Ir.Code.from_list [ Reset (nsel) ]
               ) |> List.flatten
             in
-            (* dive中であればスコープの終わりでもセルを初期化する *)
-            let code_clean_end =
-              if diving <> None then code_clean else Ir.Code.from_list []
-            in
-            ((), code_clean @ code_child @ code_clean_end)
+            ((), code_clean @ code_child @ code_clean)
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
             codegen { ctx with envs } st_list
@@ -188,6 +184,9 @@ let gen_bf_from_source path =
     Ir.Liveness.Graph.create_program_with_merged_cells
       graph field ir_code
   in
+  (* 条件セルがゼロになるループの除去 *)
+  let const_analysis_result = Ir.Const.analyze field ir_code in
+  let ir_code = Ir.Const.eliminate_never_entered_loop const_analysis_result in
   (* メンバ並び順最適化 *)
   let mcounter = Ir.MovementCounter.from_code ir_code in
   (* bf生成 *)

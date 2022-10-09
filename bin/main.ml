@@ -4,11 +4,13 @@ open Support.Error
 (* コマンドライン引数 *)
 let flag_bf = ref false
 let flag_run = ref false
-let arg_optimize_level = ref 2
+let arg_optimize_level = ref 10
 let flag_verbose = ref false
 let flag_show_liveness = ref false
 let flag_show_layouts = ref false
-let flags_compile_information = [flag_show_liveness; flag_show_layouts]
+let flag_show_possible_cell_values = ref false
+let flags_compile_information =
+  [flag_show_liveness; flag_show_layouts; flag_show_possible_cell_values]
 let flag_dump_tape = ref false
 let filename = ref "-"
 let parse_args () =
@@ -17,16 +19,16 @@ let parse_args () =
       ("-r", Set flag_run, " Run the bf-reusable program after compilation");
       ("-v", Set flag_verbose, " Show detailed compilation information");
       ("--show-liveness", Set flag_show_liveness, " Show the result of liveness analysis");
-      ("--show-layouts", Set flag_show_layouts, " Show cell layouts");
-      ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0,1,2)");
+      ("--show-layout", Set flag_show_layouts, " Show cell layouts");
+      ("--show-cell-values", Set flag_show_possible_cell_values, " ");
+      ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0-3)");
       ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
     ]
     (fun s -> filename := s )
     (sprintf "Usage: %s <options> <file>" Sys.argv.(0));
 
   if !flag_verbose then begin
-    flag_show_liveness := true;
-    flag_show_layouts := true;
+    List.iter (fun r -> r := true) flags_compile_information;
   end;
 ;;
 
@@ -79,6 +81,15 @@ let use_as_bfr_compiler () =
       (field, ir_code, Some (liveness, graph))
   in
 
+  (* 条件セルがゼロになるループの除去 *)
+  let ir_code, const_analysis_opt =
+    if !arg_optimize_level < 3 then (ir_code, None)
+    else
+      let result = Ir.Const.analyze field ir_code in
+      let ir_code = Ir.Const.eliminate_never_entered_loop result in
+      (Ir.Code.delete_annot ir_code, Some result)
+  in
+
   (* セル並び順最適化 *)
   let mcounter =
     if !arg_optimize_level < 1
@@ -112,12 +123,24 @@ let use_as_bfr_compiler () =
           print_endline "\n";
     end;
 
+    if !flag_show_possible_cell_values then begin
+      match const_analysis_opt with
+      | None -> ()
+      | Some result ->
+          print_endline "[POSSIBLE CELL VALUES]";
+          Format.printf "@[<v>";
+          Ir.Const.output_analysis_result Format.std_formatter result;
+          Format.printf "@]";
+          Format.print_flush ();
+          print_endline "\n";
+    end;
+
     (* let tbl = Ir.MovementCounter.from_code ir_code in
     Ir.MovementCounter.dump tbl;
     print_newline (); *)
 
     if !flag_show_layouts then begin
-      Format.printf "@[<v>[LAYOUT] ";
+      Format.printf "@[<v>[LAYOUT]@,";
       Ir.Layout.output Format.std_formatter layout;
       Format.printf "@]";
       Format.print_flush ();
