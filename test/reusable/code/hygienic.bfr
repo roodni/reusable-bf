@@ -1,11 +1,11 @@
 let f = fun block -> [
-  $var { hoge: cell; } in
+  $alloc { hoge } in
   ! hoge [ - hoge ]
   + hoge 'X'
   *block
 ]
 
-main { hoge: cell; } [
+main { hoge } [
   + hoge 'O'
   *f [ . hoge ]
 ]

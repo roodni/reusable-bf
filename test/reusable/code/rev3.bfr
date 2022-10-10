@@ -10,9 +10,7 @@ $let p = buf@p in
 $let c = p:c in
 
 $dive p [
-  $var {
-    f: cell;
-  } in
+  $alloc { f } in
   + f
   ! f [
     , c

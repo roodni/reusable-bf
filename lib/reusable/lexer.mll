@@ -6,8 +6,7 @@ let reserved = [
   ("import", fun i -> P.IMPORT i);
   ("as", fun i -> P.AS i);
   ("cell", fun i -> P.CELL i);
-  ("ptr", fun i -> P.PTR i);
-  ("index", fun i -> P.PTR i);
+  ("index", fun i -> P.INDEX i);
   ("array", fun i -> P.ARRAY i);
   ("main", fun i -> P.MAIN i);
   ("fun", fun i -> P.FUN i);
@@ -115,7 +114,7 @@ and main = parse
   | "<=" { P.LEQ (info lexbuf) }
   | "::" { P.CONS (info lexbuf) }
   | "|" { P.BAR (info lexbuf) }
-  | "$var" | "$alloc" { P.ST_ALLOC (info lexbuf) }
+  | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {

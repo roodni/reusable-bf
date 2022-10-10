@@ -24,10 +24,7 @@ main { cont } in
 + cont
 ! cont [
   - cont
-  $var {
-    input: cell;
-    diff: cell;
-  } in
+  $alloc { input; diff; } in
   , input
   . input
   + diff '#'

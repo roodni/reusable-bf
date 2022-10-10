@@ -27,7 +27,7 @@ open Syntax
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
 
-%token <Support.Error.info> CELL PTR ARRAY
+%token <Support.Error.info> CELL INDEX ARRAY
 %token <Support.Error.info> FUN
 %token <Support.Error.info> LET IN
 %token <Support.Error.info> IF THEN ELSE
@@ -88,7 +88,7 @@ field_elm:
 
 field_elm_mtype:
   | i=CELL { withinfo i Field.Cell }
-  | i=PTR { withinfo i Field.Index }
+  | i=INDEX { withinfo i Field.Index }
   | i=ARRAY LPAREN l=INT RPAREN f=field {
       withinfo2 i f.i @@ Field.Array { length=Some l.v; mem=f.v; }
     }
