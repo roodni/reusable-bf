@@ -27,7 +27,7 @@ open Syntax
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
 
-%token <Support.Error.info> CELL PTR ARRAY ARRAY_UNLIMITED
+%token <Support.Error.info> CELL PTR ARRAY
 %token <Support.Error.info> FUN
 %token <Support.Error.info> LET IN
 %token <Support.Error.info> IF THEN ELSE
@@ -92,7 +92,7 @@ field_elm_mtype:
   | i=ARRAY LPAREN l=INT RPAREN f=field {
       withinfo2 i f.i @@ Field.Array { length=Some l.v; mem=f.v; }
     }
-  | i=ARRAY_UNLIMITED f=field {
+  | i=ARRAY LPAREN UNDER RPAREN f=field {
       withinfo2 i f.i @@ Field.Array { length=None; mem=f.v; }
     }
 

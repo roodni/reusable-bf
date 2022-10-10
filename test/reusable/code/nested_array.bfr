@@ -10,14 +10,12 @@ main {
     i: index;
   };
 
-  a2: array(3) {
-    m: cell;
-  };
+  a2: array(3) { m };
 
   x: cell;
   y: cell;
 
-  ua: array_unlimited {
+  ua: array(_) {
     c: array(2) {
       m: cell;
       i: index;

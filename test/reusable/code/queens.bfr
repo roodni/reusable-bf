@@ -1,25 +1,13 @@
 import "./lib.bfr"
 
 main {
-  queens: array_unlimited {
-    col: cell;
-    i: index;
-  };
-  f_col: array_unlimited {
-    flag: cell;
-    i: index;
-  };
-  f_sum: array_unlimited {
-    flag: cell;
-    i: index;
-  };
-  f_diff: array_unlimited {
-    flag: cell;
-    i: index;
-  };
-  n: cell;
-  row_rest: cell;
-  rowi: cell;
+  queens: array(_) { col; i:index; };
+  f_col: array(_) { flag; i:index; };
+  f_sum: array(_) { flag; i:index; };
+  f_diff: array(_) { flag; i:index; };
+  n;
+  row_rest;
+  rowi;
 } in
 
 

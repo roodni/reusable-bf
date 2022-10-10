@@ -6,12 +6,13 @@
 import "./bfi_lib.bfr"
 
 main {
-  code: array_unlimited {
-    inst; depth;
+  code: array(_) {
+    inst: cell;
+    depth: cell;
     p: index;
   };
-  tape: array_unlimited {
-    v;
+  tape: array(_) {
+    v: cell;
     p: index;
   };
 } in

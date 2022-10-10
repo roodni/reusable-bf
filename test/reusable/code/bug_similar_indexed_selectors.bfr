@@ -5,7 +5,7 @@
 *)
 main {
   reset: cell;
-  a: array_unlimited {
+  a: array(_) {
     b: array(3) {
       m: cell;
       i: index;

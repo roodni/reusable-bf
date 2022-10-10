@@ -9,7 +9,6 @@ let reserved = [
   ("ptr", fun i -> P.PTR i);
   ("index", fun i -> P.PTR i);
   ("array", fun i -> P.ARRAY i);
-  ("array_unlimited", fun i -> P.ARRAY_UNLIMITED i);
   ("main", fun i -> P.MAIN i);
   ("fun", fun i -> P.FUN i);
   ("if", fun i -> P.IF i);

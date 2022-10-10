@@ -157,7 +157,7 @@ let output ppf layout =
           | Array { size_of_members; members; length; _ } ->
               let length_s = match length with
                 | Some l -> string_of_int l
-                | None -> "*"
+                | None -> "_"
               in
               fprintf ppf "array(%s) <%d>" length_s size_of_members;
               show members

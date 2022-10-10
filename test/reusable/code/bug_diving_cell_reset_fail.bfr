@@ -1,5 +1,5 @@
 main {
-  a: array_unlimited {
+  a: array(_) {
     i: index;
   };
   n: cell;
