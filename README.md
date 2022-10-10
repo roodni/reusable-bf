@@ -12,13 +12,14 @@ brainfuckに変換されるプログラミング言語です。
     g g
 
   let gen_puts l = [
-    $alloc { c: cell; } in
+    $alloc { c } in
     *fix
       (fun loop prev l ->
         match l with
         | nil -> []
         | hd :: tl -> [
-            + c (hd - prev)  . c
+            + c (hd - prev)
+            . c
             *loop hd tl
           ])
       0 l

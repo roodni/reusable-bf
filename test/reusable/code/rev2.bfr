@@ -5,9 +5,7 @@ main {
   };
 } in
 
-$var {	# comment
-  f: cell;
-} in
+$alloc { f } in
 
 $let input_end = '\n' in
 $let p = buf@p in

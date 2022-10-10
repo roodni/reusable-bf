@@ -1,13 +1,13 @@
-# ハローワールド
+// ハローワールド
 
-# 不動点コンビネータ
+// 不動点コンビネータ
 let fix f =
   let g x = f (fun y -> x x y) in
   g g
 
-# 文字列を引数にとり
-# 文字列を出力するブロック文を返す関数
-let gen_puts = fun l -> [
+// 文字列を引数にとり
+// 文字列を出力するブロック文を返す関数
+let gen_puts l = [
   $alloc { c } in
   *fix
     (fun loop prev l ->
@@ -22,6 +22,6 @@ let gen_puts = fun l -> [
 ]
 
 main {} [
-  # 展開文(*)でブロック文を展開する
+  // 展開文(*)でブロック文を展開する
   *gen_puts "hello world\n"
 ]

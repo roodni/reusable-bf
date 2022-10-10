@@ -1,6 +1,7 @@
-# brainfuckインタプリタ
-# 入力の形式は以下の通り:
-# brainfuckのコード \(バックスラッシュ) 入力
+(* brainfuckインタプリタ
+   入力の形式:
+     {brainfuckのコード}\{入力}
+*)
 
 import "./bfi_lib.bfr"
 
@@ -15,7 +16,7 @@ main {
   };
 } in
 
-# コード入力
+// コード入力
 $dive code@p [
   $let p = code@p in
   $alloc {
@@ -56,7 +57,7 @@ $dive code@p [
 
 ! code@p [ < code@p ]
 
-# 実行
+// 実行
 $dive code@p [
   $let p = code@p in
   $alloc { depth_cur } in
@@ -67,7 +68,7 @@ $dive code@p [
         [ - tape@p:v ];
         [ > tape@p ];
         [ < tape@p ];
-        [ # while
+        [ // while
           ? tape@p:v [] [
             *gen_add_multi_restore p:depth
               ( (depth_cur, 1);
@@ -82,7 +83,7 @@ $dive code@p [
             *gen_add depth_cur p:depth
           ]
         ];
-        [ # wend
+        [ // wend
           *gen_add_multi_restore p:depth
             ( (depth_cur, 1);
               (p:(-1)depth, -1) )

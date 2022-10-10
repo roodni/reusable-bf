@@ -64,7 +64,14 @@ let character =
   "\\" ['n' 't' '\\' '\'' '\"']
 
 
-rule str p1 l = parse
+rule comment = parse
+  | "(*" { comment (comment lexbuf) }
+  | "*)" { lexbuf }
+  | "\n" { Lexing.new_line lexbuf; comment lexbuf }
+  | eof { raise @@ Error (info lexbuf) }
+  | _ { comment lexbuf }
+
+and str p1 l = parse
   | character | "\'" {
       let c = Lexing.lexeme lexbuf |> string_to_char in
       str p1 (c :: l) lexbuf
@@ -82,7 +89,8 @@ rule str p1 l = parse
 and main = parse
   | [' ' '\t' '\r']+ { main lexbuf }
   | "\n" { Lexing.new_line lexbuf; main lexbuf }
-  | "#" [^'\n']* { main lexbuf }
+  | "//" [^'\n']* { main lexbuf }
+  | "(*" { main (comment lexbuf) }
   | eof { P.EOF (info lexbuf) }
   | "+" { P.PLUS (info lexbuf) }
   | "-" { P.MINUS (info lexbuf) }

@@ -1,6 +1,6 @@
-# ! <- while
-# ? <- if (non-destructive)
-# * <- block expansion
+// ! <- while
+// ? <- if (non-destructive)
+// * <- block expansion
 
 let del = fun x -> [
   ! x [ - x ]
@@ -20,7 +20,7 @@ let if_eq = fun a -> fun b -> fun thn -> [
   ]
 ]
 
-main { cont: cell; } in
+main { cont } in
 + cont
 ! cont [
   - cont

@@ -41,7 +41,7 @@ main {
 
   + queens@i:col
   ? queens@i:col
-    [ # クイーンが盤上にある
+    [ // クイーンが盤上にある
       - queens@i:col
       *gen_repeat_restore n [ > f_diff@i ]
       *gen_repeat_restore queens@i:col [
@@ -59,10 +59,10 @@ main {
       ? f_sum@i:flag [ + dup ] []
       ? f_diff@i:flag [ + dup ] []
       ? dup
-        [ # 重複あり
+        [ // 重複あり
           - queens@i:col
         ]
-        [ # 重複なし
+        [ // 重複なし
           + f_col@i:flag
           + f_sum@i:flag
           + f_diff@i:flag
@@ -75,9 +75,9 @@ main {
           + n
         ]
     ]
-    [ # クイーンが左端から出た
+    [ // クイーンが左端から出た
       ? rowi
-        [ # バックトラック
+        [ // バックトラック
           - rowi
           + row_rest
           *gen_repeat_restore n [ > f_diff@i ]
@@ -95,16 +95,16 @@ main {
           - f_diff@i:flag
           - queens@i:(-1)col
         ]
-        [ # 詰み
+        [ // 詰み
           *gen_del row_rest
         ]
     ]
 ]
 
 
-# 出力
+// 出力
 ? rowi
-  [ # 通常
+  [ // 通常
     *gen_reset_index queens@i
     $alloc { i: cell; j: cell; } in
     *gen_repeat_restore n [ + i ]
