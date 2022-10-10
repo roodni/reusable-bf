@@ -16,8 +16,8 @@ brainfuckに変換されるプログラミング言語です。
     *fix
       (fun loop prev l ->
         match l with
-        | nil -> []
-        | hd :: tl -> [
+        | () -> []
+        | hd . tl -> [
             + c (hd - prev)
             . c
             *loop hd tl

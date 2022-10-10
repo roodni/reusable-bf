@@ -20,7 +20,6 @@ let reserved = [
   ("mod", fun i -> P.MOD i);
   ("true", fun i -> P.TRUE i);
   ("false", fun i -> P.FALSE i);
-  ("nil", fun i -> P.NIL i);
   ("_", fun i -> P.UNDER i)
 ]
 
@@ -112,7 +111,6 @@ and main = parse
   | "/" { P.SLASH (info lexbuf) }
   | "->" { P.ARROW (info lexbuf) }
   | "<=" { P.LEQ (info lexbuf) }
-  | "::" { P.CONS (info lexbuf) }
   | "|" { P.BAR (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }
