@@ -49,10 +49,8 @@ let gen_sub_safe src dest overflow = [
 # ブロック中で sel の値が変化しても良い
 let gen_switch sel cases default = [
   $let cases = sort (fun (n1, _) (n2, _) -> n1 - n2) cases in
-  $var {
-    sub_src: cell;
-    flag_eq: cell;
-    flag_els: cell;
+  $alloc {
+    sub_src; flag_eq; flag_els
   } in
   *fix
     (fun loop prev cases ->
@@ -106,7 +104,7 @@ let gen_add_multi src dest_and_coef_list = [
 # gen_add_multi と同様
 # ただしセル src は復元される
 let gen_add_multi_restore src dest_and_coef_list = [
-  $var { backup: cell; } in
+  $alloc { backup } in
   *gen_add_multi src ((backup, 1) :: dest_and_coef_list)
   *gen_add backup src
 ]

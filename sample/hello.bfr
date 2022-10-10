@@ -8,7 +8,7 @@ let fix f =
 # 文字列を引数にとり
 # 文字列を出力するブロック文を返す関数
 let gen_puts = fun l -> [
-  $alloc { c: cell; } in
+  $alloc { c } in
   *fix
     (fun loop prev l ->
       match l with

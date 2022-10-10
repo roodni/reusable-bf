@@ -6,22 +6,20 @@ import "./bfi_lib.bfr"
 
 main {
   code: array_unlimited {
-    inst: cell;
-    depth: cell;
-    p: ptr;
+    inst; depth;
+    p: index;
   };
   tape: array_unlimited {
-    v: cell;
-    p: ptr;
+    v;
+    p: index;
   };
 } in
 
 # コード入力
 $dive code@p [
   $let p = code@p in
-  $var {
-    cont: cell;
-    flag_next: cell;
+  $alloc {
+    cont; flag_next
   } in
   + cont
   ! cont [
@@ -61,9 +59,7 @@ $dive code@p [
 # 実行
 $dive code@p [
   $let p = code@p in
-  $var {
-    depth_cur: cell;
-  } in
+  $alloc { depth_cur } in
   ! p:inst [
     *gen_switch_nat p:inst
       ( [];

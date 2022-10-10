@@ -71,29 +71,34 @@ toplevel:
   | i=IMPORT p=STRING AS u=UVAR { withinfo i @@ TopImportAs (p.v, u.v) }
 
 main:
-  | MAIN f=field IN sl=stmt_list { (f, sl) }
-  | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f, sl) }
+  | MAIN f=field IN sl=stmt_list { (f.v, sl) }
+  | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f.v, sl) }
 
 field:
-  | LBRACE el=field_elm_list RBRACE { el }
+  | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 el }
 
 field_elm_list:
-  | e=field_elm el=field_elm_list { e :: el }
+  | e=field_elm SEMI el=field_elm_list { e :: el }
+  | e=field_elm { [e] }
   | { [] }
 
 field_elm:
-  | v=VAR COLON ek=field_elm_mtype i2=SEMI { withinfo2 v.i i2 (v.v, ek) }
+  | v=VAR COLON mt=field_elm_mtype { withinfo2 v.i mt.i (v.v, mt.v) }
+  | v=VAR { withinfo v.i (v.v, Field.Cell) }
 
 field_elm_mtype:
-  | CELL { Field.Cell }
-  | PTR { Field.Index }
-  | ARRAY LPAREN l=INT RPAREN f=field { Field.Array { length=Some l.v; mem=f; } }
-  | ARRAY_UNLIMITED f=field { Field.Array { length=None; mem=f; } }
-
+  | i=CELL { withinfo i Field.Cell }
+  | i=PTR { withinfo i Field.Index }
+  | i=ARRAY LPAREN l=INT RPAREN f=field {
+      withinfo2 i f.i @@ Field.Array { length=Some l.v; mem=f.v; }
+    }
+  | i=ARRAY_UNLIMITED f=field {
+      withinfo2 i f.i @@ Field.Array { length=None; mem=f.v; }
+    }
 
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
-  | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f, sl) ] }
+  | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f.v, sl) ] }
   | i=ST_LET lb=let_binding IN sl=stmt_list { [ withinfo i @@ StLet (lb, sl) ] }
   | { [] }
 
@@ -109,7 +114,7 @@ stmt:
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
-  | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f, sl) }
+  | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
   | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
