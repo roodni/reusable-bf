@@ -1,4 +1,4 @@
-import "../../../sample/bfi_lib.bfr"
+import "../../../sample/lib.bfr"
 import "../../../sample/hello.bfr"
 
 main { x: cell; } in

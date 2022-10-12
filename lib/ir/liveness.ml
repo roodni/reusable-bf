@@ -71,7 +71,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             in
             update_until_fixed_point ();
             compute_loop_live_in ()
-        | LoopIndex (_, _, child_code) ->
+        | ILoop (_, child_code) ->
           (* LoopIndexでは条件分岐でマージ可能なセルを使わない *)
             tbl.live_out <- CellSet.union tbl.live_out succ_live_in;
             let rec update_until_fixed_point () =
@@ -182,7 +182,7 @@ end = struct
               ()
           | Add (_, sel) | Get sel | Reset sel ->
               add_interfere (Sel.last_id sel) live_out;
-          | Loop (_, code) | LoopIndex (_, _, code) ->
+          | Loop (_, code) | ILoop (_, code) ->
               scan_code code;
           | If (_, thn, els) ->
               scan_code thn;
@@ -366,7 +366,7 @@ end = struct
                     |> CellSet.elements
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
-            | LoopIndex (sel, id, code) ->  LoopIndex (convert_sel sel, id_to_mc id, convert_code code)
+            | ILoop ((sel, id), code) ->  ILoop ((convert_sel sel, id_to_mc id), convert_code code)
             | If (sel, thn, els) -> If (convert_sel sel, convert_code thn, convert_code els)
           in
           { cmd; annot=() }

@@ -162,7 +162,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
                   else update_until_fixed_point next_state
             in
             update_until_fixed_point state
-        | LoopIndex (_, _, child) ->
+        | ILoop (_, child) ->
             let rec update_until_fixed_point curr_state =
               let next_state = update_tables curr_state child in
               if State.equal curr_state next_state
@@ -197,7 +197,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
     (fun Code.{ cmd; annot } ->
       let { state_in } = annot in
       match cmd with
-      | Add _ | Put _ | Get _ | LoopIndex _ | If _ ->
+      | Add _ | Put _ | Get _ | ILoop _ | If _ ->
           `Keep annot
       | Reset sel | Loop (sel, _) ->
           if Possible.equal (State.find sel state_in) (Possible.Just 0)

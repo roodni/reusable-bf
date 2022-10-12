@@ -23,7 +23,7 @@ $let c = p:c in
 ]
 
 < p
-! p [
+$iloop p [
   < p
   . c
 ]

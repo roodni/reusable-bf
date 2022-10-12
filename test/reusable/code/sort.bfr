@@ -1,4 +1,4 @@
-import "../../../sample/bfi_lib.bfr"
+import "../../../sample/lib.bfr"
 
 let puti = fun n -> [
   $alloc { x } in

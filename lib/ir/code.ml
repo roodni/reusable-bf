@@ -9,7 +9,7 @@ and 'a cmd =
   | Get of Sel.t
   | Shift of { n:int; index:Sel.index; followers:Id.t list }
   | Loop of Sel.t * 'a t
-  | LoopIndex of (Sel.t * Id.t * 'a t)
+  | ILoop of (Sel.index * 'a t)
   | If of Sel.t * 'a t * 'a t
   | Reset of Sel.t
 
@@ -34,8 +34,8 @@ and cmd_filter_map f = function
     (* ↑コンストラクタで新しい値を構成しないと型が合わない *)
   | Loop (sel, code) ->
       Loop (sel, filter_map f code)
-  | LoopIndex (sel, id, code) ->
-      LoopIndex (sel, id, filter_map f code)
+  | ILoop (index, code) ->
+      ILoop (index, filter_map f code)
   | If (sel, thn, els) ->
       If (sel, filter_map f thn, filter_map f els)
 
@@ -90,7 +90,7 @@ let output ppf output_annot code =
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
             print_block code;
-        | LoopIndex (arr_sel, idx_id, code) ->
+        | ILoop ((arr_sel, idx_id), code) ->
             fprintf ppf "! %s@%s" (Sel.to_string arr_sel) (Id.simple_name idx_id);
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
@@ -128,7 +128,7 @@ let shift_followers n (arr_sel, idx_id) followers =
     )
   |> List.flatten |> from_list
 
-let desugar_LoopIndex (arr_sel, idx_id, loop) =
+let desugar_ILoop ((arr_sel, idx_id), loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
   from_list [ Loop (cond_sel, loop) ]
 
@@ -141,7 +141,7 @@ let convert_idioms code =
         when sel1 = sel2 ->
           `Update { cmd=Reset sel1; annot=() }
       | Add _ | Put _ | Get _ | Shift _ | Reset _
-      | Loop _ | LoopIndex _ | If _ ->
+      | Loop _ | ILoop _ | If _ ->
           `Keep ()
     )
     code

@@ -22,7 +22,7 @@ $dive p [
 ]
 
 < p
-! p [
+$iloop p [
   < p
   . c
 ]

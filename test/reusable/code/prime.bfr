@@ -1,6 +1,6 @@
 // トランスパイル時に素数を列挙する
 
-import "../../../sample/bfi_lib.bfr"
+import "../../../sample/lib.bfr"
 
 let puti = fun n -> [
   $alloc { x } in

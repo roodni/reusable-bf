@@ -10,7 +10,7 @@ main {
     $let i = counter@i in
     $let n = i:n in
     > i
-    ! i [
+    $iloop i [
       ? n [] [ + n 10 ]
       - n
       ? n

@@ -115,6 +115,7 @@ and main = parse
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
+  | "$iloop" { P.ST_ILOOP (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {
       let i = int_of_string @@ Lexing.lexeme lexbuf in
       P.INT (withinfo (info lexbuf) i)

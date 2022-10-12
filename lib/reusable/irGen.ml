@@ -42,22 +42,21 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
             let code = Ir.Code.from_list [ Get nsel ] in
             ((), code)
-        | StWhile (ex_sel, st_list) -> begin
-            match Eval.eval envs ex_sel |> to_cell_or_index ex_sel.i with
-            | `Cell nsel ->
-                let (), code_loop = codegen ctx st_list in
-                let code =
-                  Ir.Code.from_list
-                    [ Loop (nsel, code_loop) ]
-                in
-                ((), code)
-            | `Index (nsel, idx) ->
-                let (), code_loop = codegen ctx st_list in
-                let code =
-                  Ir.Code.from_list [ LoopIndex (nsel, idx, code_loop) ]
-                in
-                ((), code)
+        | StWhile (sel_ex, st_list) -> begin
+            let sel = Eval.eval envs sel_ex |> to_cell sel_ex.i in
+            let (), child_code = codegen ctx st_list in
+            let code =
+              Ir.Code.from_list [ Loop (sel, child_code) ]
+            in
+            ((), code)
           end
+        | StILoop (index_ex, st_list) ->
+            let index = Eval.eval envs index_ex |> to_index index_ex.i in
+            let (), child_code = codegen ctx st_list in
+            let code =
+              Ir.Code.from_list [ ILoop (index, child_code) ]
+            in
+            ((), code)
         | StIf (ex_sel, st_list_then, st_list_else) ->
             let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
             let nmtype = Ir.Sel.find_mtype nmain nsel in

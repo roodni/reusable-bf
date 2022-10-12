@@ -54,6 +54,7 @@ and stmt' =
   | StGet of expr
   | StWhile of expr * stmt list
   | StIf of expr * stmt list * stmt list option
+  | StILoop of expr * stmt list
   | StShift of int * expr * expr option  (* sign, ptr, int *)
   | StAlloc of Field.t * stmt list
   | StLet of let_binding * stmt list

@@ -25,6 +25,7 @@ open Syntax
 %token <Support.Error.info> ST_ALLOC
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
+%token <Support.Error.info> ST_ILOOP
 
 %token <Support.Error.info> CELL INDEX ARRAY
 %token <Support.Error.info> FUN
@@ -111,6 +112,7 @@ stmt:
   | i=QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
+  | i=ST_ILOOP e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StILoop (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
   | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
   | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }

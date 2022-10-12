@@ -66,11 +66,6 @@ module Value = struct
     | VaArraySel (sel, irid_env) -> (sel, None, irid_env)
     | VaIndexSel ((sel, id), irid_env) -> (sel, Some id, irid_env)
     | _ -> error_at info "An array or index selector value expected"
-  (* TODO: whileのための急工事、気持ち悪いのですぐ直す *)
-  let to_cell_or_index info = function
-    | VaCellSel sel -> `Cell sel
-    | VaIndexSel (idx, _) -> `Index idx
-    | _ -> error_at info "A cell or index selector value expected"
 
   let equal x y =
     let rec equal x y =
