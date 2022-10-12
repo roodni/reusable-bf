@@ -8,11 +8,13 @@ module UVE = Env.Make(UVar)
 type value =
   | VaInt of int
   | VaBool of bool
-  | VaSel of Sel.t * NVarEnv.t option
   | VaFun of envs * pat * expr
   | VaBlock of envs * stmt list
   | VaList of value list
   | VaPair of value * value
+  | VaCellSel of Ir.Sel.t
+  | VaArraySel of Ir.Sel.t * IrIdEnv.t
+  | VaIndexSel of Ir.Sel.index * IrIdEnv.t
 and va_env = value VE.t
 and module_env = envs UVE.t
 and envs = {
@@ -38,37 +40,46 @@ let import_envs src dest =
 module Value = struct
   let to_int info = function
     | VaInt i -> i
-    | _ -> error_at info "int expected"
+    | _ -> error_at info "An int value expected"
   let to_bool info = function
     | VaBool b -> b
-    | _ -> error_at info "bool expected"
+    | _ -> error_at info "A bool value expected"
   let to_block info = function
     | VaBlock (env, block) -> (env, block)
-    | _ -> error_at info "block expected"
+    | _ -> error_at info "A block statement value expected"
   let to_list info = function
     | VaList l -> l
-    | _ -> error_at info "list expected"
+    | _ -> error_at info "A list value expected"
   let to_pair info = function
     | VaPair (v1, v2) -> (v1, v2)
-    | _ -> error_at info "pair expected"
-
-  (* セレクタまわりは修正した方が良い *)
-  let to_sel_and_nvar_env info = function
-    | VaSel (sel, nvar_env) -> (sel, nvar_env)
-    | _ -> error_at info "Must be a selector"
-  let to_nsel_or_nptr info v =
-    let sel, _ = to_sel_and_nvar_env info v in
-    Sel.to_nsel_or_nptr sel
-  let to_nsel info v =
-    let sel, _ = to_sel_and_nvar_env info v in
-    Sel.to_nsel info sel
+    | _ -> error_at info "A pair value expected"
+  let to_cell info = function
+    | VaCellSel sel -> sel
+    | _ -> error_at info "A cell selector value expected"
+  let to_index info = function
+    | VaIndexSel (idx, _) -> idx
+    | _ -> error_at info "An index selector value expected"
+  let to_array info = function
+    | VaArraySel (sel, irid_env) -> (sel, irid_env)
+    | _ -> error_at info "An array selector value expected"
+  let to_member_selectable info = function
+    | VaArraySel (sel, irid_env) -> (sel, None, irid_env)
+    | VaIndexSel ((sel, id), irid_env) -> (sel, Some id, irid_env)
+    | _ -> error_at info "An array or index selector value expected"
+  (* TODO: whileのための急工事、気持ち悪いのですぐ直す *)
+  let to_cell_or_index info = function
+    | VaCellSel sel -> `Cell sel
+    | VaIndexSel (idx, _) -> `Index idx
+    | _ -> error_at info "A cell or index selector value expected"
 
   let equal x y =
     let rec equal x y =
       match x, y with
       | VaInt x, VaInt y -> x = y
       | VaBool x, VaBool y -> x = y
-      | VaSel (x, _), VaSel (y, _) -> x = y
+      | VaCellSel x, VaCellSel y
+      | VaArraySel (x, _), VaArraySel (y, _) -> x = y
+      | VaIndexSel (x, _), VaIndexSel (y, _) -> x = y
       | VaList x, VaList y -> begin
           try List.for_all2 equal x y with
           | Invalid_argument _ -> false
@@ -79,22 +90,21 @@ module Value = struct
     try Some (equal x y) with
     | Exit -> None
 
-  let env_extend_with_nvar_env (diving: Sel.t option) (nvar_env: NVarEnv.t) (env: va_env) =
+  let extend_env_with_irid_env
+      (diving: Ir.Sel.index option) (irid_env: IrIdEnv.t) (env: va_env) =
     List.fold_left
-      (fun env (var, { v = (nvar, mtype); i }) ->
+      (fun env (var, { v=(id, mtype); i }) ->
+        let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
         match mtype with
-        | NVarEnv.Cell ->
-            let sel = Sel.base_or_mem diving nvar in
-            let vasel = VaSel (sel, None) in
-            VE.extend var vasel env
+        | IrIdEnv.Cell ->
+            VE.extend var (VaCellSel sel) env
         | Index ->
             error_at i "Index must be declared as a member of an array"
-        | Array { mem=nvar_env_lst; _ } ->
-            let sel = Sel.base_or_mem diving nvar in
-            let vasel = VaSel (sel, Some nvar_env_lst) in
-            VE.extend var vasel env)
+        | Array { mem; _ } ->
+            VE.extend var (VaArraySel (sel, mem)) env
+      )
       env
-      (NVarEnv.to_list nvar_env)
+      (IrIdEnv.to_list irid_env)
 end
 
 
@@ -118,7 +128,7 @@ let rec eval_let_binding ~export (envs: envs) ((pat, expr) : let_binding) =
   let v = eval envs expr in
   let va_env_opt = matches ~export envs.va_env pat v in
   match va_env_opt with
-  | None -> error_at (merge_info pat.i expr.i) "match failed"
+  | None -> error_at (merge_info pat.i expr.i) "Match failed"
   | Some va_env -> { envs with va_env }
 
 and eval (envs: envs) (expr: expr) : value =
@@ -142,44 +152,40 @@ and eval (envs: envs) (expr: expr) : value =
   | ExInt i -> VaInt i
   | ExBool b -> VaBool b
   | ExStr s -> VaList (String.to_seq s |> Seq.map (fun c -> VaInt (int_of_char c)) |> List.of_seq)
-  | ExSelMem (ex_parent, ex_index_opt, var) -> begin
-      let index =
-        match ex_index_opt with
+  | ExSelMem (parent_ex, offset_ex_opt, var) -> begin
+      let offset = match offset_ex_opt with
         | None -> 0
-        | Some ex_index -> eval envs ex_index |> to_int ex_index.i
+        | Some ex -> eval envs ex |> to_int ex.i
       in
-      let parent = eval envs ex_parent |> to_sel_and_nvar_env ex_parent.i in
-      match parent with
-      | _, None -> error_at ex_parent.i "selector(array) or selector(index) expected"
-      | sel, Some nvar_env -> begin
-          match NVarEnv.lookup var nvar_env with
-          | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
-          | Some { v = (nvar, nvar_mtype); i = _ } ->
-              let sel = Sel.LstMem (sel, index, nvar) in
-              let nvar_env_opt =
-                  match nvar_mtype with
-                  | NVarEnv.Cell -> None
-                  | Index -> error_at info "Selecting an index (Use '@' instead of ':')"
-                  | Array { mem=nvar_env; _ } -> Some nvar_env
-              in
-              VaSel (sel, nvar_env_opt)
+      let parent_sel, idx_id_opt, irid_env =
+        eval envs parent_ex |> to_member_selectable parent_ex.i
+      in
+      match IrIdEnv.lookup var irid_env with
+      | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
+      | Some { v=(id, mtype); _ } -> begin
+          let sel =
+            Ir.Sel.concat_member_to_tail parent_sel idx_id_opt (Ir.Sel.Member id) offset
+          in
+          match mtype with
+          | IrIdEnv.Cell -> VaCellSel sel
+          | Array { mem; _ } -> VaArraySel (sel, mem)
+          | Index ->
+              error_at info @@
+                sprintf "The member '%s' is an index (Use '@' instead of ':')"
+                  (Var.to_string var)
         end
     end
-  | ExSelPtr (ex_parent, var) -> begin
-      let parent = eval envs ex_parent |> to_sel_and_nvar_env ex_parent.i in
-      match parent with
-      | _, None | Sel.LstPtr _, _ ->
-          error_at ex_parent.i "selector(array) expected"
-      | sel, Some nvar_env -> begin
-          match NVarEnv.lookup var nvar_env with
-          | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
-          | Some { v = (nvar, nvar_mtype); i = _ } -> begin
-              match nvar_mtype with
-              | Cell | Array _ -> error_at info "Not selecting an index (Use ':' instead of '@')"
-              | Index ->
-                  let sel = Sel.LstPtr (sel, nvar) in
-                  VaSel (sel, Some nvar_env)
-            end
+  | ExSelIdx (parent_ex, var) -> begin
+      let sel, irid_env = eval envs parent_ex |> to_array parent_ex.i in
+      match IrIdEnv.lookup var irid_env with
+      | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
+      | Some { v=(id, mtype); _ } -> begin
+          match mtype with
+          | Index -> VaIndexSel ((sel, id), irid_env)
+          | Cell | Array _ ->
+              error_at info @@
+                sprintf "The member '%s' is not an index (Use ':' instead of '@')"
+                  (Var.to_string var)
         end
     end
   | ExFun (var, ex) -> VaFun (envs, var, ex)

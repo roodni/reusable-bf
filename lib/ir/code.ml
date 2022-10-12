@@ -7,7 +7,7 @@ and 'a cmd =
   | Add of int * Sel.t
   | Put of Sel.t
   | Get of Sel.t
-  | Shift of { n:int; index:(Sel.t * Id.t); followers:Id.t list }
+  | Shift of { n:int; index:Sel.index; followers:Id.t list }
   | Loop of Sel.t * 'a t
   | LoopIndex of (Sel.t * Id.t * 'a t)
   | If of Sel.t * 'a t * 'a t

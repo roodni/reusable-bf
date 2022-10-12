@@ -1,6 +1,4 @@
-# parent:child のchildがindexである
-# : と @ は統合するかもしれない
-#   統合するとエラーではなくなる
+// parent:child のchildがindexである
 
 main {
   a: array(3) {

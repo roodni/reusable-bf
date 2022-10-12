@@ -1,7 +1,7 @@
-# ir で assertion failed
+// ir で assertion failed
 main {
   a: array(3) {
-    b: array_unlimited {
+    b: array(_) {
       i: index;
       x: cell;
     };

@@ -3,57 +3,55 @@ open Syntax
 
 type codegen_ctx = {
   envs: Eval.envs;
-  diving: Sel.t option;
-  diving_vars: (Sel.t * NVarEnv.t) list
+  diving: Ir.Sel.index option;
+    (* alloc文がフィールドを確保する位置 *)
+  diving_fields: (Ir.Sel.index * IrIdEnv.t) list
+    (* インデックスとその下に確保されたフィールドの対応 *)
 }
 
 let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
   let open Eval.Value in
   let field, st_list = main in
   let nmain = Ir.Field.empty_main () in
-  let nvar_env = NVarEnv.gen_using_field nmain nmain.finite field in
-  let va_env_main = env_extend_with_nvar_env None nvar_env envs.va_env in
+  let irid_env = IrIdEnv.gen_using_field nmain nmain.finite field in
+  let va_env_main = extend_env_with_irid_env None irid_env envs.va_env in
   let envs = { envs with va_env = va_env_main } in
-  let ctx = { envs; diving=None; diving_vars=[] } in
+  let ctx = { envs; diving=None; diving_fields=[] } in
   let rec codegen (ctx: codegen_ctx) (st_list: stmt list): unit * unit Ir.Code.t =
-    let { envs; diving; diving_vars } = ctx in
+    let { envs; diving; diving_fields } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt ->
         let { i = info; v = stmt } = stmt in
         match stmt with
         | StAdd (sign, ex_sel, ex_i_opt) -> begin
-            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            (* nsel というのは Ir.Sel の旧名の Named.Sel のこと *)
+            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
             let i =
               match ex_i_opt with
               | None -> 1
               | Some ex_i -> Eval.eval envs ex_i |>  to_int ex_i.i
             in
-            let code =
-              Ir.Code.from_list [ Add (i * sign, nsel) ]
-            in
+            let code = Ir.Code.from_list [ Add (i * sign, nsel) ] in
             ((), code)
           end
         | StPut ex_sel ->
-            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let code =
-              Ir.Code.from_list [ Ir.Code.Put nsel ]
-            in
+            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let code = Ir.Code.from_list [ Ir.Code.Put nsel ] in
             ((), code)
         | StGet ex_sel ->
-            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
-            let code =
-              Ir.Code.from_list [ Get nsel ] in
+            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let code = Ir.Code.from_list [ Get nsel ] in
             ((), code)
         | StWhile (ex_sel, st_list) -> begin
-            match Eval.eval envs ex_sel |> to_nsel_or_nptr ex_sel.i with
-            | Sel.NSel nsel ->
+            match Eval.eval envs ex_sel |> to_cell_or_index ex_sel.i with
+            | `Cell nsel ->
                 let (), code_loop = codegen ctx st_list in
                 let code =
                   Ir.Code.from_list
                     [ Loop (nsel, code_loop) ]
                 in
                 ((), code)
-            | Sel.NPtr (nsel, idx) ->
+            | `Index (nsel, idx) ->
                 let (), code_loop = codegen ctx st_list in
                 let code =
                   Ir.Code.from_list [ LoopIndex (nsel, idx, code_loop) ]
@@ -61,16 +59,13 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
                 ((), code)
           end
         | StIf (ex_sel, st_list_then, st_list_else) ->
-            let nsel = Eval.eval envs ex_sel |> to_nsel ex_sel.i in
+            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
             let nmtype = Ir.Sel.find_mtype nmain nsel in
-            let () =
-              match nmtype with
-              | Ir.Field.Cell cell ->
-                  cell.ifable <- true
-              | _ ->
-                  (* TODO: Ir.Field.mtype のパターンマッチでエラーを報告するのは良くない。直す *)
-                  error_at ex_sel.i "selector(cell) expected"
-            in
+            (match nmtype with
+            | Ir.Field.Cell cell ->  cell.ifable <- true
+            | _ -> assert false
+                (* TODO: to_cellの時点で弾かれて到達しないはず。一応試す *)
+            );
             let (), code_then = codegen ctx st_list_then in
             let (), code_else = match st_list_else with
               | None -> ((), [])
@@ -79,70 +74,69 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             let code =
               Ir.Code.from_list [ If (nsel, code_then, code_else) ] in
             ((), code)
-        | StShift (sign, ex_ptr, ex_i_opt) ->
-            let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
-            let nsel, ptr = Sel.to_nptr ex_ptr.i sel in
+        | StShift (sign, ex_idx, ex_i_opt) ->
+            let index = Eval.eval envs ex_idx |> to_index ex_idx.i in
             let i = sign * match ex_i_opt with
               | None -> 1
               | Some ex_i -> Eval.eval envs ex_i |> to_int ex_i.i
             in
-            if abs i <> 1 then error_at info "2 or more shift is not implemented";
-            (* シフト時に移動させられるdiving中のセルid *)
+            if abs i <> 1 then
+              error_at info "2 or more shift is not implemented";
+            (* シフト時に移動させられるdiving下の一時セルのid *)
             let followers =
-              diving_vars
+              diving_fields
               |> List.filter_map
-                (fun (sel_diving, nvar_env) ->
-                  if sel = sel_diving then (* 変数をコピーする *)
-                    NVarEnv.to_list nvar_env |>
+                (fun (diving, irid_env) ->
+                  if index = diving then (* セルの中身をコピーする *)
+                    IrIdEnv.to_list irid_env |>
                     List.map
-                      (fun (_, { v=(nid, mtype); i=_ }) ->
+                      (fun (_, { v=(id, mtype); i=_ }) ->
                         match mtype with
-                        | NVarEnv.Array _ | Index -> assert false
+                        | IrIdEnv.Cell -> id
+                        | IrIdEnv.Array _ | Index -> assert false
                             (* allocを試みた時点で弾かれるので到達できない *)
-                        | NVarEnv.Cell -> nid
                       )
                     |> Option.some
-                  else if Sel.has_ptr ptr sel_diving then
-                    error_at info "Shift is prohibited because some allocated cells interfere"
+                  else if Ir.Sel.is_via_index index (fst diving) then
+                    error_at info "Shift is prohibited because an allocated field (under $dive) interfere"
                   else None
                 )
               |> List.flatten
             in
             let code_shift =
-              Ir.Code.from_list [ Shift { n=i; index=(nsel, ptr); followers } ]
+              Ir.Code.from_list [ Shift { n=i; index; followers } ]
             in
             ((), code_shift)
         | StAlloc (field, st_list) ->
-            let nfield = match diving with
+            let irfield = match diving with
               | None -> nmain.finite
-              | Some sel ->
-                  let nsel, _ =  Sel.to_nptr info sel in
-                  let nmtype = Ir.Sel.find_mtype nmain nsel in
-                  match nmtype with
+              | Some (arr_sel, _) -> begin
+                  match Ir.Sel.find_mtype nmain arr_sel with
                   | Ir.Field.Array { members; _ } -> members
-                  | _ -> assert false (* divingに登録されているセレクタは(たぶん)配列を指している *)
+                  | Cell _ | Index -> assert false
+                      (* dive文の処理でインデックス以外がdivingに乗ることは弾かれる *)
+                end
             in
-            let nvar_env = NVarEnv.gen_using_field nmain nfield field in
-            let va_env = env_extend_with_nvar_env diving nvar_env envs.va_env in
+            let irid_env = IrIdEnv.gen_using_field nmain irfield field in
+            let va_env = extend_env_with_irid_env diving irid_env envs.va_env in
             let envs = { envs with va_env } in
-            let diving_vars = match diving with
-              | None -> diving_vars
-              | Some sel -> (sel, nvar_env) :: diving_vars
+            let diving_fields = match diving with
+              | None -> diving_fields
+              | Some sel -> (sel, irid_env) :: diving_fields
             in
-            let ctx = { ctx with envs; diving_vars; } in
+            let ctx = { ctx with envs; diving_fields; } in
             let (), code_child = codegen ctx st_list in
             (* 確保するセルに対するゼロ初期化 *)
             let code_clean =
-              NVarEnv.to_list nvar_env |>
-              List.map (fun (_, { v = (nvar, mtype); i }) ->
+              IrIdEnv.to_list irid_env |>
+              List.map (fun (_, { v=(id, mtype); i }) ->
                 match mtype with
-                | NVarEnv.Array _ -> error_at i "Allocating local arrays is prohibited"
-                | NVarEnv.Index -> assert false
+                | IrIdEnv.Array _ -> error_at i "Allocating temporary arrays is prohibited"
+                | IrIdEnv.Index -> assert false
                     (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
-                | NVarEnv.Cell ->
-                    let sel = Sel.base_or_mem diving nvar in
-                    let nsel = Sel.to_nsel unknown_info sel in
-                    Ir.Code.from_list [ Reset (nsel) ]
+                | IrIdEnv.Cell ->
+                    let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
+                    Ir.Code.from_list [ Reset sel ]
               ) |> List.flatten
             in
             ((), code_clean @ code_child @ code_clean)
@@ -152,11 +146,9 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
         | StExpand ex_block ->
             let envs, st_list = Eval.eval envs ex_block |> to_block ex_block.i in
             codegen { ctx with envs } st_list
-        | StDive (ex_ptr, st_list) ->
-            let sel, _ = Eval.eval envs ex_ptr |> to_sel_and_nvar_env ex_ptr.i in
-            let _ = Sel.to_nptr ex_ptr.i sel in
-            (* ↑インデックスであることを確認している *)
-            codegen { ctx with diving = Some sel } st_list
+        | StDive (index_ex, st_list) ->
+            let index = Eval.eval envs index_ex |> to_index index_ex.i in
+            codegen { ctx with diving = Some index } st_list
       ) () st_list
     in
     ((), List.flatten code_list)

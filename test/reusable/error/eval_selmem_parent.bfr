@@ -1,5 +1,0 @@
-# parent:child のparentがarrayでない場合
-
-main { a: cell; } [
-  + a:x
-]

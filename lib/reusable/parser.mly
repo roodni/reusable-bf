@@ -127,7 +127,7 @@ expr:
   | es=expr COLON LPAREN ei=expr_full RPAREN v=VAR {
       withinfo2 es.i v.i @@ ExSelMem (es, Some ei, v.v)
     }
-  | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelPtr (e, v.v) }
+  | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
   | i1=LBRACKET sl=stmt_list i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
   | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {

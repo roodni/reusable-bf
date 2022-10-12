@@ -67,7 +67,7 @@ and expr' =
   | ExBool of bool
   | ExStr of string
   | ExSelMem of expr * expr option * Var.t
-  | ExSelPtr of expr * Var.t
+  | ExSelIdx of expr * Var.t
   | ExFun of pat * expr
   | ExApp of expr * expr
   | ExBlock of stmt list

@@ -4,6 +4,7 @@ open Printf
 type t =
   | Member of Id.t
   | Array of { name: Id.t; index_opt: Id.t option; offset: int; member: t }
+type index = t * Id.t
 
 let head_id = function
   | Member id -> id
@@ -22,11 +23,39 @@ let rec convert_id (f: Id.t -> Id.t) = function
         member = convert_id f member
       }
 
-let rec concat_member_to_index_tail (arr_sel, idx_id) mem_id offset =
-  match arr_sel with
-  | Member id -> Array { name=id; index_opt=Some idx_id; member=Member mem_id; offset }
-  | Array mid_array ->
-      Array { mid_array with member=concat_member_to_index_tail (mid_array.member, idx_id) mem_id offset }
+let concat_member_to_tail
+    (arr_sel: t) (idx_id_opt: Id.t option) (member: t) offset =
+  let rec concat_member_to_tail = function
+    | Member name -> Array { name; index_opt=idx_id_opt; member; offset }
+    | Array mid_arr ->
+        Array {
+          mid_arr with
+          member = concat_member_to_tail mid_arr.member
+        }
+  in
+  concat_member_to_tail arr_sel
+
+(** セレクタがインデックス[index]を経由するものかどうか *)
+let is_via_index (index: index) sel =
+  let _, idx_id = index in (* よくわからないので保守的にやる *)
+  let rec is_via_index = function
+    | Member _ -> false
+    | Array { index_opt=None; member; _ } -> is_via_index member
+    | Array { index_opt=Some idx_id_of_sel; member; _ } ->
+        if idx_id = idx_id_of_sel then true
+          else is_via_index member
+  in
+  is_via_index sel
+
+let concat_member_to_index_tail (arr_sel, idx_id: index) mem_id offset =
+  concat_member_to_tail arr_sel (Some idx_id) (Member mem_id) offset
+
+let concat_member_to_index_opt_tail index_opt mem_id offset =
+  match index_opt, offset with
+  | None, 0 -> Member mem_id
+  | None, _ -> assert false
+  | Some index, _ -> concat_member_to_index_tail index mem_id offset
+;;
 
 (** セレクタの指すテープ位置のmtypeを取得する *)
 let find_mtype (fmain: Field.main) (sel: t) =
