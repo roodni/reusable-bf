@@ -22,7 +22,7 @@ open Syntax
 %token <Support.Error.info> BAR
 %token <Support.Error.info> UNDER
 
-%token <Support.Error.info> ST_ALLOC
+%token <Support.Error.info> ST_ALLOC ST_BUILD
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
 %token <Support.Error.info> ST_ILOOP
@@ -98,6 +98,7 @@ field_elm_mtype:
 stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f.v, sl) ] }
+  | i=ST_BUILD f=field IN sl=stmt_list { [ withinfo i @@ StBuild (f.v, sl) ] }
   | i=ST_LET lb=let_binding IN sl=stmt_list { [ withinfo i @@ StLet (lb, sl) ] }
   | { [] }
 
@@ -115,6 +116,7 @@ stmt:
   | i=ST_ILOOP e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StILoop (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
   | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
+  | i=ST_BUILD f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StBuild (f.v, sl) }
   | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:

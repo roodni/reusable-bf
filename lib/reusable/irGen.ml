@@ -106,6 +106,12 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
               Ir.Code.from_list [ Shift { n=i; index; followers } ]
             in
             ((), code_shift)
+        | StBuild (field, st_list) ->
+            let irid_env = IrIdEnv.gen_using_field nmain nmain.finite field in
+            let va_env = extend_env_with_irid_env None irid_env envs.va_env in
+            let ctx = { ctx with envs={ envs with va_env } } in
+            let (), child_code = codegen ctx st_list in
+            ((), child_code)
         | StAlloc (field, st_list) ->
             let irfield = match diving with
               | None -> nmain.finite

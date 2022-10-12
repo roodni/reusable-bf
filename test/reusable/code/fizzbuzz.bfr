@@ -35,7 +35,7 @@ main {
     ]
   ] in
 
-  $alloc {
+  $build {
     n: cell;
     fizz: cell;
     buzz: cell;

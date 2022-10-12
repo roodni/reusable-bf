@@ -5,19 +5,17 @@
 
 import "./lib.bfr"
 
-main {
+main {} in
+
+// コード入力
+$build {
   code: array(_) {
     inst: cell;
     depth: cell;
     p: index;
-  };
-  tape: array(_) {
-    v: cell;
-    p: index;
-  };
+  }
 } in
 
-// コード入力
 $dive code@p [
   $let p = code@p in
   $alloc {
@@ -58,7 +56,15 @@ $dive code@p [
 
 $iloop code@p [ < code@p ]
 
+
 // 実行
+$build {
+  tape: array(_) {
+    v: cell;
+    p: index;
+  }
+} in
+
 $let p = code@p in
 $dive p [
   $alloc { depth_cur } in
