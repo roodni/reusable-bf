@@ -1,6 +1,8 @@
 import "./lib.bfr"
 
-main {
+codegen $
+
+$build {
   queens: array(_) { col; i:index; };
   f_col: array(_) { flag; i:index; };
   f_sum: array(_) { flag; i:index; };

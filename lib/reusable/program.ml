@@ -15,41 +15,73 @@ let load filename =
   let () = close_in file_in in
   program
 
-let rec eval_toplevels curr_dirname import_history envs toplevels =
-  let import_module info filename =
-    let filename =
-      if FilePath.is_relative filename then
-        FilePath.concat curr_dirname filename
+type ctx =
+  { envs: Eval.envs;
+    top_gen_opt: top_gen option;
+    curr_dirname: string;
+    path_history: string list;
+  }
+let empty_ctx curr_dirname =
+  { envs = Eval.empty_envs;
+    top_gen_opt = None;
+    curr_dirname;
+    path_history = [];
+  }
+
+let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
+  let import_module path =
+    let path =
+      if FilePath.is_relative path then
+        FilePath.concat ctx.curr_dirname path
         |> FilePath.reduce ~no_symlink:true
-      else filename
+      else path
     in
-    let next_dirname = FilePath.dirname filename in
-    if List.mem filename import_history then
-      error_at info "Recursive import"
+    let next_dirname = FilePath.dirname path in
+    if List.mem path ctx.path_history then
+      error_at toplevel.i "Recursive import"
     else
-      let toplevels, _ = load filename in
-      eval_toplevels next_dirname (filename :: import_history) Eval.empty_envs toplevels
+      let toplevels = load path in
+      let ctx =
+        eval_toplevels
+          { envs = Eval.empty_envs;
+            top_gen_opt = None;
+            curr_dirname = next_dirname;
+            path_history = path :: ctx.path_history;
+          }
+          toplevels
+      in
+      ctx.envs
   in
-  List.fold_left
-    (fun envs toplevel ->
-      match toplevel.v with
-      | TopLet binding -> Eval.eval_let_binding ~export:true envs binding
-      | TopImport filename ->
-          let envs_imported = import_module toplevel.i filename in
-          Eval.import_envs envs_imported envs
-      | TopImportAs (filename, uv) ->
-          let envs_imported = import_module toplevel.i filename |> Eval.export_envs in
-          { envs with module_env = Eval.UVE.extend uv envs_imported envs.module_env }
-    )
-    envs toplevels
+  match toplevel.v with
+  | TopLet binding ->
+      let envs = Eval.eval_let_binding ~export:true ctx.envs binding in
+      { ctx with envs }
+  | TopCodegen top_gen ->
+      if ctx.top_gen_opt <> None then
+        error_at toplevel.i "Duplicate codegen"
+      else
+        { ctx with top_gen_opt=Some top_gen }
+  | TopImport filename ->
+      let imported_envs = import_module filename in
+      let envs = Eval.import_envs imported_envs ctx.envs in
+      { ctx with envs }
+  | TopImportAs (filename, uv) ->
+      let imported_envs = import_module filename |> Eval.export_envs in
+      let envs =
+        { ctx.envs with
+          module_env = Eval.UVE.extend uv imported_envs ctx.envs.module_env
+        }
+      in
+      { ctx with envs }
+and eval_toplevels ctx (toplevels: toplevel list) : ctx =
+  List.fold_left eval_toplevel ctx toplevels
 
 let gen_ir (dirname: string) (program: program) : Ir.Field.main * 'a Ir.Code.t =
-  let toplevels, main = program in
-  match main with
-  | None -> error_at unknown_info "main not found"
-  | Some main ->
-      let envs = eval_toplevels dirname [] Eval.empty_envs toplevels in
-      IrGen.generate envs main
+  let ctx = empty_ctx dirname in
+  let ctx = eval_toplevels ctx program in
+  match ctx.top_gen_opt with
+  | None -> error_at unknown_info "Missing codegen"
+  | Some top_gen -> IrGen.generate ctx.envs top_gen
 
 let gen_bf_from_source path =
   let dirname = Filename.dirname path in

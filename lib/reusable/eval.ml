@@ -17,21 +17,20 @@ type value =
   | VaIndexSel of Ir.Sel.index * IrIdEnv.t
 and va_env = value VE.t
 and module_env = envs UVE.t
-and envs = {
-    va_env : va_env;
+and envs =
+  { va_env : va_env;
     module_env : module_env;
   }
 
-let empty_envs = {
-  va_env = VE.empty;
-  module_env = UVE.empty;
-}
+let empty_envs =
+  { va_env = VE.empty;
+    module_env = UVE.empty;
+  }
 
 let export_envs { va_env; module_env; } =
   { va_env = VE.export va_env;
     module_env = UVE.export module_env;
   }
-
 let import_envs src dest =
   { va_env = VE.import src.va_env dest.va_env;
     module_env = UVE.import src.module_env dest.module_env;

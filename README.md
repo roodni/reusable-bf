@@ -5,7 +5,7 @@ brainfuckに変換されるプログラミング言語です。
 - brainfuckに近い命令セット
 - ML風のメタプログラミング機構
 
-## Hello, World!
+## Hello World!
   ```
   let fix f =
     let g x = f (fun y -> x x y) in
@@ -25,7 +25,7 @@ brainfuckに変換されるプログラミング言語です。
       0 l
   ]
 
-  main {} [ *gen_puts "Hello, World!\n" ]
+  codegen [ *gen_puts "Hello World!\n" ]
   ```
 
 

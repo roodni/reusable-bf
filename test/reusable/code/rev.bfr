@@ -1,4 +1,6 @@
-main {
+codegen $
+
+$build {
   buf: array(_) {
     c: cell;
     p: index;

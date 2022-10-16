@@ -1,6 +1,8 @@
 import "../../../sample/lib.bfr"
 
-main {
+codegen $
+
+$build {
   b: cell;
   f: cell;
   r: cell;

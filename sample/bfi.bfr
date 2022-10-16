@@ -5,7 +5,8 @@
 
 import "./lib.bfr"
 
-main {} in
+
+codegen $
 
 // コード入力
 $build {
@@ -36,7 +37,7 @@ $dive code@p [
         ]);
         (']', [
           *gen_set p:inst 6
-           - p:depth
+          - p:depth
         ]);
         ('.', [ *gen_set p:inst 7 ]);
         (',', [ *gen_set p:inst 8 ]);

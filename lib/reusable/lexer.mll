@@ -3,12 +3,12 @@ open Support.Error
 module P = Parser
 
 let reserved = [
+  ("codegen", fun i -> P.CODEGEN i);
   ("import", fun i -> P.IMPORT i);
   ("as", fun i -> P.AS i);
   ("cell", fun i -> P.CELL i);
   ("index", fun i -> P.INDEX i);
   ("array", fun i -> P.ARRAY i);
-  ("main", fun i -> P.MAIN i);
   ("fun", fun i -> P.FUN i);
   ("if", fun i -> P.IF i);
   ("then", fun i -> P.THEN i);
@@ -112,6 +112,7 @@ and main = parse
   | "->" { P.ARROW (info lexbuf) }
   | "<=" { P.LEQ (info lexbuf) }
   | "|" { P.BAR (info lexbuf) }
+  | "$" { P.ST (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$build" { P.ST_BUILD (info lexbuf) }
   | "$let" { P.ST_LET (info lexbuf) }

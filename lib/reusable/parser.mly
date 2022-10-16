@@ -7,9 +7,9 @@ open Syntax
 %token <Support.Error.info> PLUS MINUS
 %token <Support.Error.info> DOT COMMA
 %token <Support.Error.info> RSHIFT LSHIFT  // > <
-%token <Support.Error.info> LBRACKET RBRACKET  // [ ]
-%token <Support.Error.info> EXCL QUES  // ！ ？
-%token <Support.Error.info> LBRACE RBRACE // { }
+%token <Support.Error.info> LBRACKET RBRACKET
+%token <Support.Error.info> EXCL QUES
+%token <Support.Error.info> LBRACE RBRACE
 %token <Support.Error.info> COLON
 %token <Support.Error.info> AT
 %token <Support.Error.info> SEMI
@@ -18,10 +18,11 @@ open Syntax
 %token <Support.Error.info> ASTER
 %token <Support.Error.info> SLASH
 %token <Support.Error.info> ARROW  // ->
-%token <Support.Error.info> LEQ  // <=
+%token <Support.Error.info> LEQ
 %token <Support.Error.info> BAR
 %token <Support.Error.info> UNDER
 
+%token <Support.Error.info> ST  // $
 %token <Support.Error.info> ST_ALLOC ST_BUILD
 %token <Support.Error.info> ST_LET
 %token <Support.Error.info> ST_DIVE
@@ -32,9 +33,9 @@ open Syntax
 %token <Support.Error.info> LET IN
 %token <Support.Error.info> IF THEN ELSE
 %token <Support.Error.info> MATCH WITH
-%token <Support.Error.info> MAIN
 %token <Support.Error.info> MOD
 %token <Support.Error.info> IMPORT AS
+%token <Support.Error.info> CODEGEN
 
 %token <int Support.Error.withinfo> INT
 %token <char Support.Error.withinfo> CHAR
@@ -58,20 +59,18 @@ open Syntax
 %%
 
 program:
-  | ts=toplevel_list m=main? EOF { (ts, m) }
+  | ts=toplevel_list EOF { ts }
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
+  | i=CODEGEN ST sl=stmt_list { [withinfo i @@ TopCodegen sl] }
   | { [] }
 
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
+  | i=CODEGEN LBRACKET sl=stmt_list RBRACKET { withinfo i @@ TopCodegen sl }
   | i=IMPORT p=STRING { withinfo i @@ TopImport p.v }
   | i=IMPORT p=STRING AS u=UVAR { withinfo i @@ TopImportAs (p.v, u.v) }
-
-main:
-  | MAIN f=field IN sl=stmt_list { (f.v, sl) }
-  | MAIN f=field LBRACKET sl=stmt_list RBRACKET { (f.v, sl) }
 
 field:
   | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 el }

@@ -1,21 +1,17 @@
 open Support.Error
 open Syntax
 
-type ctx = {
-  envs: Eval.envs;
-  diving: Ir.Sel.index option;
-    (* alloc文がフィールドを確保する位置 *)
-  diving_fields: (Ir.Sel.index * IrIdEnv.t) list
-    (* インデックスとその下に確保されたフィールドの対応 *)
-}
+type ctx =
+  { envs: Eval.envs;
+    diving: Ir.Sel.index option;
+      (* alloc文がフィールドを確保する位置 *)
+    diving_fields: (Ir.Sel.index * IrIdEnv.t) list
+      (* インデックスとその下に確保されたフィールドの対応 *)
+  }
 
-let generate (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
+let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let open Eval.Value in
-  let field, st_list = main in
   let nmain = Ir.Field.empty_main () in
-  let irid_env = IrIdEnv.gen_using_field nmain nmain.finite field in
-  let va_env_main = extend_env_with_irid_env None irid_env envs.va_env in
-  let envs = { envs with va_env = va_env_main } in
   let ctx = { envs; diving=None; diving_fields=[] } in
   let rec gen (ctx: ctx) (st_list: stmt list): unit * unit Ir.Code.t =
     let { envs; diving; diving_fields } = ctx in
@@ -158,5 +154,5 @@ let generate (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
     in
     ((), List.flatten code_list)
   in
-  let (), cmd_list = gen ctx st_list in
+  let (), cmd_list = gen ctx stmts in
   (nmain, cmd_list)

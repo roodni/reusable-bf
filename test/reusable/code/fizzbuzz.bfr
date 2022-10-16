@@ -1,11 +1,13 @@
 import "./lib.bfr"
 
-main {
-  counter: array(_) {
-    n: cell;
-    i: index;
-  };
-} [
+codegen [
+  $build {
+    counter: array(_) {
+      n: cell;
+      i: index;
+    };
+  } in
+
   $let gen_counter_incr counter = [
     $let i = counter@i in
     $let n = i:n in

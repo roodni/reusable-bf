@@ -1,4 +1,6 @@
-main {
+codegen $
+
+$build {
   p: cell;
 
   a: array(2) {
@@ -22,58 +24,58 @@ main {
     };
     i: index;
   };
-} [
-  + p 'P'
+} in
 
-  + a@i:q 'Q'
-  + a@i:b@i:r 'R'
-  + a@i:b:(1)r 'R'
-  > a@i:b@i
-  + a@i:b@i:r
-  > a@i
++ p 'P'
 
-  + ua@i:c@i:m 'M'
-  + ua@i:c:(1)m 'M'
-  > ua@i:c@i
-  + ua@i:c@i:m
++ a@i:q 'Q'
++ a@i:b@i:r 'R'
++ a@i:b:(1)r 'R'
+> a@i:b@i
++ a@i:b@i:r
+> a@i
 
-  + a2:(0)m '0'
-  + a2:(1)m '1'
-  + a2:(2)m '2'
++ ua@i:c@i:m 'M'
++ ua@i:c:(1)m 'M'
+> ua@i:c@i
++ ua@i:c@i:m
 
-  > ua@i
-  + ua@i:c@i:m 'm'
-  + ua@i:c:(1)m 'm'
-  > ua@i:c@i
-    + x 'X'
-  + ua@i:c@i:m
-  < ua@i
++ a2:(0)m '0'
++ a2:(1)m '1'
++ a2:(2)m '2'
 
-  + a@i:q 'q'
-    + y 'Y'
-  + a@i:b@i:r 'r'
-  + a@i:b:(1)r 'r'
-  > a@i:b@i
-  + a@i:b@i:r
+> ua@i
++ ua@i:c@i:m 'm'
++ ua@i:c:(1)m 'm'
+> ua@i:c@i
+  + x 'X'
++ ua@i:c@i:m
+< ua@i
 
-  . x
-  . y
-  . p
++ a@i:q 'q'
+  + y 'Y'
++ a@i:b@i:r 'r'
++ a@i:b:(1)r 'r'
+> a@i:b@i
++ a@i:b@i:r
 
-  . a:(0)q
-  . a:(1)q
+. x
+. y
+. p
 
-  . a:(0)b:(0)r
-  . a:(0)b:(1)r
-  . a:(1)b:(0)r
-  . a:(1)b:(1)r
+. a:(0)q
+. a:(1)q
 
-  . a2:(0)m
-  . a2:(1)m
-  . a2:(2)m
+. a:(0)b:(0)r
+. a:(0)b:(1)r
+. a:(1)b:(0)r
+. a:(1)b:(1)r
 
-  . ua:(0)c:(0)m
-  . ua:(0)c:(1)m
-  . ua:(1)c:(0)m
-  . ua:(1)c:(1)m
-]
+. a2:(0)m
+. a2:(1)m
+. a2:(2)m
+
+. ua:(0)c:(0)m
+. ua:(0)c:(1)m
+. ua:(1)c:(0)m
+. ua:(1)c:(1)m

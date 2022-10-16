@@ -1,23 +1,22 @@
-main {
-  a: array(_) {
-    i: index;
-  };
-  n: cell;
-} [
-  > a@i
+codegen $
 
-  + n 2
-  ! n [
-    - n
+$build {
+  a: array(_) { i: index };
+  n;
+} in
 
-    $dive a@i [
-      $alloc { x: cell; } in
-      < a@i
-      + x '!'
-      . x
-    ]
+> a@i
 
-    > a@i
++ n 2
+! n [
+  - n
+
+  $dive a@i [
+    $alloc { x: cell; } in
+    < a@i
+    + x '!'
+    . x
   ]
 
+  > a@i
 ]

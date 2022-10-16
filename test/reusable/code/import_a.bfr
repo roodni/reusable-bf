@@ -13,7 +13,7 @@ import "./import_c.bfr" as C
 
 let p2 = gen_putc x
 
-main {} [
+codegen [
   *gen_putc b
   *gen_putc C:c
   *p1

@@ -24,7 +24,8 @@ let is_prime = fun n ->
       else true)
     2
 
-main { sp: cell; } [
+codegen [
+  $build {sp} in
   + sp ' '
 
   *fix

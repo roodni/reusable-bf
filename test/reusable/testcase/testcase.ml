@@ -42,7 +42,7 @@ let cases = [
   };
   {
     name = "hello";
-    io_list = [ ("", "hello world\n") ];
+    io_list = [ ("", "Hello World!\n") ];
     filename = "../../sample/hello.bfr";
   };
   {

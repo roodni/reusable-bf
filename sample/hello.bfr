@@ -21,7 +21,7 @@ let gen_puts l = [
     0 l
 ]
 
-main {} [
+codegen [
   // 展開文(*)でブロック文を展開する
-  *gen_puts "hello world\n"
+  *gen_puts "Hello World!\n"
 ]

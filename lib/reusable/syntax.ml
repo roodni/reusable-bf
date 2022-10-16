@@ -85,10 +85,12 @@ and expr' =
   | ExPair of expr * expr
 and let_binding = pat * expr
 
-type toplevel' =
+type toplevel = toplevel' withinfo
+and toplevel' =
   | TopLet of let_binding
+  | TopCodegen of top_gen
   | TopImport of string
   | TopImportAs of string * UVar.t
-type toplevel = toplevel' withinfo
-type main = Field.t * stmt list
-type program = toplevel list * main option
+and top_gen = stmt list
+
+type program = toplevel list
