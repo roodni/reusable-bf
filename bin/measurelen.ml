@@ -13,7 +13,7 @@ let () =
   List.iter
     (fun (name, path) ->
       let buf =
-        Reusable.IrGen.gen_bf_from_source path
+        Reusable.Program.gen_bf_from_source path
         |> Bf.Code.to_buffer
       in
       printf "%s:\t%d\n" name (Buffer.length buf)

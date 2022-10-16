@@ -65,8 +65,8 @@ let use_as_bf_interpreter () =
 (** bf-reusableのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
   let dirname = Filename.dirname !filename in
-  let program = Reusable.Eval.load_program !filename in
-  let field, ir_code = Reusable.IrGen.gen_ir dirname program in
+  let program = Reusable.Program.load !filename in
+  let field, ir_code = Reusable.Program.gen_ir dirname program in
 
   (* 生存セル解析による最適化 *)
   let field, ir_code, liveness_opt =

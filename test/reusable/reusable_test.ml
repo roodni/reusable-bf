@@ -3,7 +3,7 @@ open Printf
 
 let test_run Testcase.{ name; filename; io_list; } =
   name >:: (fun _ ->
-    let bf_code = Reusable.IrGen.gen_bf_from_source filename in
+    let bf_code = Reusable.Program.gen_bf_from_source filename in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string

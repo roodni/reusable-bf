@@ -1,7 +1,7 @@
 open Support.Error
 open Syntax
 
-type codegen_ctx = {
+type ctx = {
   envs: Eval.envs;
   diving: Ir.Sel.index option;
     (* alloc文がフィールドを確保する位置 *)
@@ -9,7 +9,7 @@ type codegen_ctx = {
     (* インデックスとその下に確保されたフィールドの対応 *)
 }
 
-let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
+let generate (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.Code.t =
   let open Eval.Value in
   let field, st_list = main in
   let nmain = Ir.Field.empty_main () in
@@ -17,7 +17,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
   let va_env_main = extend_env_with_irid_env None irid_env envs.va_env in
   let envs = { envs with va_env = va_env_main } in
   let ctx = { envs; diving=None; diving_fields=[] } in
-  let rec codegen (ctx: codegen_ctx) (st_list: stmt list): unit * unit Ir.Code.t =
+  let rec gen (ctx: ctx) (st_list: stmt list): unit * unit Ir.Code.t =
     let { envs; diving; diving_fields } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt ->
@@ -44,7 +44,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             ((), code)
         | StWhile (sel_ex, st_list) -> begin
             let sel = Eval.eval envs sel_ex |> to_cell sel_ex.i in
-            let (), child_code = codegen ctx st_list in
+            let (), child_code = gen ctx st_list in
             let code =
               Ir.Code.from_list [ Loop (sel, child_code) ]
             in
@@ -52,7 +52,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
           end
         | StILoop (index_ex, st_list) ->
             let index = Eval.eval envs index_ex |> to_index index_ex.i in
-            let (), child_code = codegen ctx st_list in
+            let (), child_code = gen ctx st_list in
             let code =
               Ir.Code.from_list [ ILoop (index, child_code) ]
             in
@@ -65,10 +65,10 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             | _ -> assert false
                 (* TODO: to_cellの時点で弾かれて到達しないはず。一応試す *)
             );
-            let (), code_then = codegen ctx st_list_then in
+            let (), code_then = gen ctx st_list_then in
             let (), code_else = match st_list_else with
               | None -> ((), [])
-              | Some st_list_else -> codegen ctx st_list_else
+              | Some st_list_else -> gen ctx st_list_else
             in
             let code =
               Ir.Code.from_list [ If (nsel, code_then, code_else) ] in
@@ -110,7 +110,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             let irid_env = IrIdEnv.gen_using_field nmain nmain.finite field in
             let va_env = extend_env_with_irid_env None irid_env envs.va_env in
             let ctx = { ctx with envs={ envs with va_env } } in
-            let (), child_code = codegen ctx st_list in
+            let (), child_code = gen ctx st_list in
             ((), child_code)
         | StAlloc (field, st_list) ->
             let irfield = match diving with
@@ -130,7 +130,7 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
               | Some sel -> (sel, irid_env) :: diving_fields
             in
             let ctx = { ctx with envs; diving_fields; } in
-            let (), code_child = codegen ctx st_list in
+            let (), code_child = gen ctx st_list in
             (* 確保するセルに対するゼロ初期化 *)
             let code_clean =
               IrIdEnv.to_list irid_env |>
@@ -147,45 +147,16 @@ let gen_ir_from_main (envs : Eval.envs) (main: main) : Ir.Field.main * unit Ir.C
             ((), code_clean @ code_child @ code_clean)
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
-            codegen { ctx with envs } st_list
+            gen { ctx with envs } st_list
         | StExpand ex_block ->
             let envs, st_list = Eval.eval envs ex_block |> to_block ex_block.i in
-            codegen { ctx with envs } st_list
+            gen { ctx with envs } st_list
         | StDive (index_ex, st_list) ->
             let index = Eval.eval envs index_ex |> to_index index_ex.i in
-            codegen { ctx with diving = Some index } st_list
+            gen { ctx with diving = Some index } st_list
       ) () st_list
     in
     ((), List.flatten code_list)
   in
-  let (), cmd_list = codegen ctx st_list in
+  let (), cmd_list = gen ctx st_list in
   (nmain, cmd_list)
-
-let gen_ir (dirname: string) (program: program) : Ir.Field.main * 'a Ir.Code.t =
-  let toplevels, main = program in
-  match main with
-  | None -> error_at unknown_info "main not found"
-  | Some main ->
-      let envs = Eval.eval_toplevels dirname [] Eval.empty_envs toplevels in
-      gen_ir_from_main envs main
-
-let gen_bf_from_source path =
-  let dirname = Filename.dirname path in
-  let program = Eval.load_program path in
-  let field, ir_code = gen_ir dirname program in
-  (* 生存セル解析による最適化 *)
-  let ir_code = Ir.Code.convert_idioms ir_code in
-  let liveness = Ir.Liveness.analyze field ir_code in
-  let graph = Ir.Liveness.Graph.create field liveness in
-  let field, ir_code =
-    Ir.Liveness.Graph.create_program_with_merged_cells
-      graph field ir_code
-  in
-  (* 条件セルがゼロになるループの除去 *)
-  let const_analysis_result = Ir.Const.analyze field ir_code in
-  let ir_code = Ir.Const.eliminate_never_entered_loop const_analysis_result in
-  (* メンバ並び順最適化 *)
-  let mcounter = Ir.MovementCounter.from_code ir_code in
-  (* bf生成 *)
-  let layout = Ir.Layout.create mcounter field in
-  Ir.BfGen.gen_bf layout ir_code
