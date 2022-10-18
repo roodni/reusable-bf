@@ -1,5 +1,5 @@
-import "../../../sample/lib.bfr"
-import "../../../sample/hello.bfr"
+import "../lib.bfr"
+import "../hello.bfr"
 
 codegen $
 
