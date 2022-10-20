@@ -47,8 +47,6 @@ let info lexbuf =
   let p2 = Lexing.lexeme_end_p lexbuf in
   create_info p1 p2
 
-exception Error of info
-
 let create filename channel =
   let lexbuf = Lexing.from_channel channel in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
@@ -65,7 +63,7 @@ rule comment = parse
   | "(*" { comment (comment lexbuf) }
   | "*)" { lexbuf }
   | "\n" { Lexing.new_line lexbuf; comment lexbuf }
-  | eof { raise @@ Error (info lexbuf) }
+  | eof { Error.at (info lexbuf) Lexer_Unexpected }
   | _ { comment lexbuf }
 
 and str p1 l = parse
@@ -81,7 +79,7 @@ and str p1 l = parse
       let s = List.rev l |> List.to_seq |> String.of_seq in
       P.STRING (withinfo i s)
     }
-  | eof | _ { raise @@ Error (info lexbuf) }
+  | eof | _ { Error.at (info lexbuf) Lexer_Unexpected }
 
 and main = parse
   | [' ' '\t' '\r']+ { main lexbuf }
@@ -119,8 +117,9 @@ and main = parse
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "$iloop" { P.ST_ILOOP (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {
-      let i = int_of_string @@ Lexing.lexeme lexbuf in
-      P.INT (withinfo (info lexbuf) i)
+      match int_of_string_opt (Lexing.lexeme lexbuf) with
+      | Some i -> P.INT (withinfo (info lexbuf) i)
+      | None -> Error.at (info lexbuf) Lexer_Too_large_int
     }
   | "\'" (character | "\"") "\'" {
       let s = Lexing.lexeme lexbuf in
@@ -140,4 +139,4 @@ and main = parse
       let id = Lexing.lexeme lexbuf in
       P.UVAR (withinfo (info lexbuf) (Syntax.UVar.of_string id))
     }
-  | _ { raise @@ Error (info lexbuf) }
+  | _ { Error.at (info lexbuf) Lexer_Unexpected }

@@ -204,8 +204,12 @@ and eval (envs: envs) (expr: expr) : value =
       | Add -> VaInt (left + right)
       | Sub -> VaInt (left - right)
       | Mul -> VaInt (left * right)
-      | Div -> VaInt (left / right)
-      | Mod -> VaInt (left mod right)
+      | Div ->
+          if right = 0 then Error.at info Eval_Zero_division
+          else VaInt (left / right)
+      | Mod ->
+          if right = 0 then Error.at info Eval_Zero_division
+          else VaInt (left mod right)
       | Lt -> VaBool (left < right)
       | Leq -> VaBool (left <= right)
     end

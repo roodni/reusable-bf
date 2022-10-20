@@ -6,7 +6,6 @@ let load filename =
   let lexbuf = Lexer.create filename file_in in
   let program =
     try Parser.program Lexer.main lexbuf with
-    | Lexer.Error info -> Error.at info Lexer_Unexpected
     | Parser.Error -> begin
         let info = !Lexer.curr_info in
         Error.at info Parser_Unexpected

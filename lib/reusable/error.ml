@@ -4,6 +4,7 @@ open Support.Info
 
 type t =
   | Lexer_Unexpected
+  | Lexer_Too_large_int
   | Parser_Unexpected
   | Eval_Wrong_data_type of string
   | Eval_Match_failed
@@ -13,6 +14,7 @@ type t =
   | Eval_Member_is_index of Var.t
   | Eval_Member_is_not_index of Var.t
   | Eval_Equal_failed
+  | Eval_Zero_division
   | Gen_Shift_interfere
   | Gen_Alloc_Array_not_implemented
   | Gen_Alloc_Index_must_be_array_member
@@ -35,6 +37,7 @@ let output ppf msg =
       pf "Allocating temporary arrays is not implemented"
   | Gen_Shift_interfere ->
       pf "This shift is prohibited because an allocated member (under $dive) interferes"
+  | Eval_Zero_division -> pf "A zero division is attempted"
   | Eval_Equal_failed -> pf "The equality cannot be tested"
   | Eval_Member_is_not_index v ->
       pf "Member '%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
@@ -50,6 +53,7 @@ let output ppf msg =
   | Eval_Wrong_data_type correct ->
       pf "The data type of the expression value is expected to be %s" correct
   | Parser_Unexpected -> pf "The token is unexpected"
+  | Lexer_Too_large_int -> pf "The integer literal is too large"
   | Lexer_Unexpected -> pf "The character is unexpected"
 
 
