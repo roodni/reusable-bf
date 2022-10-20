@@ -2,7 +2,7 @@ open Printf
 open Support.Info
 
 let programs = [
-  (* ("error", "./sample/misc/error/eval_nd-var_var.bfr"); *)
+  (* ("error", "./sample/error/eval_nd-var_var.bfr"); *)
   ("rev3", "./sample/misc/rev3.bfr");
   ("nested", "./sample/misc/nested_array.bfr");
   ("switch", "./sample/misc/switch.bfr");
