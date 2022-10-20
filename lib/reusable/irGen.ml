@@ -131,9 +131,7 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
                       let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
                       Ir.Code.from_list [ Reset sel ]
                   | Array _ -> Error.at i Gen_Alloc_Array_not_implemented
-                  | Index ->
-                      (* XXX: IrIdEnv *)
-                      Error.at i Gen_Alloc_Index_must_be_array_member
+                  | Index -> Error.at i Gen_Alloc_Index_must_be_array_member
                 )
               |> List.flatten
             in

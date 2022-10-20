@@ -83,5 +83,5 @@ let cases =
       filename = "sample/misc/bug_diving_cell_reset_fail.bfr";
     };
   ]
-|> List.map
-  (fun case -> { case with filename="../../" ^ case.filename })
+  |> List.map
+    (fun case -> { case with filename="../../" ^ case.filename })

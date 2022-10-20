@@ -23,8 +23,11 @@ let create_info pos1 pos2 =
   assert (f1 = f2);
   Loc {
     fname = f1;
-    l_start = l1; l_end = l2;
-    c_start = c1; c_end = c2 - 1
+    l_start = l1;
+    l_end = l2;
+    c_start = c1;
+    c_end =
+      if (l1, c1) = (l2, c2) then c1 else c2 - 1;
   }
 
 let withinfo i v = { i; v; }

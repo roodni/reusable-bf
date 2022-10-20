@@ -1,4 +1,4 @@
-import "../import_b.bfr" as B
+import "../misc/import_b.bfr" as B
 
 let _ = B:c
 
