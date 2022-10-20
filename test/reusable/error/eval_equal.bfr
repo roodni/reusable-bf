@@ -1,3 +1,0 @@
-main { x: cell; } [
-  *(if 1 = "1" then [ + x ] else [ - x ])
-]

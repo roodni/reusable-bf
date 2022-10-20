@@ -1,9 +1,0 @@
-// parent:child のchildがindexである
-
-main {
-  a: array(3) {
-    i: index;
-  };
-} [
-  + a:i
-]

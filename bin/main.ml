@@ -1,5 +1,5 @@
 open Printf
-open Support.Error
+open Support.Info
 
 (* コマンドライン引数 *)
 let flag_bf = ref false
@@ -65,8 +65,14 @@ let use_as_bf_interpreter () =
 (** bf-reusableのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
   let dirname = Filename.dirname !filename in
-  let program = Reusable.Program.load !filename in
-  let field, ir_code = Reusable.Program.gen_ir dirname program in
+  let field, ir_code =
+    try
+      let program = Reusable.Program.load !filename in
+      Reusable.Program.gen_ir dirname program
+    with Reusable.Error.Exn_at msg_wi ->
+      Reusable.Error.print msg_wi;
+      exit 1
+  in
 
   (* 生存セル解析による最適化 *)
   let field, ir_code, liveness_opt =

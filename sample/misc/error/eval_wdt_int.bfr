@@ -1,0 +1,4 @@
+codegen [
+  $alloc {x} in
+  + x x
+]

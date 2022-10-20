@@ -1,0 +1,3 @@
+codegen [
+  *(if 123 then [] else [])
+]

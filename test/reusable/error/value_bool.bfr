@@ -1,3 +1,0 @@
-main {} [
-  *(if 123 then [] else [])
-]

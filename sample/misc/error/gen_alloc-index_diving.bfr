@@ -1,0 +1,16 @@
+codegen [
+  $build {
+    a: array(_) {
+      i: index;
+      x: cell;
+    }
+  } in
+
+  $dive a@i [
+    $alloc {
+      j: index;
+    } in
+
+    + j:x
+  ]
+]

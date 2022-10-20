@@ -1,0 +1,4 @@
+import
+  "top_import-rec_1.bfr"
+
+codegen []

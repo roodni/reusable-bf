@@ -1,5 +1,5 @@
 open Syntax
-open Support.Error
+open Support.Info
 
 (** VarとIr.Varの対応 *)
 type t

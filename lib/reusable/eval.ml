@@ -1,5 +1,4 @@
-open Printf
-open Support.Error
+open Support.Info
 open Syntax
 
 module VE = Env.Make(Var)
@@ -39,32 +38,32 @@ let import_envs src dest =
 module Value = struct
   let to_int info = function
     | VaInt i -> i
-    | _ -> error_at info "An int value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "int"
   let to_bool info = function
     | VaBool b -> b
-    | _ -> error_at info "A bool value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "bool"
   let to_block info = function
     | VaBlock (env, block) -> (env, block)
-    | _ -> error_at info "A block statement value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "statements"
   let to_list info = function
     | VaList l -> l
-    | _ -> error_at info "A list value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "list"
   let to_pair info = function
     | VaPair (v1, v2) -> (v1, v2)
-    | _ -> error_at info "A pair value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "pair"
   let to_cell info = function
     | VaCellSel sel -> sel
-    | _ -> error_at info "A cell selector value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "cell selector"
   let to_index info = function
     | VaIndexSel (idx, _) -> idx
-    | _ -> error_at info "An index selector value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "index selector"
   let to_array info = function
     | VaArraySel (sel, irid_env) -> (sel, irid_env)
-    | _ -> error_at info "An array selector value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "array selector"
   let to_member_selectable info = function
     | VaArraySel (sel, irid_env) -> (sel, None, irid_env)
     | VaIndexSel ((sel, id), irid_env) -> (sel, Some id, irid_env)
-    | _ -> error_at info "An array or index selector value expected"
+    | _ -> Error.at info @@ Eval_Wrong_data_type "array or index selector"
 
   let equal x y =
     let rec equal x y =
@@ -87,15 +86,17 @@ module Value = struct
   let extend_env_with_irid_env
       (diving: Ir.Sel.index option) (irid_env: IrIdEnv.t) (env: va_env) =
     List.fold_left
-      (fun env (var, { v=(id, mtype); i }) ->
-        let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
+      (fun env (var, { v=(id, mtype); i=_ }) ->
         match mtype with
         | IrIdEnv.Cell ->
+            let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
             VE.extend var (VaCellSel sel) env
-        | Index ->
-            error_at i "Index must be declared as a member of an array"
         | Array { mem; _ } ->
+            let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
             VE.extend var (VaArraySel (sel, mem)) env
+        | Index -> env
+            (* 既存のフィールド確保の枠組みでは
+               直下にindexのあるフィールドは確保されない *)
       )
       env
       (IrIdEnv.to_list irid_env)
@@ -122,30 +123,34 @@ let rec eval_let_binding ~export (envs: envs) ((pat, expr) : let_binding) =
   let v = eval envs expr in
   let va_env_opt = matches ~export envs.va_env pat v in
   match va_env_opt with
-  | None -> error_at (merge_info pat.i expr.i) "Match failed"
+  | None -> Error.at (merge_info pat.i expr.i) @@ Eval_Match_failed
   | Some va_env -> { envs with va_env }
 
 and eval (envs: envs) (expr: expr) : value =
   let open Value in
-  let { i = info; v = expr } = expr in
+  let { i=info; v=expr } = expr in
   match expr with
   | ExVar v -> begin
       match VE.lookup v envs.va_env with
       | Some va -> va
-      | None -> error_at info @@ sprintf "Unbound value '%s'" (Var.to_string v)
+      | None -> Error.at info @@ Eval_Variable_not_defined v
     end
   | ExModuleVar (uv, v) -> begin
       match UVE.lookup uv envs.module_env with
-      | None -> error_at info @@ sprintf "Unbound module '%s'" (UVar.to_string uv)
+      | None -> Error.at info @@ Eval_Module_not_defined uv
       | Some m -> begin
           match VE.lookup v m.va_env with
-          | None -> error_at info @@ sprintf "Unbound value '%s'" (Var.to_string v)
           | Some v -> v
+          | None -> Error.at info @@ Eval_Variable_not_defined v
         end
     end
   | ExInt i -> VaInt i
   | ExBool b -> VaBool b
-  | ExStr s -> VaList (String.to_seq s |> Seq.map (fun c -> VaInt (int_of_char c)) |> List.of_seq)
+  | ExStr s ->
+      VaList
+        ( String.to_seq s
+          |> Seq.map (fun c -> VaInt (int_of_char c))
+          |> List.of_seq )
   | ExSelMem (parent_ex, offset_ex_opt, var) -> begin
       let offset = match offset_ex_opt with
         | None -> 0
@@ -155,7 +160,7 @@ and eval (envs: envs) (expr: expr) : value =
         eval envs parent_ex |> to_member_selectable parent_ex.i
       in
       match IrIdEnv.lookup var irid_env with
-      | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
+      | None -> Error.at info @@ Eval_Member_not_defined var
       | Some { v=(id, mtype); _ } -> begin
           let sel =
             Ir.Sel.concat_member_to_tail parent_sel idx_id_opt (Ir.Sel.Member id) offset
@@ -163,23 +168,18 @@ and eval (envs: envs) (expr: expr) : value =
           match mtype with
           | IrIdEnv.Cell -> VaCellSel sel
           | Array { mem; _ } -> VaArraySel (sel, mem)
-          | Index ->
-              error_at info @@
-                sprintf "The member '%s' is an index (Use '@' instead of ':')"
-                  (Var.to_string var)
+          | Index -> Error.at info @@ Eval_Member_is_index var
         end
     end
   | ExSelIdx (parent_ex, var) -> begin
       let sel, irid_env = eval envs parent_ex |> to_array parent_ex.i in
       match IrIdEnv.lookup var irid_env with
-      | None -> error_at info @@ sprintf "Unbound member '%s'" (Var.to_string var)
+      | None -> Error.at info @@ Eval_Member_not_defined var
       | Some { v=(id, mtype); _ } -> begin
           match mtype with
           | Index -> VaIndexSel ((sel, id), irid_env)
           | Cell | Array _ ->
-              error_at info @@
-                sprintf "The member '%s' is not an index (Use ':' instead of '@')"
-                  (Var.to_string var)
+              Error.at info @@ Eval_Member_is_not_index var
         end
     end
   | ExFun (var, ex) -> VaFun (envs, var, ex)
@@ -190,11 +190,11 @@ and eval (envs: envs) (expr: expr) : value =
       | VaFun (envs_fun, pat_arg, ex_body) -> begin
           let env_opt = matches ~export:false envs_fun.va_env pat_arg va_arg in
           match env_opt with
-          | None -> error_at info "match failed"
+          | None -> Error.at info @@ Eval_Match_failed
           | Some va_env -> eval { envs_fun with va_env } ex_body
         end
       (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
-      | _ -> error_at ex_fn.i "function expected"
+      | _ -> Error.at ex_fn.i @@ Eval_Wrong_data_type "function"
     end
   | ExBlock st_list -> VaBlock (envs, st_list)
   | ExBOpInt (ex_left, bop, ex_right) -> begin
@@ -217,7 +217,7 @@ and eval (envs: envs) (expr: expr) : value =
       let right = eval envs ex_right in
       match equal left right with
       | Some b -> VaBool b
-      | None -> error_at info "Cannot test equality"
+      | None -> Error.at info Eval_Equal_failed
     end
   | ExIf (ex_cond, ex_then, ex_else) ->
       let cond = eval envs ex_cond |> to_bool ex_cond.i in
@@ -244,7 +244,7 @@ and eval (envs: envs) (expr: expr) : value =
       in
       match env_ex_opt with
       | Some (va_env, ex) -> eval { envs with va_env } ex
-      | None -> error_at info "Match failed"
+      | None -> Error.at info @@ Eval_Match_failed
     end
   | ExPair (ex1, ex2) ->
       let v1 = eval envs ex1 in

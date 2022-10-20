@@ -1,4 +1,4 @@
-open Support.Error
+open Support.Info
 open Syntax
 
 let load filename =
@@ -6,10 +6,10 @@ let load filename =
   let lexbuf = Lexer.create filename file_in in
   let program =
     try Parser.program Lexer.main lexbuf with
-    | Lexer.Error info -> error_at info "Syntax error"
+    | Lexer.Error info -> Error.at info Lexer_Unexpected
     | Parser.Error -> begin
         let info = !Lexer.curr_info in
-        error_at info "Unexpected token"
+        Error.at info Parser_Unexpected
       end
   in
   let () = close_in file_in in
@@ -38,7 +38,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
     in
     let next_dirname = FilePath.dirname path in
     if List.mem path ctx.path_history then
-      error_at toplevel.i "Recursive import"
+      Error.at toplevel.i Top_Recursive_import
     else
       let toplevels = load path in
       let ctx =
@@ -58,7 +58,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
       { ctx with envs }
   | TopCodegen top_gen ->
       if ctx.top_gen_opt <> None then
-        error_at toplevel.i "Duplicate codegen"
+        Error.at toplevel.i Top_Duplicated_codegen
       else
         { ctx with top_gen_opt=Some top_gen }
   | TopImport filename ->
@@ -80,7 +80,7 @@ let gen_ir (dirname: string) (program: program) : Ir.Field.main * 'a Ir.Code.t =
   let ctx = empty_ctx dirname in
   let ctx = eval_toplevels ctx program in
   match ctx.top_gen_opt with
-  | None -> error_at unknown_info "Missing codegen"
+  | None -> Error.at unknown_info Top_Missing_codegen
   | Some top_gen -> IrGen.generate ctx.envs top_gen
 
 let gen_bf_from_source path =

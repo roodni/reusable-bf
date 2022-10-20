@@ -1,0 +1,3 @@
+codegen [
+  $let l = 1 . 2 in
+]

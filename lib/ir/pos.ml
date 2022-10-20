@@ -112,7 +112,7 @@ let rec gen_bf_move origin dest: Bf.Code.t =
   match origin, dest with
   | Index origin, Index dest
     when
-      (* TODO: もし配列がheadを共有する実装になると再びバグるので要修正 *)
+      (* XXX: もし配列がheadを共有する実装になると再びバグるので要修正 *)
       origin.offset_of_head_in_parent = dest.offset_of_head_in_parent &&
       origin.offset_of_index_in_array = dest.offset_of_index_in_array
     ->

@@ -338,7 +338,7 @@ end = struct
     let mc_fmain = Field.{
       finite = create_mc_field g fmain.finite;
       unlimited = create_mc_field (Hashtbl.find g.children Field.uarray_id) fmain.unlimited;
-      (* TODO: unlimited arrayの干渉グラフをfiniteのグラフの干渉グラフのサブグラフにするのをやめる *)
+      (* XXX: unlimited arrayの干渉グラフをfiniteのグラフの干渉グラフのサブグラフにするのをやめる *)
     } in
     let id_to_mc id =
       match Hashtbl.find_opt id_convert_tbl id with

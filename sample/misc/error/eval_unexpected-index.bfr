@@ -1,0 +1,6 @@
+codegen [
+  $build {
+    a: array(3) { i: index }
+  } in
+  . a:i
+]

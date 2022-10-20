@@ -1,0 +1,5 @@
+import "../import_b.bfr" as B
+
+let _ = B:c
+
+codegen []

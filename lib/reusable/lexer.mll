@@ -1,5 +1,5 @@
 {
-open Support.Error
+open Support.Info
 module P = Parser
 
 let reserved = [
@@ -35,10 +35,10 @@ let string_to_char = function
 
 let curr_info = ref unknown_info
 
-(** [Support.Error]の[create_info]を隠蔽
+(** [Support.Info]の[create_info]を隠蔽
     info作成と同時にcurr_infoを書きかえる *)
 let create_info p1 p2 =
-  let i = Support.Error.create_info p1 p2 in
+  let i = Support.Info.create_info p1 p2 in
   curr_info := i;
   i
 

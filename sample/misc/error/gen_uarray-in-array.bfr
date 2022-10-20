@@ -1,0 +1,11 @@
+codegen [
+  $build {
+    a: array(_) {
+      b: array(_) {
+        x: cell;
+      }
+    }
+  } in
+
+  + a:b:x
+]

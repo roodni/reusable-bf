@@ -1,5 +1,0 @@
-let x =
-  match nil with
-  | _ :: _ -> 3
-
-main {} []

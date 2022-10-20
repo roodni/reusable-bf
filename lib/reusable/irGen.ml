@@ -1,4 +1,4 @@
-open Support.Error
+open Support.Info
 open Syntax
 
 type ctx =
@@ -59,7 +59,7 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             (match nmtype with
             | Ir.Field.Cell cell ->  cell.ifable <- true
             | _ -> assert false
-                (* TODO: to_cellの時点で弾かれて到達しないはず。一応試す *)
+                (* to_cellの時点で弾かれて到達しないはず *)
             );
             let (), code_then = gen ctx st_list_then in
             let (), code_else = match st_list_else with
@@ -73,10 +73,12 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             let index = Eval.eval envs ex_idx |> to_index ex_idx.i in
             let i = sign * match ex_i_opt with
               | None -> 1
-              | Some ex_i -> Eval.eval envs ex_i |> to_int ex_i.i
+              | Some ex_i ->
+                  (* XXX: いまのところ2以上のシフトは未実装
+                     Parserで無効にしている
+                  *)
+                  Eval.eval envs ex_i |> to_int ex_i.i
             in
-            if abs i <> 1 then
-              error_at info "2 or more shift is not implemented";
             (* シフト時に移動させられるdiving下の一時セルのid *)
             let followers =
               diving_fields
@@ -93,7 +95,7 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
                       )
                     |> Option.some
                   else if Ir.Sel.is_via_index index (fst diving) then
-                    error_at info "Shift is prohibited because an allocated field (under $dive) interfere"
+                    Error.at info Gen_Shift_interfere
                   else None
                 )
               |> List.flatten
@@ -115,10 +117,27 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
                   match Ir.Sel.find_mtype nmain arr_sel with
                   | Ir.Field.Array { members; _ } -> members
                   | Cell _ | Index -> assert false
-                      (* dive文の処理でインデックス以外がdivingに乗ることは弾かれる *)
+                      (* $diveでインデックス以外がdivingに指定されることは弾かれる *)
                 end
             in
             let irid_env = IrIdEnv.gen_using_field nmain irfield field in
+            (* 確保するセルに対するゼロ初期化 *)
+            let code_clean =
+              IrIdEnv.to_list irid_env
+              |> List.map
+                (fun (_, { v=(id, mtype); i }) ->
+                  match mtype with
+                  | IrIdEnv.Cell ->
+                      let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
+                      Ir.Code.from_list [ Reset sel ]
+                  | Array _ -> Error.at i Gen_Alloc_Array_not_implemented
+                  | Index ->
+                      (* XXX: IrIdEnv *)
+                      Error.at i Gen_Alloc_Index_must_be_array_member
+                )
+              |> List.flatten
+            in
+            (* 後続のコード生成 *)
             let va_env = extend_env_with_irid_env diving irid_env envs.va_env in
             let envs = { envs with va_env } in
             let diving_fields = match diving with
@@ -127,19 +146,8 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             in
             let ctx = { ctx with envs; diving_fields; } in
             let (), code_child = gen ctx st_list in
-            (* 確保するセルに対するゼロ初期化 *)
-            let code_clean =
-              IrIdEnv.to_list irid_env |>
-              List.map (fun (_, { v=(id, mtype); i }) ->
-                match mtype with
-                | IrIdEnv.Array _ -> error_at i "Allocating temporary arrays is prohibited"
-                | IrIdEnv.Index -> assert false
-                    (* トップレベルにindexの宣言を試みたらgen_using_fieldがエラーを発生させるはず *)
-                | IrIdEnv.Cell ->
-                    let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
-                    Ir.Code.from_list [ Reset sel ]
-              ) |> List.flatten
-            in
+            (* ゼロ初期化は開始時と終了時に行う
+               IRの最適化である程度消える *)
             ((), code_clean @ code_child @ code_clean)
         | StLet (binding, st_list) ->
             let envs = Eval.eval_let_binding ~export:false ctx.envs binding in

@@ -1,0 +1,7 @@
+let f (a, b) =
+  a + b
+
+codegen [
+  $build { x } in
+  + x (f 1 2)
+]

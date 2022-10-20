@@ -1,5 +1,5 @@
 open Printf
-open Support.Error
+open Support.Info
 open Syntax
 
 type t = (Var.t * binded) list
@@ -32,6 +32,8 @@ let gen_using_field (nmain: Ir.Field.main) nfield field =
             Ir.Field.extend nfield nvar (Cell { ifable=false; mergeable });
             (var, withinfo info (nvar, Cell)) :: env
         | Field.Index ->
+            if nfield == nmain.finite then
+              Error.at info Gen_Alloc_Index_must_be_array_member;
             Ir.Field.extend nfield nvar Index;
             (var, withinfo info (nvar, Index)) :: env
         | Field.Array { length=Some length; mem } ->
@@ -41,10 +43,8 @@ let gen_using_field (nmain: Ir.Field.main) nfield field =
             let env_members = gen_using_field ~mergeable:false nmembers mem in
             (var, withinfo info (nvar, Array { length=Some length; mem=env_members })) :: env
         | Field.Array { length=None; mem } ->
-            (* 無限配列を配列のメンバとして確保しようとするとエラー。
-              TODO: assertではだめ。適切なエラーメッセージを表示する。
-            *)
-            assert (nfield == nmain.finite);
+            if nfield != nmain.finite then
+              Error.at info Gen_Alloc_Unlimited_array_cannot_be_array_member;
             let env_members = gen_using_field ~parent_name:(Var.to_string var) ~mergeable:false nmain.unlimited mem in
             (var,
               withinfo

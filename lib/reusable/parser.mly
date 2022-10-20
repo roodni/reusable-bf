@@ -1,48 +1,48 @@
 %{
-open Support.Error
+open Support.Info
 open Syntax
 %}
 
-%token <Support.Error.info> EOF
-%token <Support.Error.info> PLUS MINUS
-%token <Support.Error.info> DOT COMMA
-%token <Support.Error.info> RSHIFT LSHIFT  // > <
-%token <Support.Error.info> LBRACKET RBRACKET
-%token <Support.Error.info> EXCL QUES
-%token <Support.Error.info> LBRACE RBRACE
-%token <Support.Error.info> COLON
-%token <Support.Error.info> AT
-%token <Support.Error.info> SEMI
-%token <Support.Error.info> LPAREN RPAREN
-%token <Support.Error.info> EQ
-%token <Support.Error.info> ASTER
-%token <Support.Error.info> SLASH
-%token <Support.Error.info> ARROW  // ->
-%token <Support.Error.info> LEQ
-%token <Support.Error.info> BAR
-%token <Support.Error.info> UNDER
+%token <Support.Info.info> EOF
+%token <Support.Info.info> PLUS MINUS
+%token <Support.Info.info> DOT COMMA
+%token <Support.Info.info> RSHIFT LSHIFT  // > <
+%token <Support.Info.info> LBRACKET RBRACKET
+%token <Support.Info.info> EXCL QUES
+%token <Support.Info.info> LBRACE RBRACE
+%token <Support.Info.info> COLON
+%token <Support.Info.info> AT
+%token <Support.Info.info> SEMI
+%token <Support.Info.info> LPAREN RPAREN
+%token <Support.Info.info> EQ
+%token <Support.Info.info> ASTER
+%token <Support.Info.info> SLASH
+%token <Support.Info.info> ARROW  // ->
+%token <Support.Info.info> LEQ
+%token <Support.Info.info> BAR
+%token <Support.Info.info> UNDER
 
-%token <Support.Error.info> ST  // $
-%token <Support.Error.info> ST_ALLOC ST_BUILD
-%token <Support.Error.info> ST_LET
-%token <Support.Error.info> ST_DIVE
-%token <Support.Error.info> ST_ILOOP
+%token <Support.Info.info> ST  // $
+%token <Support.Info.info> ST_ALLOC ST_BUILD
+%token <Support.Info.info> ST_LET
+%token <Support.Info.info> ST_DIVE
+%token <Support.Info.info> ST_ILOOP
 
-%token <Support.Error.info> CELL INDEX ARRAY
-%token <Support.Error.info> FUN
-%token <Support.Error.info> LET IN
-%token <Support.Error.info> IF THEN ELSE
-%token <Support.Error.info> MATCH WITH
-%token <Support.Error.info> MOD
-%token <Support.Error.info> IMPORT AS
-%token <Support.Error.info> CODEGEN
+%token <Support.Info.info> CELL INDEX ARRAY
+%token <Support.Info.info> FUN
+%token <Support.Info.info> LET IN
+%token <Support.Info.info> IF THEN ELSE
+%token <Support.Info.info> MATCH WITH
+%token <Support.Info.info> MOD
+%token <Support.Info.info> IMPORT AS
+%token <Support.Info.info> CODEGEN
 
-%token <int Support.Error.withinfo> INT
-%token <char Support.Error.withinfo> CHAR
-%token <string Support.Error.withinfo> STRING
-%token <Syntax.Var.t Support.Error.withinfo> VAR
-%token <Syntax.UVar.t Support.Error.withinfo> UVAR
-%token <Support.Error.info> TRUE FALSE
+%token <int Support.Info.withinfo> INT
+%token <char Support.Info.withinfo> CHAR
+%token <string Support.Info.withinfo> STRING
+%token <Syntax.Var.t Support.Info.withinfo> VAR
+%token <Syntax.UVar.t Support.Info.withinfo> UVAR
+%token <Support.Info.info> TRUE FALSE
 
 %nonassoc prec_fun prec_let prec_match
 %nonassoc prec_if
@@ -106,8 +106,8 @@ stmt:
   | i=MINUS es=expr ei=expr? { withinfo i @@ StAdd (-1, es, ei) }
   | i=DOT e=expr { withinfo i @@ StPut e }
   | i=COMMA e=expr { withinfo i @@ StGet e }
-  | i=RSHIFT ep=expr ei=expr? { withinfo i @@ StShift (1, ep, ei) }
-  | i=LSHIFT ep=expr ei=expr? { withinfo i @@ StShift (-1, ep, ei) }
+  | i=RSHIFT ep=expr { withinfo i @@ StShift (1, ep, None) }
+  | i=LSHIFT ep=expr { withinfo i @@ StShift (-1, ep, None) }
   | i=EXCL e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StWhile (e, sl) }
   | i=QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
       withinfo i @@ StIf (e, sl_t, Some sl_e)

@@ -1,0 +1,4 @@
+codegen [
+  $build { x } in
+  > x
+]
