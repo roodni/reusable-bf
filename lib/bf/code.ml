@@ -1,4 +1,4 @@
-open Support.Pervasive
+(* open Support.Pervasive *)
 
 type t = cmd list
 and cmd =
@@ -15,12 +15,16 @@ let to_buffer code =
       (function
         | Add n ->
             let c = if n < 0 then '-' else '+' in
-            (1 -- abs n) |> List.iter (fun _ -> Buffer.add_char buf c)
+            for _ = 1 to abs n do
+              Buffer.add_char buf c
+            done
         | Put -> Buffer.add_char buf '.'
         | Get -> Buffer.add_char buf ','
         | Shift n ->
             let c = if n < 0 then '<' else '>' in
-            (1 -- abs n) |> List.iter (fun _ -> Buffer.add_char buf c)
+            for _ = 1 to abs n do
+              Buffer.add_char buf c
+            done
         | Loop l ->
             Buffer.add_char buf '[';
             loop l;
