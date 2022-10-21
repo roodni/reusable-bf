@@ -60,6 +60,8 @@ let cases =
     ( "top_codegen-dup.bfr", (=) Top_Duplicated_codegen );
     ( "top_codegen-missing.bfr", (=) Top_Missing_codegen );
     ( "top_import-rec_1.bfr", (=) Top_Recursive_import );
+    ( "stackoverflow_eval.bfr", (=) Recursion_Limit );
+    ( "stackoverflow_gen.bfr", (=) Recursion_Limit );
   ]
 
 let tests = "non-sandbox" >::: List.map test_error cases

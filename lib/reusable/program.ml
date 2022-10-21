@@ -60,7 +60,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
   in
   match toplevel.v with
   | TopLet binding ->
-      let envs = Eval.eval_let_binding ~export:true ctx.envs binding in
+      let envs = Eval.eval_let_binding ~export:true ~recn:0 ctx.envs binding in
       { ctx with envs }
   | TopCodegen top_gen ->
       if ctx.top_gen_opt <> None then

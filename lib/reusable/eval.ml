@@ -119,16 +119,29 @@ let rec matches ~export va_env pat value =
   | PatBool pb, VaBool vb when pb = vb -> Some va_env
   | _ -> None
 
-let rec eval_let_binding ~export (envs: envs) ((pat, expr) : let_binding) =
-  let v = eval envs expr in
+let rec eval_let_binding ~export ~recn (envs: envs) ((pat, expr) : let_binding) =
+  (* この recn は呼び出し元の eval で増やす *)
+  let v = eval ~recn envs expr in
   let va_env_opt = matches ~export envs.va_env pat v in
   match va_env_opt with
   | None -> Error.at (merge_info pat.i expr.i) @@ Eval_Match_failed
   | Some va_env -> { envs with va_env }
 
-and eval (envs: envs) (expr: expr) : value =
-  let open Value in
+and eval ~recn (envs: envs) (expr: expr) : value =
   let { i=info; v=expr } = expr in
+  let eval_tail envs expr =
+    eval ~recn envs expr
+  in
+  let recn () =
+    let n = recn + 1 in
+    if n > 50000 then
+      Error.at info Recursion_Limit;
+    n
+  in
+  let eval_mid envs expr =
+    eval ~recn:(recn ()) envs expr
+  in
+  let open Value in
   match expr with
   | ExVar v -> begin
       match VE.lookup v envs.va_env with
@@ -154,10 +167,10 @@ and eval (envs: envs) (expr: expr) : value =
   | ExSelMem (parent_ex, offset_ex_opt, var) -> begin
       let offset = match offset_ex_opt with
         | None -> 0
-        | Some ex -> eval envs ex |> to_int ex.i
+        | Some ex -> eval_mid envs ex |> to_int ex.i
       in
       let parent_sel, idx_id_opt, irid_env =
-        eval envs parent_ex |> to_member_selectable parent_ex.i
+        eval_mid envs parent_ex |> to_member_selectable parent_ex.i
       in
       match IrIdEnv.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
@@ -172,7 +185,7 @@ and eval (envs: envs) (expr: expr) : value =
         end
     end
   | ExSelIdx (parent_ex, var) -> begin
-      let sel, irid_env = eval envs parent_ex |> to_array parent_ex.i in
+      let sel, irid_env = eval_mid envs parent_ex |> to_array parent_ex.i in
       match IrIdEnv.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
       | Some { v=(id, mtype); _ } -> begin
@@ -184,22 +197,22 @@ and eval (envs: envs) (expr: expr) : value =
     end
   | ExFun (var, ex) -> VaFun (envs, var, ex)
   | ExApp (ex_fn, ex_arg) -> begin
-      let va_fn = eval envs ex_fn in
-      let va_arg = eval envs ex_arg in
+      let va_fn = eval_mid envs ex_fn in
+      let va_arg = eval_mid envs ex_arg in
       match va_fn with
       | VaFun (envs_fun, pat_arg, ex_body) -> begin
           let env_opt = matches ~export:false envs_fun.va_env pat_arg va_arg in
           match env_opt with
           | None -> Error.at info @@ Eval_Match_failed
-          | Some va_env -> eval { envs_fun with va_env } ex_body
+          | Some va_env -> eval_tail { envs_fun with va_env } ex_body
         end
       (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
       | _ -> Error.at ex_fn.i @@ Eval_Wrong_data_type "function"
     end
   | ExBlock st_list -> VaBlock (envs, st_list)
   | ExBOpInt (ex_left, bop, ex_right) -> begin
-      let left = eval envs ex_left |> to_int ex_left.i in
-      let right = eval envs ex_right |> to_int ex_right.i in
+      let left = eval_mid envs ex_left |> to_int ex_left.i in
+      let right = eval_mid envs ex_right |> to_int ex_right.i in
       match bop with
       | Add -> VaInt (left + right)
       | Sub -> VaInt (left - right)
@@ -214,31 +227,33 @@ and eval (envs: envs) (expr: expr) : value =
       | Leq -> VaBool (left <= right)
     end
   | ExMinus ex_int ->
-      let i = eval envs ex_int |> to_int ex_int.i in
+      let i = eval_mid envs ex_int |> to_int ex_int.i in
       VaInt (-i)
   | ExEqual (ex_left, ex_right) -> begin
-      let left = eval envs ex_left in
-      let right = eval envs ex_right in
+      let left = eval_mid envs ex_left in
+      let right = eval_mid envs ex_right in
       match equal left right with
       | Some b -> VaBool b
       | None -> Error.at info Eval_Equal_failed
     end
   | ExIf (ex_cond, ex_then, ex_else) ->
-      let cond = eval envs ex_cond |> to_bool ex_cond.i in
-      eval envs (if cond then ex_then else ex_else)
+      let cond = eval_mid envs ex_cond |> to_bool ex_cond.i in
+      eval_tail envs (if cond then ex_then else ex_else)
   | ExLet (binding, expr) ->
-      let envs_let = eval_let_binding ~export:false envs binding in
-      eval envs_let expr
+      let envs_let =
+        eval_let_binding ~export:false ~recn:(recn ()) envs binding
+      in
+      eval_tail envs_let expr
   | ExNil -> VaList []
   | ExCons (ex_head, ex_tail) ->
-      let head = eval envs ex_head in
-      let tail = eval envs ex_tail |> to_list ex_tail.i in
+      let head = eval_mid envs ex_head in
+      let tail = eval_mid envs ex_tail |> to_list ex_tail.i in
       VaList (head :: tail)
   | ExList el ->
-      let vl = List.map (eval envs) el in
+      let vl = List.map (eval_mid envs) el in
       VaList vl
   | ExMatch (ex_matched, pat_ex_list) -> begin
-      let va_matched = eval envs ex_matched in
+      let va_matched = eval_mid envs ex_matched in
       let env_ex_opt =
         List.find_map
           (fun (pat, ex) ->
@@ -247,10 +262,10 @@ and eval (envs: envs) (expr: expr) : value =
           pat_ex_list
       in
       match env_ex_opt with
-      | Some (va_env, ex) -> eval { envs with va_env } ex
+      | Some (va_env, ex) -> eval_tail { envs with va_env } ex
       | None -> Error.at info @@ Eval_Match_failed
     end
   | ExPair (ex1, ex2) ->
-      let v1 = eval envs ex1 in
-      let v2 = eval envs ex2 in
+      let v1 = eval_mid envs ex1 in
+      let v2 = eval_mid envs ex2 in
       VaPair (v1, v2)

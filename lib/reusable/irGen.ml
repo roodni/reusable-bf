@@ -5,41 +5,49 @@ type ctx =
   { envs: Eval.envs;
     diving: Ir.Sel.index option;
       (* alloc文がフィールドを確保する位置 *)
-    diving_fields: (Ir.Sel.index * IrIdEnv.t) list
+    diving_fields: (Ir.Sel.index * IrIdEnv.t) list;
       (* インデックスとその下に確保されたフィールドの対応 *)
+    recn: int;
   }
 
 let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let open Eval.Value in
   let nmain = Ir.Field.empty_main () in
-  let ctx = { envs; diving=None; diving_fields=[] } in
+  let ctx = { envs; diving=None; diving_fields=[]; recn=0 } in
   let rec gen (ctx: ctx) (st_list: stmt list): unit * unit Ir.Code.t =
-    let { envs; diving; diving_fields } = ctx in
+    let { envs; diving; diving_fields; _ } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt ->
         let { i = info; v = stmt } = stmt in
+        let gen ctx st_list =
+          let ctx = { ctx with recn = ctx.recn + 1 } in
+          if ctx.recn > 10000 then
+            Error.at info Recursion_Limit;
+          gen ctx st_list
+        in
+        let eval = Eval.eval ~recn:0 in
         match stmt with
         | StAdd (sign, ex_sel, ex_i_opt) -> begin
             (* nsel というのは Ir.Sel の旧名の Named.Sel のこと *)
-            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
             let i =
               match ex_i_opt with
               | None -> 1
-              | Some ex_i -> Eval.eval envs ex_i |>  to_int ex_i.i
+              | Some ex_i -> eval envs ex_i |>  to_int ex_i.i
             in
             let code = Ir.Code.from_list [ Add (i * sign, nsel) ] in
             ((), code)
           end
         | StPut ex_sel ->
-            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
             let code = Ir.Code.from_list [ Ir.Code.Put nsel ] in
             ((), code)
         | StGet ex_sel ->
-            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
             let code = Ir.Code.from_list [ Get nsel ] in
             ((), code)
         | StWhile (sel_ex, st_list) -> begin
-            let sel = Eval.eval envs sel_ex |> to_cell sel_ex.i in
+            let sel = eval envs sel_ex |> to_cell sel_ex.i in
             let (), child_code = gen ctx st_list in
             let code =
               Ir.Code.from_list [ Loop (sel, child_code) ]
@@ -47,14 +55,14 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             ((), code)
           end
         | StILoop (index_ex, st_list) ->
-            let index = Eval.eval envs index_ex |> to_index index_ex.i in
+            let index = eval envs index_ex |> to_index index_ex.i in
             let (), child_code = gen ctx st_list in
             let code =
               Ir.Code.from_list [ ILoop (index, child_code) ]
             in
             ((), code)
         | StIf (ex_sel, st_list_then, st_list_else) ->
-            let nsel = Eval.eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
             let nmtype = Ir.Sel.find_mtype nmain nsel in
             (match nmtype with
             | Ir.Field.Cell cell ->  cell.ifable <- true
@@ -70,14 +78,14 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
               Ir.Code.from_list [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_idx, ex_i_opt) ->
-            let index = Eval.eval envs ex_idx |> to_index ex_idx.i in
+            let index = eval envs ex_idx |> to_index ex_idx.i in
             let i = sign * match ex_i_opt with
               | None -> 1
               | Some ex_i ->
                   (* XXX: いまのところ2以上のシフトは未実装
                      Parserで無効にしている
                   *)
-                  Eval.eval envs ex_i |> to_int ex_i.i
+                  eval envs ex_i |> to_int ex_i.i
             in
             (* シフト時に移動させられるdiving下の一時セルのid *)
             let followers =
@@ -148,13 +156,13 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
                IRの最適化である程度消える *)
             ((), code_clean @ code_child @ code_clean)
         | StLet (binding, st_list) ->
-            let envs = Eval.eval_let_binding ~export:false ctx.envs binding in
+            let envs = Eval.eval_let_binding ~export:false ~recn:0 ctx.envs binding in
             gen { ctx with envs } st_list
         | StExpand ex_block ->
-            let envs, st_list = Eval.eval envs ex_block |> to_block ex_block.i in
+            let envs, st_list = eval envs ex_block |> to_block ex_block.i in
             gen { ctx with envs } st_list
         | StDive (index_ex, st_list) ->
-            let index = Eval.eval envs index_ex |> to_index index_ex.i in
+            let index = eval envs index_ex |> to_index index_ex.i in
             gen { ctx with diving = Some index } st_list
       ) () st_list
     in
