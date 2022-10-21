@@ -1,9 +1,8 @@
 open Support.Info
 open Syntax
 
-let load filename =
-  let file_in = open_in filename in
-  let lexbuf = Lexer.create filename file_in in
+let load filename channel =
+  let lexbuf = Lexer.create filename channel in
   let program =
     try Parser.program Lexer.main lexbuf with
     | Parser.Error -> begin
@@ -11,8 +10,13 @@ let load filename =
         Error.at info Parser_Unexpected
       end
   in
-  let () = close_in file_in in
   program
+
+let load_from_source path =
+  let channel = open_in path in
+  let res = load path channel in
+  close_in channel;
+  res
 
 type ctx =
   { envs: Eval.envs;
@@ -41,7 +45,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
     if List.mem path ctx.path_history then
       Error.at toplevel.i Top_Recursive_import
     else
-      let toplevels = load path in
+      let toplevels = load_from_source path in
       let ctx =
         eval_toplevels
           { envs = Eval.empty_envs;
@@ -92,7 +96,7 @@ let gen_ir ~sandbox (dirname: string) (program: program)
 
 let gen_bf_from_source ?(sandbox=false) path =
   let dirname = Filename.dirname path in
-  let program = load path in
+  let program = load_from_source path in
   let field, ir_code = gen_ir dirname ~sandbox program in
   (* 生存セル解析による最適化 *)
   let ir_code = Ir.Code.convert_idioms ir_code in

@@ -13,26 +13,38 @@ let flags_compile_information =
   [flag_show_liveness; flag_show_layouts; flag_show_possible_cell_values]
 let flag_dump_tape = ref false
 let flag_sandbox = ref false
-let filename = ref "-"
+let flag_stdin = ref false
+let filename = ref ""
 let parse_args () =
-  Arg.parse
-    [ ("-b", Set flag_bf, " Load and run the brainfuck program instead of bf-reusable programs");
-      ("-r", Set flag_run, " Run the bf-reusable program after compilation");
-      ("-v", Set flag_verbose, " Show detailed compilation information");
-      ("--show-liveness", Set flag_show_liveness, " Show the result of liveness analysis");
-      ("--show-layout", Set flag_show_layouts, " Show cell layouts");
-      ("--show-cell-values", Set flag_show_possible_cell_values, " ");
-      ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0-3)");
-      ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
-      ("--sandbox", Set flag_sandbox, " ");
-    ]
-    (fun s -> filename := s )
-    (sprintf "Usage: %s <options> <file>" Sys.argv.(0));
+  let speclist = Arg.[
+    ("-b", Set flag_bf, " Load and run the brainfuck program instead of bf-reusable programs");
+    ("-r", Set flag_run, " Run the bf-reusable program after compilation");
+    ("-v", Set flag_verbose, " Show detailed compilation information");
+    ("--show-liveness", Set flag_show_liveness, " Show the result of liveness analysis");
+    ("--show-layout", Set flag_show_layouts, " Show cell layouts");
+    ("--show-cell-values", Set flag_show_possible_cell_values, " ");
+    ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0-3)");
+    ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
+    ("--sandbox", Set flag_sandbox, " ");
+    ("--stdin", Set flag_stdin, " ");
+  ] in
+  let usage_msg =
+    sprintf "Usage: %s <options> <file>" Sys.argv.(0)
+  in
+  Arg.parse speclist (fun s -> filename := s ) usage_msg;
 
   if !flag_verbose then begin
     List.iter (fun r -> r := true) flags_compile_information;
   end;
+
+  if Array.length Sys.argv = 1 then begin
+    Arg.usage speclist usage_msg;
+    exit 2
+  end;
 ;;
+
+let get_channel () =
+  if !flag_stdin then stdin else open_in !filename
 
 (** bfのコードを実行する *)
 let run_bf bf_code =
@@ -56,7 +68,7 @@ let run_bf bf_code =
 (** bfのインタプリタとして使う場合の処理 *)
 let use_as_bf_interpreter () =
   let bf_code =
-    let channel = open_in !filename in
+    let channel = get_channel () in
     let code = Bf.Code.parse (Stream.of_channel channel) in
     close_in channel;
     code
@@ -69,7 +81,9 @@ let use_as_bfr_compiler () =
   let dirname = Filename.dirname !filename in
   let field, ir_code =
     try
-      let program = Reusable.Program.load !filename in
+      let channel = get_channel () in
+      let program = Reusable.Program.load !filename channel in
+      close_in channel;
       Reusable.Program.gen_ir ~sandbox:!flag_sandbox dirname program
     with Reusable.Error.Exn_at msg_wi ->
       Reusable.Error.print msg_wi;
