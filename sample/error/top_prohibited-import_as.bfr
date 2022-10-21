@@ -1,0 +1,4 @@
+// web playgroundでは禁止
+import "../lib.bfr" as Lib
+
+codegen []

@@ -14,8 +14,6 @@ let test_error (filename, f) =
         end
 ;;
 
-
-
 let cases =
   let var s = Syntax.Var.of_string s in
   let uvar s = Syntax.UVar.of_string s in
@@ -64,7 +62,27 @@ let cases =
     ( "top_import-rec_1.bfr", (=) Top_Recursive_import );
   ]
 
+let tests = "non-sandbox" >::: List.map test_error cases
+
+let sandbox_tests =
+  "sandbox" >:::
+    [ ("prohibited-import_1" >:: fun _ ->
+        match
+          Program.gen_bf_from_source ~sandbox:true
+            "../../sample/error/top_prohibited-import_normal.bfr"
+        with
+        | _ -> assert_failure "No error"
+        | exception Error.Exn_at { i=_; v=Top_Sandbox_import } -> ()
+      );
+      ("prohibited-import_2" >:: fun _ ->
+        match
+          Program.gen_bf_from_source ~sandbox:true
+            "../../sample/error/top_prohibited-import_as.bfr"
+        with
+        | _ -> assert_failure "No error"
+        | exception Error.Exn_at { i=_; v=Top_Sandbox_import } -> ()
+      );
+    ]
 
 let () =
-  run_test_tt_main
-    ("error" >::: List.map test_error cases)
+  run_test_tt_main ("error" >::: [tests; sandbox_tests ])

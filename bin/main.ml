@@ -12,6 +12,7 @@ let flag_show_possible_cell_values = ref false
 let flags_compile_information =
   [flag_show_liveness; flag_show_layouts; flag_show_possible_cell_values]
 let flag_dump_tape = ref false
+let flag_sandbox = ref false
 let filename = ref "-"
 let parse_args () =
   Arg.parse
@@ -23,6 +24,7 @@ let parse_args () =
       ("--show-cell-values", Set flag_show_possible_cell_values, " ");
       ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0-3)");
       ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
+      ("--sandbox", Set flag_sandbox, " ");
     ]
     (fun s -> filename := s )
     (sprintf "Usage: %s <options> <file>" Sys.argv.(0));
@@ -68,7 +70,7 @@ let use_as_bfr_compiler () =
   let field, ir_code =
     try
       let program = Reusable.Program.load !filename in
-      Reusable.Program.gen_ir dirname program
+      Reusable.Program.gen_ir ~sandbox:!flag_sandbox dirname program
     with Reusable.Error.Exn_at msg_wi ->
       Reusable.Error.print msg_wi;
       exit 1

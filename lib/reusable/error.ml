@@ -20,6 +20,7 @@ type t =
   | Gen_Alloc_Index_must_be_array_member
   | Gen_Alloc_Unlimited_array_cannot_be_array_member
   | Top_Recursive_import
+  | Top_Sandbox_import
   | Top_Duplicated_codegen
   | Top_Missing_codegen
 
@@ -28,6 +29,7 @@ let output ppf msg =
   match msg with
   | Top_Missing_codegen -> pf "There is no codegen declaration"
   | Top_Duplicated_codegen -> pf "The codegen declaration is duplicated"
+  | Top_Sandbox_import -> pf "In sandbox mode, import is prohibited"
   | Top_Recursive_import -> pf "The import is recursive"
   | Gen_Alloc_Unlimited_array_cannot_be_array_member ->
       pf "An unlimited array cannot be allocated as a member of an array"
