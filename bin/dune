@@ -1,6 +1,6 @@
 (executables
- (public_names main measurelen)
  (names main measurelen)
+ (public_names bfre -)
  (libraries support bf ir reusable))
 
 (env

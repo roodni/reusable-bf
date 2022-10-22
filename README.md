@@ -31,57 +31,49 @@ brainfuckに変換されるプログラミング言語です。
   ```
 
 
+
+## インストール
+
+### 準備
+1. [opam](https://opam.ocaml.org/) をインストールする
+2. opamで ocaml (>= 4.12) をインストールする
+
+### ビルド
+```sh
+git clone https://github.com/roodni/bf-reusable
+cd bf-reusable
+opam install .
+```
+
 ## 実行
 
-### 依存ソフトウェア
+* コンパイルする `bfre file.bfr`
+* コンパイルして実行する `bfre -r file.bfr`
+* brainfuckのプログラムを実行する `bfre -b file.b`
 
-https://opam.ocaml.org/
-
-```
-opam install dune menhir fileutils ounit2
-```
-
-### オプション
-
-コンパイルする
-```
-dune exec main -- file.bfr
-```
-
-コンパイルして実行する
-```
-dune exec main -- -r file.bfr
-```
-
-brainfuckのプログラムを実行する
-```
-dune exec main -- -b file.b
-```
-
-### 実行例
+### サンプルプログラムの実行例
 
 * `sample/hello.bfr`: ハローワールド
-```
-dune exec main -- -r sample/hello.bfr
-```
+  ```sh
+  bfre -r sample/hello.bfr
+  ```
 
 * `sample/bfi.bfr`: brainfuckインタプリタ
+  ```sh
+  mkdir _sandbox
+  bfre sample/bfi.bfr > _sandbox/bfi.b
+  bfre sample/hello.bfr > _sandbox/hello.b
 
-```
-mkdir _sandbox
-dune exec main -- sample/bfi.bfr > _sandbox/bfi.b
-dune exec main -- sample/hello.bfr > _sandbox/hello.b
-echo '\' >> _sandbox/hello.b
+  # hello.b を実行する
+  echo '\' >> _sandbox/hello.b
+  bfre -b _sandbox/bfi.b < _sandbox/hello.b
 
-# hello.b を実行する
-dune exec main -- -b _sandbox/bfi.b < _sandbox/hello.b
-
-# 自分自身を実行して hello.b を入力に与える
-cp _sandbox/bfi.b _sandbox/input.txt
-echo '\' >> _sandbox/input.txt
-cat _sandbox/hello.b >> _sandbox/input.txt
-dune exec main -- -b _sandbox/bfi.b < _sandbox/input.txt
-```
+  # 自分自身を実行して hello.b を入力に与える
+  cp _sandbox/bfi.b _sandbox/input.txt
+  echo '\' >> _sandbox/input.txt
+  cat _sandbox/hello.b >> _sandbox/input.txt
+  bfre -b _sandbox/bfi.b < _sandbox/input.txt
+  ```
 
 ## 資料
 * ドキュメントは準備中です
@@ -89,8 +81,9 @@ dune exec main -- -b _sandbox/bfi.b < _sandbox/input.txt
   * 情報が古いです
   * 現状とは構文がすこし違います
 
-## 負のセルに関する注意
-bf-reusableは`$alloc`文で確保されたセルに対して以下の操作
+<!--
+### 負のセルに関する注意
+bf-reusableは`$alloc`で確保されたセルに対して以下の操作
 * ゼロ初期化 (`[-]`)
 * ムーブ (`[->>+<<]` など)
 
@@ -113,3 +106,5 @@ $alloc { x } in
 
 + x 'A'  (* 非負になるように足す *)
 ```
+
+-->
