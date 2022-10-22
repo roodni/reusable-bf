@@ -27,3 +27,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
+dev-repo: "git+https://github.com/roodni/bf-reusable.git"

@@ -6,8 +6,7 @@
 
 (maintainers "roodni")
 (authors "roodni")
-(homepage "https://github.com/roodni/bf-reusable")
-(bug_reports "https://github.com/roodni/bf-reusable/issues")
+(source (github roodni/bf-reusable))
 
 (package
  (name bf-reusable)
