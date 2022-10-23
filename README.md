@@ -8,27 +8,41 @@ brainfuckに変換されるプログラミング言語です。
   * A. ……
 
 ## Hello World!
-  ```
-  let fix f =
-    let g x = f (fun y -> x x y) in
-    g g
+```ocaml
+// 不動点コンビネータ (型検査器は未実装)
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
 
-  let gen_puts l = [
-    $alloc { c } in
-    *fix
-      (fun loop prev l ->
-        match l with
-        | () -> []
-        | hd . tl -> [
-            + c (hd - prev)
-            . c
-            *loop hd tl
-          ])
-      0 l
-  ]
+let fold_left f a l =
+  fix
+    (fun fold a l ->
+      match l with
+      | () -> a
+      | hd . tl -> fold (f a hd) tl
+    ) a l
 
-  codegen [ *gen_puts "Hello World!\n" ]
-  ```
+// 文列の結合
+let cat s1 s2 = [ *s1  *s2 ]
+
+// 整数のリストを引数に取り、文字列を出力する文列を返す
+let gen_puts str = [
+  $alloc { cel; } in
+  $let stmts, _ =
+    fold_left
+      (fun (stmts, prev) cha ->
+        let out = [
+          + cel (cha - prev)
+          . cel
+        ] in
+        (cat stmts out, cha)
+      ) ([], 0) str
+  in
+  *stmts
+]
+
+codegen [ *gen_puts "Hello World!\n" ]
+```
 
 
 
@@ -61,18 +75,19 @@ opam install .
 * `sample/bfi.bfr`: brainfuckインタプリタ
   ```sh
   mkdir _sandbox
-  bfre sample/bfi.bfr > _sandbox/bfi.b
-  bfre sample/hello.bfr > _sandbox/hello.b
+  cd _sandbox
+  bfre ../sample/bfi.bfr > bfi.b
+  bfre ../sample/hello.bfr > hello.b
 
   # hello.b を実行する
-  echo '\' >> _sandbox/hello.b
-  bfre -b _sandbox/bfi.b < _sandbox/hello.b
+  echo '\' >> hello.b
+  bfre -b bfi.b < hello.b
 
   # 自分自身を実行して hello.b を入力に与える
-  cp _sandbox/bfi.b _sandbox/input.txt
-  echo '\' >> _sandbox/input.txt
-  cat _sandbox/hello.b >> _sandbox/input.txt
-  bfre -b _sandbox/bfi.b < _sandbox/input.txt
+  cp bfi.b input.txt
+  echo '\' >> input.txt
+  cat hello.b >> input.txt
+  bfre -b bfi.b < input.txt
   ```
 
 ## 資料
