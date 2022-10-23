@@ -106,6 +106,7 @@ and main = parse
   | ")" { P.RPAREN (info lexbuf) }
   | "=" { P.EQ (info lexbuf) }
   | "*" { P.ASTER (info lexbuf) }
+  | "**" { P.ASTER2 (info lexbuf) }
   | "/" { P.SLASH (info lexbuf) }
   | "->" { P.ARROW (info lexbuf) }
   | "<=" { P.LEQ (info lexbuf) }
@@ -113,7 +114,6 @@ and main = parse
   | "$" { P.ST (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$build" { P.ST_BUILD (info lexbuf) }
-  | "$let" { P.ST_LET (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
   | "$iloop" { P.ST_ILOOP (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {

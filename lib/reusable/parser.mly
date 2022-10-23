@@ -16,6 +16,7 @@ open Syntax
 %token <Support.Info.info> LPAREN RPAREN
 %token <Support.Info.info> EQ
 %token <Support.Info.info> ASTER
+%token <Support.Info.info> ASTER2 // **
 %token <Support.Info.info> SLASH
 %token <Support.Info.info> ARROW  // ->
 %token <Support.Info.info> LEQ
@@ -24,7 +25,6 @@ open Syntax
 
 %token <Support.Info.info> ST  // $
 %token <Support.Info.info> ST_ALLOC ST_BUILD
-%token <Support.Info.info> ST_LET
 %token <Support.Info.info> ST_DIVE
 %token <Support.Info.info> ST_ILOOP
 
@@ -44,6 +44,7 @@ open Syntax
 %token <Syntax.UVar.t Support.Info.withinfo> UVAR
 %token <Support.Info.info> TRUE FALSE
 
+%nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match
 %nonassoc prec_if
 %nonassoc BAR
@@ -98,8 +99,8 @@ stmt_list:
   | s=stmt sl=stmt_list { s :: sl }
   | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f.v, sl) ] }
   | i=ST_BUILD f=field IN sl=stmt_list { [ withinfo i @@ StBuild (f.v, sl) ] }
-  | i=ST_LET lb=let_binding IN sl=stmt_list { [ withinfo i @@ StLet (lb, sl) ] }
-  | { [] }
+  | i=ASTER2 e=expr_full { [ withinfo i @@ StExpand e ] } %prec prec_stmts
+  | { [] } %prec prec_stmts
 
 stmt:
   | i=PLUS es=expr ei=expr? { withinfo i @@ StAdd (1, es, ei) }
@@ -163,6 +164,7 @@ expr_full:
   | i1=MATCH e=expr_full i2=WITH BAR? c=clauses {
       withinfo2 i1 i2 @@ ExMatch (e, c)
     }
+  | i=ST sl=stmt_list { withinfo i @@ ExBlock sl }
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
@@ -179,10 +181,10 @@ expr_full:
   | LEQ { BOpInt.Leq }
 
 
-pat:
+pat_full:
   | p=pat_simple { p }
-  | p1=pat DOT p2=pat { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
-  | p1=pat COMMA p2=pat { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
+  | p1=pat_full DOT p2=pat_full { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
+  | p1=pat_full COMMA p2=pat_full { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
 
 pat_simple:
   | v=VAR { withinfo v.i @@ PatVar v.v }
@@ -190,16 +192,16 @@ pat_simple:
   | i=INT { withinfo i.i @@ PatInt i.v }
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
-  | i1=LPAREN p=pat i2=RPAREN { withinfo2 i1 i2 @@ p.v }
+  | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
 
 clauses:
-  | p=pat ARROW e=expr_full { [ (p, e) ] } %prec prec_match
-  | p=pat ARROW e=expr_full BAR c=clauses { (p, e) :: c }
+  | p=pat_full ARROW e=expr_full { [ (p, e) ] } %prec prec_match
+  | p=pat_full ARROW e=expr_full BAR c=clauses { (p, e) :: c }
 
 
 let_binding:
-  | p=pat EQ e=expr_full { (p, e) }
+  | p=pat_full EQ e=expr_full { (p, e) }
   | v=VAR pl=pat_simple+ EQ e=expr_full {
       let body = List.fold_right
         (fun arg body -> withinfo2 arg.i e.i @@ ExFun (arg, body))

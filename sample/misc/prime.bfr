@@ -1,19 +1,7 @@
 // トランスパイル時に素数を列挙する
 
 import "../lib.bfr"
-
-let puti = fun n -> [
-  $alloc { x } in
-  + x '0'
-  *fix (fun loop -> fun n -> [
-    $let rest = n / 10 in
-    $let digit = n mod 10 in
-    *(if rest = 0 then []
-      else loop rest )
-    + x (digit - rest mod 10)
-    . x
-  ]) n
-]
+import "./puti.bfr"
 
 let is_prime = fun n ->
   fix

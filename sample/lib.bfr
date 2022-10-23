@@ -49,7 +49,9 @@ let gen_sub_safe src dest overflow = [
    ブロック中で sel の中身が変化しても良い
 *)
 let gen_switch sel cases default = [
-  $let cases = sort (fun (n1, _) (n2, _) -> n1 - n2) cases in
+  **let cases =
+    sort (fun (n1, _) (n2, _) -> n1 - n2) cases
+  in $
   $alloc {
     sub_src; flag_eq; flag_els
   } in

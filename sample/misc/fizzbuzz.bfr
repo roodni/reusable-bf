@@ -8,9 +8,9 @@ codegen [
     };
   } in
 
-  $let gen_counter_incr counter = [
-    $let i = counter@i in
-    $let n = i:n in
+  **let gen_counter_incr counter = [
+    **let i = counter@i in
+      let n = i:n in $
     > i
     $iloop i [
       ? n [] [ + n 10 ]
@@ -19,10 +19,10 @@ codegen [
         [ *gen_reset_index i ]
         [ + n 10  > i ]
     ]
-  ] in
+  ] in $
 
-  $let gen_counter_print counter = [
-    $let i = counter@i in
+  **let gen_counter_print counter = [
+    **let i = counter@i in $
     $dive i [
       ! i:(1)n [ > i ]
       ! i:n
@@ -35,7 +35,7 @@ codegen [
           < i
         ]
     ]
-  ] in
+  ] in $
 
   $build {
     n: cell;

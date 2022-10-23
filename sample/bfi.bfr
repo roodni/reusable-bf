@@ -18,7 +18,7 @@ $build {
 } in
 
 $dive code@p [
-  $let p = code@p in
+  **let p = code@p in $
   $alloc {
     cont; flag_next
   } in
@@ -66,7 +66,7 @@ $build {
   }
 } in
 
-$let p = code@p in
+**let p = code@p in $
 $dive p [
   $alloc { depth_cur } in
   ! p:inst [

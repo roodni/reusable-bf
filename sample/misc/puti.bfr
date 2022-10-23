@@ -1,0 +1,27 @@
+import "./lib.bfr"
+
+let puti = fun n -> [
+  $alloc { x } in
+  + x '0'
+  *fix
+    (fun loop n ->
+      let rest = n / 10 in
+      let digit = n mod 10 in
+      [ *(if rest = 0 then []
+         else loop rest )
+        + x (digit - rest mod 10)
+        . x
+      ]
+    ) n
+]
+
+let dump_ilist = fun l ->
+  fix
+    (fun iter l ->
+      match l with
+      | () -> []
+      | hd . tl -> [
+          *puti hd
+          *iter tl
+        ])
+    l

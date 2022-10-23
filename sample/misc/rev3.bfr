@@ -7,9 +7,9 @@ $build {
   };
 } in
 
-$let input_end = '\n' in
-$let p = buf@p in
-$let c = p:c in
+**let input_end = '\n' in
+  let p = buf@p in
+  let c = p:c in $
 
 $dive p [
   $alloc { f } in
