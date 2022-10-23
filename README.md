@@ -48,7 +48,7 @@ codegen [ *gen_puts "Hello World!\n" ]
 
 ### 準備
 1. [opam](https://opam.ocaml.org/) をインストールする
-2. opamで ocaml (>= 4.12) をインストールする
+2. opamで ocaml (>= 4.12 & < 4.14) をインストールする
 
 ### ビルド
 ```sh
