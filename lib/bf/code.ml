@@ -8,6 +8,22 @@ and cmd =
   | Shift of int
   | Loop of t
 
+let rec length code =
+  let safeadd x y =
+    let z = x + y in
+    if z < 0 then max_int else z
+  in
+  List.fold_left
+    (fun total cmd ->
+      match cmd with
+      | Add n | Shift n -> safeadd total (abs n)
+      | Put | Get -> safeadd total 1
+      | Loop child ->
+          safeadd total (safeadd 2 (length child))
+    )
+    0 code
+
+
 let to_buffer code =
   let buf = Buffer.create 10000 in
   let rec loop code =

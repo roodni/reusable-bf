@@ -122,6 +122,10 @@ let use_as_bfr_compiler () =
   (* bf生成 *)
   let layout = Ir.Layout.create mcounter field in
   let bf_code = Ir.BfGen.gen_bf layout ir_code in
+  if !flag_sandbox && Bf.Code.length bf_code > 100000 then begin
+    eprintf "The output code size is too large\n";
+    exit 1;
+  end;
   let bf_code_buf = Bf.Code.to_buffer bf_code in
 
   (* 詳細情報の出力 *)

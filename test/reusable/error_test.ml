@@ -60,8 +60,8 @@ let cases =
     ( "top_codegen-dup.bfr", (=) Top_Duplicated_codegen );
     ( "top_codegen-missing.bfr", (=) Top_Missing_codegen );
     ( "top_import-rec_1.bfr", (=) Top_Recursive_import );
-    ( "stackoverflow_eval.bfr", (=) Recursion_Limit );
-    ( "stackoverflow_gen.bfr", (=) Recursion_Limit );
+    ( "memory_stack_eval.bfr", (=) Recursion_Limit );
+    ( "memory_stack_gen.bfr", (=) Recursion_Limit );
   ]
 
 let tests = "non-sandbox" >::: List.map test_error cases
@@ -86,5 +86,16 @@ let sandbox_tests =
       );
     ]
 
+let too_large_bf_test = "too large bf" >:: fun _ ->
+  let bfcode =
+    Program.gen_bf_from_source "../../sample/error/memory_bfcode.bfr"
+  in
+  assert_equal max_int (Bf.Code.length bfcode)
+
 let () =
-  run_test_tt_main ("error" >::: [tests; sandbox_tests ])
+  run_test_tt_main
+    ("error" >::: [
+      tests;
+      sandbox_tests;
+      too_large_bf_test;
+    ])
