@@ -23,12 +23,14 @@ type t =
   | Top_Sandbox_import
   | Top_Duplicated_codegen
   | Top_Missing_codegen
-  | Recursion_Limit
+  | Memory_Recursion_limit
+  | Memory_Heap_limit
 
 let output ppf msg =
   let pf fs = fprintf ppf fs in
   match msg with
-  | Recursion_Limit -> pf "Recursion depth exceeded the limit"
+  | Memory_Heap_limit -> pf "Heap memory usage exceeded the limit"
+  | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
   | Top_Missing_codegen -> pf "There is no codegen declaration"
   | Top_Duplicated_codegen -> pf "The codegen declaration is duplicated"
   | Top_Sandbox_import -> pf "In sandbox mode, import is prohibited"

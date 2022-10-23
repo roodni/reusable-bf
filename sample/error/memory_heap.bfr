@@ -1,0 +1,10 @@
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+let _ =
+  fix
+    (fun f l -> f (0 . l))
+    ()
+
+codegen []

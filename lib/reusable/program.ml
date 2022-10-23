@@ -89,10 +89,23 @@ and eval_toplevels ctx (toplevels: toplevel list) : ctx =
 let gen_ir ~sandbox (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
   let ctx = init_ctx ~sandbox dirname in
-  let ctx = eval_toplevels ctx program in
-  match ctx.top_gen_opt with
-  | None -> Error.at unknown_info Top_Missing_codegen
-  | Some top_gen -> IrGen.generate ctx.envs top_gen
+  let f () =
+    let ctx = eval_toplevels ctx program in
+    match ctx.top_gen_opt with
+    | None -> Error.at unknown_info Top_Missing_codegen
+    | Some top_gen -> IrGen.generate ctx.envs top_gen
+  in
+  if not sandbox then f ()
+  else
+    let handler () =
+      let heapsize =
+        (Gc.quick_stat ()).heap_words * Sys.word_size / 8
+      in
+      if heapsize > 20_000_000 then
+        Error.at unknown_info Memory_Heap_limit;
+    in
+    let alarm = Gc.create_alarm handler in
+    Fun.protect f ~finally:(fun () -> Gc.delete_alarm alarm)
 
 let gen_bf_from_source ?(sandbox=false) path =
   let dirname = Filename.dirname path in

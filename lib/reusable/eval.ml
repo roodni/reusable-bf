@@ -135,7 +135,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
   let recn () =
     let n = recn + 1 in
     if n > 50000 then
-      Error.at info Recursion_Limit;
+      Error.at info Memory_Recursion_limit;
     n
   in
   let eval_mid envs expr =

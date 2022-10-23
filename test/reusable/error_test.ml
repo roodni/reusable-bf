@@ -2,10 +2,10 @@ open OUnit2
 open Support.Info
 open Reusable
 
-let test_error (filename, f) =
+let test_error ~sandbox (filename, f) =
   filename >:: fun _ ->
     let path = "../../sample/error/" ^ filename in
-    match Program.gen_bf_from_source path with
+    match Program.gen_bf_from_source ~sandbox path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at msg_wi ->
         if not (f msg_wi.v) then begin
@@ -60,31 +60,21 @@ let cases =
     ( "top_codegen-dup.bfr", (=) Top_Duplicated_codegen );
     ( "top_codegen-missing.bfr", (=) Top_Missing_codegen );
     ( "top_import-rec_1.bfr", (=) Top_Recursive_import );
-    ( "memory_stack_eval.bfr", (=) Recursion_Limit );
-    ( "memory_stack_gen.bfr", (=) Recursion_Limit );
+    ( "memory_stack_eval.bfr", (=) Memory_Recursion_limit );
+    ( "memory_stack_gen.bfr", (=) Memory_Recursion_limit );
   ]
 
-let tests = "non-sandbox" >::: List.map test_error cases
+let normal_tests = "normal" >::: List.map (test_error ~sandbox:false) cases
 
 let sandbox_tests =
+  let open Error in
   "sandbox" >:::
-    [ ("prohibited-import_1" >:: fun _ ->
-        match
-          Program.gen_bf_from_source ~sandbox:true
-            "../../sample/error/top_prohibited-import_normal.bfr"
-        with
-        | _ -> assert_failure "No error"
-        | exception Error.Exn_at { i=_; v=Top_Sandbox_import } -> ()
-      );
-      ("prohibited-import_2" >:: fun _ ->
-        match
-          Program.gen_bf_from_source ~sandbox:true
-            "../../sample/error/top_prohibited-import_as.bfr"
-        with
-        | _ -> assert_failure "No error"
-        | exception Error.Exn_at { i=_; v=Top_Sandbox_import } -> ()
-      );
-    ]
+    List.map
+      (test_error ~sandbox:true)
+      [ ( "memory_heap.bfr", (=) Memory_Heap_limit );
+        ( "top_prohibited-import_normal.bfr", (=) Top_Sandbox_import );
+        ( "top_prohibited-import_as.bfr", (=) Top_Sandbox_import );
+      ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
@@ -95,7 +85,7 @@ let too_large_bf_test = "too large bf" >:: fun _ ->
 let () =
   run_test_tt_main
     ("error" >::: [
-      tests;
+      normal_tests;
       sandbox_tests;
       too_large_bf_test;
     ])

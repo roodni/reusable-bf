@@ -22,7 +22,7 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
         let gen ctx st_list =
           let ctx = { ctx with recn = ctx.recn + 1 } in
           if ctx.recn > 10000 then
-            Error.at info Recursion_Limit;
+            Error.at info Memory_Recursion_limit;
           gen ctx st_list
         in
         let eval = Eval.eval ~recn:0 in
