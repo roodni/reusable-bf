@@ -192,7 +192,25 @@ let use_as_bfr_compiler () =
 (* entrypoint *)
 let () =
   parse_args ();
-  if !flag_bf
-    then use_as_bf_interpreter ()
-    else use_as_bfr_compiler ();
+  if !flag_bf then use_as_bf_interpreter ()
+  else begin
+    if not !flag_sandbox then use_as_bfr_compiler ()
+    else begin
+      (* ヒープ使用量に制限をかけて実行する *)
+      let handler () =
+        let heapsize =
+          (Gc.quick_stat ()).heap_words * Sys.word_size / 8
+        in
+        if heapsize > 20_000_000 then
+          raise Out_of_memory;
+      in
+      let alarm = Gc.create_alarm handler in
+      try
+        Fun.protect use_as_bfr_compiler
+          ~finally:(fun () -> Gc.delete_alarm alarm)
+      with Out_of_memory ->
+        eprintf "Heap usage exceeded the limit";
+        exit 1;
+    end;
+  end;
 ;;

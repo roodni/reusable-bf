@@ -71,14 +71,13 @@ let sandbox_tests =
   "sandbox" >:::
     List.map
       (test_error ~sandbox:true)
-      [ ( "memory_heap.bfr", (=) Memory_Heap_limit );
-        ( "top_prohibited-import_normal.bfr", (=) Top_Sandbox_import );
+      [ ( "top_prohibited-import_normal.bfr", (=) Top_Sandbox_import );
         ( "top_prohibited-import_as.bfr", (=) Top_Sandbox_import );
       ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
-    Program.gen_bf_from_source "../../sample/error/memory_bfcode.bfr"
+    Program.gen_bf_from_source "../../sample/error/manual/large-bfcode.bfr"
   in
   assert_equal max_int (Bf.Code.length bfcode)
 

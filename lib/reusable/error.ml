@@ -24,12 +24,10 @@ type t =
   | Top_Duplicated_codegen
   | Top_Missing_codegen
   | Memory_Recursion_limit
-  | Memory_Heap_limit
 
 let output ppf msg =
   let pf fs = fprintf ppf fs in
   match msg with
-  | Memory_Heap_limit -> pf "Heap memory usage exceeded the limit"
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
   | Top_Missing_codegen -> pf "There is no codegen declaration"
   | Top_Duplicated_codegen -> pf "The codegen declaration is duplicated"

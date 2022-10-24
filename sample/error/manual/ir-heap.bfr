@@ -1,0 +1,18 @@
+// IRの生存解析で爆発する
+
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+codegen $
+
+*fix
+  (fun f n ->
+    if n <= 0 then []
+    else
+      [ $build { x } in
+        + x
+        *f (n - 1)
+        *f (n - 1)
+      ]
+  ) 12
