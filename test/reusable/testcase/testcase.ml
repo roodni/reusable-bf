@@ -82,6 +82,10 @@ let cases =
       io_list = [ ("", "!!") ];
       filename = "sample/misc/bug_diving_cell_reset_fail.bfr";
     };
+    { name = "bop";
+      io_list = [ ("", "O") ];
+      filename = "sample/misc/bop.bfr";
+    };
   ]
   |> List.map
     (fun case -> { case with filename="../../" ^ case.filename })

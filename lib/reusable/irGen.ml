@@ -155,9 +155,6 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             (* ゼロ初期化は開始時と終了時に行う
                IRの最適化である程度消える *)
             ((), code_clean @ code_child @ code_clean)
-        | StLet (binding, st_list) ->
-            let envs = Eval.eval_let_binding ~export:false ~recn:0 ctx.envs binding in
-            gen { ctx with envs } st_list
         | StExpand ex_block ->
             let envs, st_list = eval envs ex_block |> to_block ex_block.i in
             gen { ctx with envs } st_list

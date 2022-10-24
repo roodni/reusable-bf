@@ -225,16 +225,27 @@ and eval ~recn (envs: envs) (expr: expr) : value =
           else VaInt (left mod right)
       | Lt -> VaBool (left < right)
       | Leq -> VaBool (left <= right)
+      | Gt -> VaBool (left > right)
+      | Geq -> VaBool (left >= right)
     end
+  | ExAnd (ex1, ex2) ->
+      let va1 = eval_mid envs ex1 |> to_bool ex1.i in
+      if va1 then eval_tail envs ex2
+      else VaBool false
+  | ExOr (ex1, ex2) ->
+      let va2 = eval_mid envs ex1 |> to_bool ex1.i in
+      if va2 then VaBool true
+      else eval_tail envs ex2
   | ExMinus ex_int ->
       let i = eval_mid envs ex_int |> to_int ex_int.i in
       VaInt (-i)
-  | ExEqual (ex_left, ex_right) -> begin
+  | ExEqual (neg, ex_left, ex_right) -> begin
       let left = eval_mid envs ex_left in
       let right = eval_mid envs ex_right in
-      match equal left right with
-      | Some b -> VaBool b
-      | None -> Error.at info Eval_Equal_failed
+      match equal left right, neg with
+      | Some b, `Eq -> VaBool b
+      | Some b, `Neq -> VaBool (not b)
+      | None, _ -> Error.at info Eval_Equal_failed
     end
   | ExIf (ex_cond, ex_then, ex_else) ->
       let cond = eval_mid envs ex_cond |> to_bool ex_cond.i in
@@ -244,7 +255,6 @@ and eval ~recn (envs: envs) (expr: expr) : value =
         eval_let_binding ~export:false ~recn:(recn ()) envs binding
       in
       eval_tail envs_let expr
-  | ExNil -> VaList []
   | ExCons (ex_head, ex_tail) ->
       let head = eval_mid envs ex_head in
       let tail = eval_mid envs ex_tail |> to_list ex_tail.i in

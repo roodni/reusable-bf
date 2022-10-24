@@ -33,8 +33,10 @@ module Field = struct
       }
 end
 
-module BOpInt = struct
-  type t = Add | Sub | Mul | Div | Mod | Lt | Leq
+module BOp = struct
+  type op_int =
+    | Add | Sub | Mul | Div | Mod
+    | Lt | Leq | Gt | Geq
 end
 
 type pat = pat' withinfo
@@ -47,21 +49,7 @@ and pat' =
   | PatInt of int
   | PatBool of bool
 
-type stmt = stmt' withinfo
-and stmt' =
-  | StAdd of int * expr * expr option  (* sign, sel, int *)
-  | StPut of expr
-  | StGet of expr
-  | StWhile of expr * stmt list
-  | StIf of expr * stmt list * stmt list option
-  | StILoop of expr * stmt list
-  | StShift of int * expr * expr option  (* sign, ptr, int *)
-  | StAlloc of Field.t * stmt list
-  | StBuild of Field.t * stmt list
-  | StLet of let_binding * stmt list
-  | StExpand of expr
-  | StDive of expr * stmt list
-and expr = expr' withinfo
+type expr = expr' withinfo
 and expr' =
   | ExVar of Var.t
   | ExModuleVar of UVar.t * Var.t
@@ -73,17 +61,32 @@ and expr' =
   | ExFun of pat * expr
   | ExApp of expr * expr
   | ExBlock of stmt list
-  | ExBOpInt of expr * BOpInt.t * expr
+  | ExAnd of expr * expr
+  | ExOr of expr * expr
+  | ExBOpInt of expr * BOp.op_int * expr
   | ExMinus of expr
-  | ExEqual of expr * expr
+  | ExEqual of [`Eq | `Neq] * expr * expr
   | ExIf of expr * expr * expr
   | ExLet of let_binding * expr
-  | ExNil
   | ExCons of expr * expr
   | ExList of expr list
   | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
 and let_binding = pat * expr
+
+and stmt = stmt' withinfo
+and stmt' =
+  | StAdd of int * expr * expr option  (* sign, cell, int *)
+  | StPut of expr
+  | StGet of expr
+  | StWhile of expr * stmt list
+  | StIf of expr * stmt list * stmt list option
+  | StILoop of expr * stmt list
+  | StShift of int * expr * expr option  (* sign, index, int *)
+  | StAlloc of Field.t * stmt list
+  | StBuild of Field.t * stmt list
+  | StExpand of expr
+  | StDive of expr * stmt list
 
 type toplevel = toplevel' withinfo
 and toplevel' =

@@ -15,14 +15,17 @@ open Syntax
 %token <Support.Info.info> ATAT // @@
 %token <Support.Info.info> SEMI
 %token <Support.Info.info> LPAREN RPAREN
-%token <Support.Info.info> EQ
+%token <Support.Info.info> EQ NEQ LEQ GEQ
 %token <Support.Info.info> ASTER
 %token <Support.Info.info> ASTER2 // **
 %token <Support.Info.info> SLASH
 %token <Support.Info.info> ARROW  // ->
-%token <Support.Info.info> LEQ
-%token <Support.Info.info> BAR
 %token <Support.Info.info> UNDER
+%token <Support.Info.info> BAR
+%token <Support.Info.info> BARBAR // ||
+%token <Support.Info.info> ANDAND // &&
+
+
 
 %token <Support.Info.info> ST  // $
 %token <Support.Info.info> ST_ALLOC ST_BUILD
@@ -50,7 +53,9 @@ open Syntax
 %nonassoc prec_if
 %nonassoc BAR
 %right COMMA
-%left LSHIFT LEQ EQ
+%right BARBAR
+%right ANDAND
+%left LSHIFT RSHIFT LEQ GEQ EQ NEQ
 %right ATAT
 %right DOT
 %left PLUS MINUS
@@ -139,7 +144,7 @@ expr:
   | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ ExList (e :: l)
     }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 ExNil }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList [] }
 
 expr_semi_list:
   | e=expr_full SEMI l=expr_semi_list { e :: l }
@@ -167,22 +172,26 @@ expr_full:
       withinfo2 i1 i2 @@ ExMatch (e, c)
     }
   | i=ST sl=stmt_list { withinfo i @@ ExBlock sl }
+  | e1=expr_full ANDAND e2=expr_full { withinfo2 e1.i e2.i @@ ExAnd (e1, e2) }
+  | e1=expr_full BARBAR e2=expr_full { withinfo2 e1.i e2.i @@ ExOr (e1, e2) }
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
-  | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
+  | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Eq, e1, e2) }
+  | e1=expr_full NEQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Neq, e1, e2) }
   | e1=expr_full ATAT e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e1, e2) }
   | e1=expr_full DOT e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
   | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
 
 %inline bop_int:
-  | PLUS { BOpInt.Add }
-  | MINUS { BOpInt.Sub }
-  | ASTER { BOpInt.Mul }
-  | SLASH { BOpInt.Div }
-  | MOD { BOpInt.Mod }
-  | LSHIFT { BOpInt.Lt }
-  | LEQ { BOpInt.Leq }
-
+  | PLUS { BOp.Add }
+  | MINUS { BOp.Sub }
+  | ASTER { BOp.Mul }
+  | SLASH { BOp.Div }
+  | MOD { BOp.Mod }
+  | LSHIFT { BOp.Lt }
+  | RSHIFT { BOp.Gt }
+  | LEQ { BOp.Leq }
+  | GEQ { BOp.Geq }
 
 pat_full:
   | p=pat_simple { p }

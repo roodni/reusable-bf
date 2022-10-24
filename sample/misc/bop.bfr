@@ -1,0 +1,37 @@
+let t, f = true, false
+
+let res = (
+  1 < 2; 2 < 2; 3 < 2;
+  1 > 2; 2 > 2; 3 > 2;
+  1 <= 2; 2 <= 2; 3 <= 2;
+  1 >= 2; 2 >= 2; 3 >= 2;
+  f && f; f && t; t && f; t && t;
+  f || f; f || t; t || f; t || t;
+  1 = 1; 1 = 2;
+  1 <> 1; 1 <> 2;
+  1 < 2 && 3 < 2;
+  1 < 2 || 3 < 2;
+)
+
+let expe = (
+  t; f; f;
+  f; f; t;
+  t; t; f;
+  f; t; t;
+  f; f; f; t;
+  f; t; t; t;
+  t; f;
+  f; t;
+  f;
+  t;
+)
+
+codegen [
+  $build {x} in
+  *(if res = expe then $
+     + x 'O'
+    else $
+     + x 'X'
+   )
+  . x
+]
