@@ -12,6 +12,7 @@ open Syntax
 %token <Support.Info.info> LBRACE RBRACE
 %token <Support.Info.info> COLON
 %token <Support.Info.info> AT
+%token <Support.Info.info> ATAT // @@
 %token <Support.Info.info> SEMI
 %token <Support.Info.info> LPAREN RPAREN
 %token <Support.Info.info> EQ
@@ -50,6 +51,7 @@ open Syntax
 %nonassoc BAR
 %right COMMA
 %left LSHIFT LEQ EQ
+%right ATAT
 %right DOT
 %left PLUS MINUS
 %left ASTER SLASH MOD
@@ -168,6 +170,7 @@ expr_full:
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
   | e1=expr_full bop=bop_int e2=expr_full { withinfo2 e1.i e2.i @@ ExBOpInt (e1, bop, e2) }
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (e1, e2) }
+  | e1=expr_full ATAT e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e1, e2) }
   | e1=expr_full DOT e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
   | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
 

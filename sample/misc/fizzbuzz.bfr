@@ -1,41 +1,46 @@
 import "./lib.bfr"
 
-codegen [
+let gen_counter_build st = [
   $build {
     counter: array(_) {
       n: cell;
       i: index;
     };
   } in
+  *st counter
+]
 
-  **let gen_counter_incr counter = [
-    **let i = counter@i in
-      let n = i:n in $
-    > i
-    $iloop i [
-      ? n [] [ + n 10 ]
-      - n
-      ? n
-        [ *gen_reset_index i ]
-        [ + n 10  > i ]
-    ]
-  ] in $
+let gen_counter_incr counter = [
+  **let i = counter@i in
+    let n = i:n in $
+  > i
+  $iloop i [
+    ? n [] [ + n 10 ]
+    - n
+    ? n
+      [ *gen_reset_index i ]
+      [ + n 10  > i ]
+  ]
+]
 
-  **let gen_counter_print counter = [
-    **let i = counter@i in $
-    $dive i [
-      ! i:(1)n [ > i ]
-      ! i:n
-        [ $alloc { x: cell; } in
-          + x ('9' + 1)
-          *gen_add_multi i:n x (-1)
-          . x
-          + i:n ('9' + 1)
-          *gen_add_multi x i:n (-1)
-          < i
-        ]
-    ]
-  ] in $
+let gen_counter_print counter = [
+  **let i = counter@i in $
+  $dive i [
+    ! i:(1)n [ > i ]
+    ! i:n
+      [ $alloc { x: cell; } in
+        + x ('9' + 1)
+        *gen_add_multi i:n x (-1)
+        . x
+        + i:n ('9' + 1)
+        *gen_add_multi x i:n (-1)
+        < i
+      ]
+  ]
+]
+
+codegen [
+  **gen_counter_build @@ fun counter -> $
 
   $build {
     n: cell;
