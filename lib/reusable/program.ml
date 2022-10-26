@@ -60,9 +60,14 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
   in
   match toplevel.v with
   | TopLet binding ->
+      ( let pat, expr = binding in
+        validate_pat_depth 0 pat;
+        validate_expr_depth 0 expr;
+      );
       let envs = Eval.eval_let_binding ~export:true ~recn:0 ctx.envs binding in
       { ctx with envs }
   | TopCodegen top_gen ->
+      validate_stmts_depth 0 top_gen;
       if ctx.top_gen_opt <> None then
         Error.at toplevel.i Top_Duplicated_codegen
       else

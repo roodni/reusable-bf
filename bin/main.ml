@@ -209,7 +209,7 @@ let () =
         Fun.protect use_as_bfr_compiler
           ~finally:(fun () -> Gc.delete_alarm alarm)
       with Out_of_memory ->
-        eprintf "Heap usage exceeded the limit";
+        eprintf "Heap usage exceeded the limit\n";
         exit 1;
     end;
   end;

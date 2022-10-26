@@ -31,6 +31,19 @@ module Field = struct
         length : int option;
         mem : t;
       }
+
+  let rec validate_depth n (field: t) =
+    if n > 100 then failwith "Too deep field";
+    let validate_depth = validate_depth (n + 1) in
+    List.iter
+      (fun { i=_; v=(_, mtype) } ->
+        match mtype with
+        | Cell | Index -> ();
+        | Array { mem; length=_; } ->
+            validate_depth mem;
+      )
+      field;
+  ;;
 end
 
 module BOp = struct
@@ -97,3 +110,72 @@ and toplevel' =
 and top_gen = stmt list
 
 type program = toplevel list
+
+
+let rec validate_pat_depth n (pat: pat) =
+  if n > 10000 then failwith "too deep pattern";
+  let validate_pat_depth = validate_pat_depth (n + 1) in
+  match pat.v with
+  | PatVar _ | PatWild | PatNil | PatInt _ | PatBool _ -> ();
+  | PatCons (p1, p2) | PatPair (p1, p2) ->
+      validate_pat_depth p1;
+      validate_pat_depth p2;
+;;
+
+let rec validate_expr_depth n (expr: expr) =
+  if n > 10000 then failwith "too deep expression";
+  let validate_expr_depth = validate_expr_depth (n + 1) in
+  match expr.v with
+  | ExVar _ | ExModuleVar _
+  | ExInt _ | ExBool _ | ExStr _ -> ();
+  | ExSelMem (ex, exopt, _) ->
+      validate_expr_depth ex;
+      Option.iter validate_expr_depth exopt;
+  | ExSelIdx (ex, _) -> validate_expr_depth ex;
+  | ExFun (pat, ex) ->
+      validate_pat_depth 0 pat;
+      validate_expr_depth ex;
+  | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
+  | ExBOpInt (e1, _, e2) | ExEqual (_, e1, e2)
+  | ExCons (e1, e2) | ExPair (e1, e2) ->
+      List.iter validate_expr_depth [e1; e2];
+  | ExMinus ex -> validate_expr_depth ex;
+  | ExIf (e1, e2, e3) ->
+      List.iter validate_expr_depth [e1; e2; e3];
+  | ExBlock stmts ->
+      validate_stmts_depth (n + 1) stmts;
+  | ExLet ((pat, ex1), ex2) ->
+      validate_pat_depth 0 pat;
+      List.iter validate_expr_depth [ex1; ex2];
+  | ExList el -> List.iter validate_expr_depth el;
+  | ExMatch (e0, bindings) ->
+      validate_expr_depth e0;
+      List.iter
+        (fun (pat, ex) ->
+          validate_pat_depth 0 pat;
+          validate_expr_depth ex; )
+        bindings;
+and validate_stmts_depth n (stmts: stmt list) =
+  if n > 10000 then failwith "too deep statements";
+  let validate_stmts_depth = validate_stmts_depth (n + 1) in
+  let validate_expr_depth = validate_expr_depth (n + 1) in
+  List.iter
+    (fun st -> match st.v with
+      | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
+          validate_expr_depth ex;
+          Option.iter validate_expr_depth exopt;
+      | StPut ex | StGet ex | StExpand ex ->
+          validate_expr_depth ex;
+      | StWhile (ex, stmts) | StILoop (ex, stmts) | StDive (ex, stmts) ->
+          validate_expr_depth ex;
+          validate_stmts_depth stmts;
+      | StIf (ex, ss, ssopt) ->
+          validate_expr_depth ex;
+          validate_stmts_depth ss;
+          Option.iter validate_stmts_depth ssopt;
+      | StAlloc (field, stmts) | StBuild (field, stmts) ->
+          Field.validate_depth 0 field;
+          validate_stmts_depth stmts;
+    )
+    stmts
+;;
