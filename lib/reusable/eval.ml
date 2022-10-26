@@ -66,22 +66,27 @@ module Value = struct
     | _ -> Error.at info @@ Eval_Wrong_data_type "array or index selector"
 
   let equal x y =
-    let rec equal x y =
-      match x, y with
-      | VaInt x, VaInt y -> x = y
-      | VaBool x, VaBool y -> x = y
-      | VaCellSel x, VaCellSel y
-      | VaArraySel (x, _), VaArraySel (y, _) -> x = y
-      | VaIndexSel (x, _), VaIndexSel (y, _) -> x = y
-      | VaList x, VaList y -> begin
-          try List.for_all2 equal x y with
-          | Invalid_argument _ -> false
+    let rec loop = function
+      | [] -> Some true
+      | (x, y) :: rest -> begin
+          match x, y with
+          | VaInt x, VaInt y -> if x = y then loop rest else Some false
+          | VaBool x, VaBool y -> if x = y then loop rest else Some false
+          | VaCellSel x, VaCellSel y
+          | VaArraySel (x, _), VaArraySel (y, _) -> if x = y then loop rest else Some false
+          | VaIndexSel (x, _), VaIndexSel (y, _) -> if x = y then loop rest else Some false
+          | VaList xl, VaList yl ->
+              if List.(length xl <> length yl) then Some false
+              else
+                let rest =
+                  List.fold_left2 (fun r x y -> (x, y) :: r) rest xl yl
+                in
+                loop rest
+          | VaPair (x1, x2), VaPair (y1, y2) -> loop ((x1, y1) :: (x2, y2) :: rest)
+          | _ -> None
         end
-      | VaPair (x1, x2), VaPair (y1, y2) -> equal x1 y1 && equal x2 y2
-      | _ -> raise Exit
     in
-    try Some (equal x y) with
-    | Exit -> None
+    loop [(x, y)]
 
   let extend_env_with_irid_env
       (diving: Ir.Sel.index option) (irid_env: IrIdEnv.t) (env: va_env) =
