@@ -159,9 +159,10 @@ expr_appable:
 expr_full:
   | e=expr_appable { e }
   | i=FUN pl=pat_simple+ ARROW e=expr_full {
-      List.fold_right
-        (fun arg body -> withinfo2 i e.i @@ ExFun (arg, body))
-        pl e
+      List.rev pl
+      |> List.fold_left
+        (fun body arg -> withinfo2 i e.i @@ ExFun (arg, body))
+        e
     } %prec prec_fun
   | i=IF ec=expr_full THEN et=expr_full ELSE ee=expr_full {
       withinfo2 i ee.i @@ ExIf (ec, et, ee)
@@ -216,9 +217,11 @@ clauses:
 let_binding:
   | p=pat_full EQ e=expr_full { (p, e) }
   | v=VAR pl=pat_simple+ EQ e=expr_full {
-      let body = List.fold_right
-        (fun arg body -> withinfo2 arg.i e.i @@ ExFun (arg, body))
-        pl e
+      let body =
+        List.rev pl
+        |> List.fold_left
+          (fun body arg -> withinfo2 arg.i e.i @@ ExFun (arg, body))
+          e
       in
       (withinfo v.i @@ PatVar v.v, body)
     }

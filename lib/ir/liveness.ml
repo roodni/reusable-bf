@@ -14,7 +14,9 @@ module CellSet = struct
     | _ -> assert false
 
   let to_string cs =
-    elements cs |> List.map Id.number_only_name |> String.concat ", " |> Printf.sprintf "{%s}"
+    to_seq cs |> Seq.map Id.number_only_name
+    |> List.of_seq |> String.concat ", "
+    |> Printf.sprintf "{%s}"
 end
 
 type table = { mutable live_out: CellSet.t }
@@ -214,6 +216,7 @@ end = struct
           (fun cell ->
             let rec try_color i =
               if !color_num <= i then color_num := i + 1;
+              assert (!color_num < 200000);
               let possible =
                 CellSet.for_all
                   (fun succ_cell -> Hashtbl.find_opt cell_to_color succ_cell <> Some i)
