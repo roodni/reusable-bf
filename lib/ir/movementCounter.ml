@@ -119,7 +119,7 @@ let from_code (code: 'a Code.t): t =
   let code = Code.delete_annot code in
   let tbl = Hashtbl.create 200 in
   let rec scan_code initial_sel code =
-    List.fold_left
+    LList.fold_left
       (fun curr_sel Code.{ cmd; _ } ->
         match cmd with
         | Code.Add (0, _) -> curr_sel

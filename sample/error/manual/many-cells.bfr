@@ -1,0 +1,26 @@
+// セルが極端に多い場合
+// layout出力でセグフォを出さないように注意
+
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+codegen $
+
+*fix
+  (fun f n ->
+    if n <= 0 then []
+    else
+      [ $alloc { x } in
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+        *f (n - 1)
+      ]
+  ) 7

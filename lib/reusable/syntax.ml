@@ -1,3 +1,4 @@
+open Support.Pervasive
 open Support.Info
 
 module type VarS = sig
@@ -23,7 +24,7 @@ module UVar : VarS = struct
 end
 
 module Field = struct
-  type t = (Var.t * mtype) withinfo list
+  type t = (Var.t * mtype) withinfo llist
   and mtype =
     | Cell
     | Index
@@ -35,7 +36,7 @@ module Field = struct
   let rec validate_depth n (field: t) =
     if n > 100 then failwith "Too deep field";
     let validate_depth = validate_depth (n + 1) in
-    List.iter
+    LList.iter
       (fun { i=_; v=(_, mtype) } ->
         match mtype with
         | Cell | Index -> ();
@@ -73,7 +74,7 @@ and expr' =
   | ExSelIdx of expr * Var.t
   | ExFun of pat * expr
   | ExApp of expr * expr
-  | ExBlock of stmt list
+  | ExBlock of stmts
   | ExAnd of expr * expr
   | ExOr of expr * expr
   | ExBOpInt of expr * BOp.op_int * expr
@@ -82,24 +83,24 @@ and expr' =
   | ExIf of expr * expr * expr
   | ExLet of let_binding * expr
   | ExCons of expr * expr
-  | ExList of expr list
-  | ExMatch of expr * (pat * expr) list
+  | ExList of expr llist
+  | ExMatch of expr * (pat * expr) llist
   | ExPair of expr * expr
 and let_binding = pat * expr
 
-and stmt = stmt' withinfo
+and stmts = stmt' withinfo llist
 and stmt' =
   | StAdd of int * expr * expr option  (* sign, cell, int *)
   | StPut of expr
   | StGet of expr
-  | StWhile of expr * stmt list
-  | StIf of expr * stmt list * stmt list option
-  | StILoop of expr * stmt list
+  | StWhile of expr * stmts
+  | StIf of expr * stmts * stmts option
+  | StILoop of expr * stmts
   | StShift of int * expr * expr option  (* sign, index, int *)
-  | StAlloc of Field.t * stmt list
-  | StBuild of Field.t * stmt list
+  | StAlloc of Field.t * stmts
+  | StBuild of Field.t * stmts
   | StExpand of expr
-  | StDive of expr * stmt list
+  | StDive of expr * stmts
 
 type toplevel = toplevel' withinfo
 and toplevel' =
@@ -107,9 +108,9 @@ and toplevel' =
   | TopCodegen of top_gen
   | TopImport of string
   | TopImportAs of string * UVar.t
-and top_gen = stmt list
+and top_gen = stmts
 
-type program = toplevel list
+type program = toplevel llist
 
 
 let rec validate_pat_depth n (pat: pat) =
@@ -147,19 +148,19 @@ let rec validate_expr_depth n (expr: expr) =
   | ExLet ((pat, ex1), ex2) ->
       validate_pat_depth 0 pat;
       List.iter validate_expr_depth [ex1; ex2];
-  | ExList el -> List.iter validate_expr_depth el;
+  | ExList el -> LList.iter validate_expr_depth el;
   | ExMatch (e0, bindings) ->
       validate_expr_depth e0;
-      List.iter
+      LList.iter
         (fun (pat, ex) ->
           validate_pat_depth 0 pat;
           validate_expr_depth ex; )
         bindings;
-and validate_stmts_depth n (stmts: stmt list) =
+and validate_stmts_depth n (stmts: stmts) =
   if n > 10000 then failwith "too deep statements";
   let validate_stmts_depth = validate_stmts_depth (n + 1) in
   let validate_expr_depth = validate_expr_depth (n + 1) in
-  List.iter
+  LList.iter
     (fun st -> match st.v with
       | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
           validate_expr_depth ex;

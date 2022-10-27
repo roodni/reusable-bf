@@ -1,4 +1,5 @@
 open OUnit2
+open Support.Pervasive
 open Bf
 
 let test = "parse" >::: [
@@ -6,7 +7,7 @@ let test = "parse" >::: [
       let s = "+++ +-+>>>*><>" in
       let bf = Code.parse (Stream.of_string s) in
       assert_equal
-        [ Code.Add 4; Code.Shift 4 ]
+        (llist [ Code.Add 4; Shift 4 ])
         bf
     );
   "lbracket" >:: (fun _ ->

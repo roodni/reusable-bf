@@ -1,4 +1,5 @@
 %{
+open Support.Pervasive
 open Support.Info
 open Syntax
 %}
@@ -67,21 +68,21 @@ open Syntax
 %%
 
 program:
-  | ts=toplevel_list EOF { ts }
+  | ts=toplevel_list EOF { llist ts }
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
-  | i=CODEGEN ST sl=stmt_list { [withinfo i @@ TopCodegen sl] }
+  | i=CODEGEN ST sl=stmts { [withinfo i @@ TopCodegen sl] }
   | { [] }
 
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
-  | i=CODEGEN LBRACKET sl=stmt_list RBRACKET { withinfo i @@ TopCodegen sl }
+  | i=CODEGEN LBRACKET sl=stmts RBRACKET { withinfo i @@ TopCodegen sl }
   | i=IMPORT p=STRING { withinfo i @@ TopImport p.v }
   | i=IMPORT p=STRING AS u=UVAR { withinfo i @@ TopImportAs (p.v, u.v) }
 
 field:
-  | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 el }
+  | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 @@ llist el }
 
 field_elm_list:
   | e=field_elm SEMI el=field_elm_list { e :: el }
@@ -102,12 +103,12 @@ field_elm_mtype:
       withinfo2 i f.i @@ Field.Array { length=None; mem=f.v; }
     }
 
-stmt_list:
-  | s=stmt sl=stmt_list { s :: sl }
-  | i=ST_ALLOC f=field IN sl=stmt_list { [ withinfo i @@ StAlloc (f.v, sl) ] }
-  | i=ST_BUILD f=field IN sl=stmt_list { [ withinfo i @@ StBuild (f.v, sl) ] }
-  | i=ASTER2 e=expr_full { [ withinfo i @@ StExpand e ] } %prec prec_stmts
-  | { [] } %prec prec_stmts
+stmts:
+  | s=stmt sl=stmts { lcons s sl }
+  | i=ST_ALLOC f=field IN sl=stmts { llist [ withinfo i @@ StAlloc (f.v, sl) ] }
+  | i=ST_BUILD f=field IN sl=stmts { llist [ withinfo i @@ StBuild (f.v, sl) ] }
+  | i=ASTER2 e=expr_full { llist [ withinfo i @@ StExpand e ] } %prec prec_stmts
+  | { lnil } %prec prec_stmts
 
 stmt:
   | i=PLUS es=expr ei=expr? { withinfo i @@ StAdd (1, es, ei) }
@@ -116,15 +117,15 @@ stmt:
   | i=COMMA e=expr { withinfo i @@ StGet e }
   | i=RSHIFT ep=expr { withinfo i @@ StShift (1, ep, None) }
   | i=LSHIFT ep=expr { withinfo i @@ StShift (-1, ep, None) }
-  | i=EXCL e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StWhile (e, sl) }
-  | i=QUES e=expr LBRACKET sl_t=stmt_list RBRACKET LBRACKET sl_e=stmt_list RBRACKET {
+  | i=EXCL e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StWhile (e, sl) }
+  | i=QUES e=expr LBRACKET sl_t=stmts RBRACKET LBRACKET sl_e=stmts RBRACKET {
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
-  | i=ST_ILOOP e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StILoop (e, sl) }
+  | i=ST_ILOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StILoop (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
-  | i=ST_ALLOC f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
-  | i=ST_BUILD f=field LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StBuild (f.v, sl) }
-  | i=ST_DIVE e=expr LBRACKET sl=stmt_list RBRACKET { withinfo i @@ StDive (e, sl) }
+  | i=ST_ALLOC f=field LBRACKET sl=stmts RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
+  | i=ST_BUILD f=field LBRACKET sl=stmts RBRACKET { withinfo i @@ StBuild (f.v, sl) }
+  | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
   | v=VAR { withinfo v.i @@ ExVar v.v }
@@ -139,12 +140,12 @@ expr:
       withinfo2 es.i v.i @@ ExSelMem (es, Some ei, v.v)
     }
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
-  | i1=LBRACKET sl=stmt_list i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
+  | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
   | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
-      withinfo2 i1 i2 @@ ExList (e :: l)
+      withinfo2 i1 i2 @@ ExList (llist (e :: l))
     }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList [] }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
 
 expr_semi_list:
   | e=expr_full SEMI l=expr_semi_list { e :: l }
@@ -171,7 +172,7 @@ expr_full:
   | i1=MATCH e=expr_full i2=WITH BAR? c=clauses {
       withinfo2 i1 i2 @@ ExMatch (e, c)
     }
-  | i=ST sl=stmt_list { withinfo i @@ ExBlock sl }
+  | i=ST sl=stmts { withinfo i @@ ExBlock sl }
   | e1=expr_full ANDAND e2=expr_full { withinfo2 e1.i e2.i @@ ExAnd (e1, e2) }
   | e1=expr_full BARBAR e2=expr_full { withinfo2 e1.i e2.i @@ ExOr (e1, e2) }
   | i=MINUS e=expr_full { withinfo2 i e.i @@ ExMinus e }
@@ -208,8 +209,8 @@ pat_simple:
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
 
 clauses:
-  | p=pat_full ARROW e=expr_full { [ (p, e) ] } %prec prec_match
-  | p=pat_full ARROW e=expr_full BAR c=clauses { (p, e) :: c }
+  | p=pat_full ARROW e=expr_full { llist [(p, e)] } %prec prec_match
+  | p=pat_full ARROW e=expr_full BAR c=clauses { lcons (p, e) c }
 
 
 let_binding:

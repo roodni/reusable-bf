@@ -1,3 +1,5 @@
+open Support.Pervasive
+
 (** ポインタ移動コードを生成するためのテープ位置 (コード生成に利用) *)
 type t =
   | Cell of int
@@ -97,15 +99,15 @@ let rec gen_bf_move_root { offset_of_index_in_array; size_of_members; child_pos;
     | Cell offset -> offset
     | Index child -> child.offset_of_head_in_parent
   in
-  let code_origin_to_head = [
+  let code_origin_to_head = ~~[
     Bf.Code.Shift (offset_of_index_in_array -origin_offset_in_array -size_of_members);
-    Bf.Code.Loop [
+    Bf.Code.Loop ~~[
       Bf.Code.Shift (-size_of_members)
     ]
   ] in
   match child_pos with
   | Cell _ -> code_origin_to_head
-  | Index child -> gen_bf_move_root child @ code_origin_to_head
+  | Index child -> gen_bf_move_root child @+ code_origin_to_head
 
 (** [gen_bf_move origin dest]  [origin]から[dest]に移動するコードを生成する *)
 let rec gen_bf_move origin dest: Bf.Code.t =
@@ -119,13 +121,13 @@ let rec gen_bf_move origin dest: Bf.Code.t =
       gen_bf_move origin.child_pos dest.child_pos
   | Index origin, dest ->
       gen_bf_move_root origin
-        @ gen_bf_move (Cell origin.offset_of_head_in_parent) dest
+        @+ gen_bf_move (Cell origin.offset_of_head_in_parent) dest
   | Cell origin, Index dest ->
-      let code = [
+      let code = ~~[
         Bf.Code.Shift (dest.offset_of_head_in_parent +dest.size_of_members -origin);
-        Bf.Code.Loop [
+        Bf.Code.Loop ~~[
           Bf.Code.Shift dest.size_of_members
         ]
       ] in
-      code @ gen_bf_move (Cell dest.offset_of_index_in_array) (dest.child_pos)
-  | Cell origin, Cell dest -> [ Bf.Code.Shift (dest -origin) ]
+      code @+ gen_bf_move (Cell dest.offset_of_index_in_array) (dest.child_pos)
+  | Cell origin, Cell dest -> ~~[ Bf.Code.Shift (dest -origin) ]

@@ -30,8 +30,8 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let rec update_tables_and_compute_live_in
       (succ_live_in: CellSet.t) (code: code_with_liveness) : CellSet.t =
     code
-    |> List.rev
-    |> List.fold_left
+    |> LList.rev
+    |> LList.fold_left
       (fun (succ_live_in: CellSet.t) Code.{ cmd; annot=tbl } : CellSet.t ->
         (* 各コマンドに対して
            - live_out のテーブルを更新する
@@ -175,7 +175,7 @@ end = struct
       live_in;
     (* 各ノードの干渉を追加する *)
     let rec scan_code (code: code_with_liveness) =
-      List.iter
+      LList.iter
         (fun Code.{ cmd; annot={ live_out } } ->
           match cmd with
           | Add (0, _) | Put _ | Shift _ ->
@@ -349,7 +349,7 @@ end = struct
     (* コードのId書き換え *)
     let rec convert_code (code: 'a Code.t): unit Code.t =
       let open Code in
-      List.map
+      LList.map
         (fun { cmd; _ } ->
           let cmd =
             match cmd with
@@ -361,9 +361,10 @@ end = struct
                 Shift {
                   n;
                   index = (convert_sel sel, id_to_mc id);
-                  followers = List.map id_to_mc followers
-                    |> CellSet.of_list
-                    |> CellSet.elements
+                  followers =
+                    LList.to_seq followers
+                    |> Seq.map id_to_mc
+                    |> CellSet.of_seq |> CellSet.elements |> llist
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
             | ILoop ((sel, id), code) ->  ILoop ((convert_sel sel, id_to_mc id), convert_code code)

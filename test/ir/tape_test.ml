@@ -6,13 +6,13 @@ open Support.Pervasive
 
 let a = Id.gen_named "a"
 let p = Id.gen_named "p"
-let layout =
-  let open Layout in [
+let layout : Layout.t =
+  let open Layout in llist [
     ( a,
       Array {
         offset_of_body = 1;
         size_of_members = 2;
-        members = [
+        members = llist [
           (a, Cell { offset=0; is_index=false });
           (p, Cell { offset=1; is_index=false });
         ];
@@ -23,13 +23,13 @@ let program =
   let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
   let a = Sel.Member a in
   [ Code.Add (3, ap_a);
-    Shift { n=1; index=(a, p); followers=[] };
+    Shift { n=1; index=(a, p); followers=lnil };
     Add (5, ap_a);
-    Shift { n=1; index=(a, p); followers=[] };
+    Shift { n=1; index=(a, p); followers=lnil };
     Add (7, ap_a);
-    Shift { n=(-1); index=(a, p); followers=[] };
+    Shift { n=(-1); index=(a, p); followers=lnil };
     Add (-1, ap_a);
-  ] |> Code.from_list
+  ] |> Code.from_cmds
 
 let expected = [0; 3; 1; 4; 0; 7]
 

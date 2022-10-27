@@ -1,5 +1,7 @@
 open OUnit2
+open Support.Pervasive
 open Bf
+open Code
 
 type case = {
   name: string;
@@ -26,17 +28,17 @@ let test_run { name; program; input; output; is_ok; ptr_max } =
 let cases = [
   {
     name = "echo";
-    program = [
+    program = ~~[
       Add 1;
-      Loop [
+      Loop ~~[
         Add (-1);
         Shift 1; Get; Put;
         Shift 1; Add (int_of_char '#');
-        Shift (-1); Loop [
+        Shift (-1); Loop ~~[
           Add (-1);
           Shift 3; Add 1;
-          Shift (-2); Loop [
-            Loop [
+          Shift (-2); Loop ~~[
+            Loop ~~[
               Add (-1);
               Shift 1; Add 1;
               Shift (-1)
@@ -45,21 +47,21 @@ let cases = [
             Shift (-1); Add (-1);
             Shift (-1);
           ];
-          Shift 2; Loop [
+          Shift 2; Loop ~~[
             Add (-1);
-            Shift (-3); Loop [ Add (-1) ];
+            Shift (-3); Loop ~~[ Add (-1) ];
             Shift (-1); Add 1;
             Shift 4;
           ];
-          Shift (-1); Loop [
+          Shift (-1); Loop ~~[
             Add (-1);
             Shift (-1); Add 1;
             Shift 1;
           ];
           Shift (-2);
         ];
-        Shift 1; Loop [
-          Loop  [ Add (-1) ];
+        Shift 1; Loop ~~[
+          Loop ~~[ Add (-1) ];
           Shift (-2); Add 1;
           Shift 2;
         ];
@@ -73,7 +75,7 @@ let cases = [
   };
   {
     name = "overflow";
-    program = [ Add (-1) ];
+    program = ~~[ Add (-1) ];
     input = "";
     output = "";
     is_ok = false;
@@ -81,7 +83,7 @@ let cases = [
   };
   {
     name = "end of input";
-    program = [ Add 1; Loop [ Get; Put ] ];
+    program = ~~[ Add 1; Loop ~~[ Get; Put ] ];
     input = "abc";
     output = "abc";
     is_ok = false;
@@ -89,7 +91,7 @@ let cases = [
   };
   {
     name = "pointer out of range";
-    program = [ Shift (-1); Add 1 ];
+    program = ~~[ Shift (-1); Add 1 ];
     input = "";
     output = "";
     is_ok = false;
@@ -97,7 +99,7 @@ let cases = [
   };
   {
     name = "skipped move_loop";
-    program = [ Loop [ Add (-1); Shift (-1); Add 1; Shift 1; ] ];
+    program = ~~[ Loop ~~[ Add (-1); Shift (-1); Add 1; Shift 1; ] ];
     input = "";
     output = "";
     is_ok = true;
@@ -105,7 +107,7 @@ let cases = [
   };
   {
     name = "ptr_max move_loop";
-    program = [ Add 1; Loop [ Shift 1; Add 1; Shift (-1); Add (-1); ] ];
+    program = ~~[ Add 1; Loop ~~[ Shift 1; Add 1; Shift (-1); Add (-1); ] ];
     input = "";
     output = "";
     is_ok = true;

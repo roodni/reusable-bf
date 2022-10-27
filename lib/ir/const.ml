@@ -1,3 +1,5 @@
+open Support.Pervasive
+
 (* セルの中身が定数になる場合の最適化
    - 条件セルがゼロになるループの除去 (ループ、リセット、一時セル連れ回し)
    - XXX: 関連して実装したい最適化は他にもある
@@ -130,7 +132,7 @@ type analysis_result = code_with_possibles * State.t
 let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let code = Code.annot_map (fun _ -> { state_in=State.dummy }) code in
   let rec update_tables (initial_state: State.t) (code: code_with_possibles) : State.t =
-    List.fold_left
+    LList.fold_left
       (fun (state: State.t) Code.{ cmd; annot=tbl } : State.t ->
         tbl.state_in <-
           if State.is_dummy tbl.state_in
@@ -206,7 +208,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
             else `Keep annot
       | Shift { n; index; followers } ->
           let followers =
-            List.filter
+            LList.filter
               (fun id ->
                 let sel = Sel.concat_member_to_index_tail index id 0 in
                 not @@ Possible.equal (State.find sel state_in) (Possible.Just 0)

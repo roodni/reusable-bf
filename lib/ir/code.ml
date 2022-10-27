@@ -1,13 +1,15 @@
+open Support.Pervasive
+
 (** 中間言語のコード
     解析のため追加情報を付与できる
 *)
-type 'a t = 'a annotated list
+type 'a t = 'a annotated llist
 and 'a annotated = { cmd:'a cmd; annot:'a }
 and 'a cmd =
   | Add of int * Sel.t
   | Put of Sel.t
   | Get of Sel.t
-  | Shift of { n:int; index:Sel.index; followers:Id.t list }
+  | Shift of { n:int; index:Sel.index; followers:Id.t llist }
   | Loop of Sel.t * 'a t
   | ILoop of (Sel.index * 'a t)
   | If of Sel.t * 'a t * 'a t
@@ -16,8 +18,10 @@ and 'a cmd =
 (** アノテーション付きコマンド1つ単位で単純な書き換えを行う
     構造を維持して再帰的に書き換えることも可能
 *)
-let rec filter_map (f: 'a annotated -> [`Update of 'b annotated | `Keep of 'b | `Delete]) code =
-  List.filter_map
+let rec filter_map
+    (f: 'a annotated -> [`Update of 'b annotated | `Keep of 'b | `Delete])
+    (code: 'a t) : 'b t =
+  LList.filter_map
     (fun annotated ->
       match f annotated with
       | `Update annotated -> Some annotated
@@ -47,12 +51,12 @@ let cmd_annot_map f cmd =
 
 let delete_annot code = annot_map (Fun.const ()) code
 
-let from_list cmd_list =
-  List.map
+
+let from_cmd_llist cmd_llist : unit t =
+  LList.map
     (fun cmd -> { cmd=cmd_annot_map (Fun.const ()) cmd; annot=() })
-    cmd_list
-
-
+    cmd_llist
+let from_cmds cmd_list = from_cmd_llist (llist cmd_list)
 
 (** アノテーション込みでコードを出力する *)
 let output ppf output_annot code =
@@ -63,7 +67,7 @@ let output ppf output_annot code =
       print_code code;
       fprintf ppf " ]@]";
     in
-    List.iteri
+    LList.iteri
       (fun i { cmd; annot } ->
         if i > 0 then fprintf ppf "@,";
         (match cmd with
@@ -111,37 +115,39 @@ let output ppf output_annot code =
 ;;
 
 
-
-let shift_followers n (arr_sel, idx_id) followers =
+let shift_followers n (arr_sel, idx_id) (followers: Id.t llist) =
   followers
-  |> List.map
+  |> LList.map
     (fun follower_id ->
       let src_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) follower_id 0 in
       let dest_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) follower_id n in
-      [ Loop
+      llist [
+        Loop
           ( src_sel,
-            [ Add (-1, src_sel);
-              Add (1, dest_sel);
-            ] |> from_list
+            from_cmds
+              [ Add (-1, src_sel); Add (1, dest_sel); ]
           )
       ]
     )
-  |> List.flatten |> from_list
+  |> LList.concat |> from_cmd_llist
 
 let desugar_ILoop ((arr_sel, idx_id), loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
-  from_list [ Loop (cond_sel, loop) ]
+  from_cmds [ Loop (cond_sel, loop) ]
 
 
 (** イディオム[-]を専用コマンドに変換する *)
 let convert_idioms code =
   filter_map
     (fun { cmd; _ } -> match cmd with
-      | Loop (sel1, [{ cmd=Add(-1, sel2); _ }])
-        when sel1 = sel2 ->
-          `Update { cmd=Reset sel1; annot=() }
+      | Loop (sel1, child) -> begin
+          match LList.to_list_danger child with
+          | [ {cmd=Add (-1, sel2); _} ] when sel1 = sel2 ->
+              `Update { cmd=Reset sel1; annot=() }
+          | _ -> `Keep ()
+        end
       | Add _ | Put _ | Get _ | Shift _ | Reset _
-      | Loop _ | ILoop _ | If _ ->
+      | ILoop _ | If _ ->
           `Keep ()
     )
     code

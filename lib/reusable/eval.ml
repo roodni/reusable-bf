@@ -1,3 +1,4 @@
+open Support.Pervasive
 open Support.Info
 open Syntax
 
@@ -8,7 +9,7 @@ type value =
   | VaInt of int
   | VaBool of bool
   | VaFun of envs * pat * expr
-  | VaBlock of envs * stmt list
+  | VaBlock of envs * stmts
   | VaList of value list
   | VaPair of value * value
   | VaCellSel of Ir.Sel.t
@@ -90,7 +91,7 @@ module Value = struct
 
   let extend_env_with_irid_env
       (diving: Ir.Sel.index option) (irid_env: IrIdEnv.t) (env: va_env) =
-    List.fold_left
+    LList.fold_left
       (fun env (var, { v=(id, mtype); i=_ }) ->
         match mtype with
         | IrIdEnv.Cell ->
@@ -104,7 +105,7 @@ module Value = struct
                直下にindexのあるフィールドは確保されない *)
       )
       env
-      (IrIdEnv.to_list irid_env)
+      (IrIdEnv.to_llist irid_env)
 end
 
 
@@ -265,12 +266,12 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let tail = eval_mid envs ex_tail |> to_list ex_tail.i in
       VaList (head :: tail)
   | ExList el ->
-      let vl = List.map (eval_mid envs) el in
-      VaList vl
+      let vll = LList.map (eval_mid envs) el in
+      VaList (LList.to_list_danger vll)
   | ExMatch (ex_matched, pat_ex_list) -> begin
       let va_matched = eval_mid envs ex_matched in
       let env_ex_opt =
-        List.find_map
+        LList.find_map
           (fun (pat, ex) ->
             matches ~export:false envs.va_env pat va_matched
             |> Option.map (fun va_env -> (va_env, ex)))

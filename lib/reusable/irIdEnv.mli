@@ -1,5 +1,6 @@
-open Syntax
+open Support.Pervasive
 open Support.Info
+open Syntax
 
 (** VarとIr.Varの対応 *)
 type t
@@ -12,7 +13,7 @@ and mtype =
       mem: t;
     }
 
-val to_list: t -> (Var.t * binded) list
+val to_llist: t -> (Var.t * binded) llist
 val lookup: Var.t -> t -> binded option
 
 (** Fieldを読んでIrのFieldを拡張してNVarEnvを作成する *)

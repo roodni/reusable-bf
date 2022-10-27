@@ -1,10 +1,11 @@
 open Printf
+open Support.Pervasive
 
 type t = int
 type label =
   | Special of string
   | Named of string
-  | Merged of t list
+  | Merged of t llist
 
 let num = ref 0
 let nametable = Hashtbl.create 30
@@ -18,7 +19,7 @@ let gen_special name = gen (Special name)
 let gen_named name = gen (Named name)
 let gen_merged l =
   assert (l <> []);
-  gen (Merged l)
+  gen @@ Merged (llist l)
 
 
 module SMap = Map.Make(String)
@@ -38,31 +39,32 @@ let numbered_name id =
   | Merged _ -> number_only_name id
 let numbered_names l =
   l
-  |> List.fold_left
-    (fun (sm: t list SMap.t) (id: t) ->
+  |> LList.fold_left
+    (fun (sm: t llist SMap.t) (id: t) ->
       let name = match Hashtbl.find nametable id with
         | Special s -> s
         | Named n -> n
         | Merged _ -> number_only_name id
       in
-      let l = SMap.find_opt name sm |> Option.value ~default:[] in
-      SMap.add name (id :: l) sm
+      let l = SMap.find_opt name sm |> Option.value ~default:lnil in
+      SMap.add name (lcons id l) sm
     )
     SMap.empty
-  |> SMap.bindings
-  |> List.map
-    (fun (name, ids: string * t list): string ->
+  |> SMap.to_seq
+  |> Seq.map
+    (fun (name, ids: string * t llist): string ->
+      let ids = LList.to_list_danger ids in
       match ids with
       | [id] -> sprintf "%s%s%d" name number_prefix id
       | _ ->
         let ids_s =
-          List.sort Int.compare ids
-          |> List.map string_of_int
+          List.sort (Fun.flip Int.compare) ids
+          |> List.rev_map string_of_int
           |> String.concat ","
         in
         sprintf "%s%s(%s)" name number_prefix ids_s
     )
-  |> String.concat ", "
+  |> List.of_seq |> String.concat ", "
 let detailed_name id =
   match Hashtbl.find nametable id with
   | Special _ | Named _ -> numbered_name id

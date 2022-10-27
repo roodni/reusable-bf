@@ -1,3 +1,4 @@
+open Support.Pervasive
 open Support.Info
 open Syntax
 
@@ -88,8 +89,8 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
         }
       in
       { ctx with envs }
-and eval_toplevels ctx (toplevels: toplevel list) : ctx =
-  List.fold_left eval_toplevel ctx toplevels
+and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
+  LList.fold_left eval_toplevel ctx toplevels
 
 let gen_ir ~sandbox (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
