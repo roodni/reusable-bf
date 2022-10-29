@@ -51,7 +51,8 @@ let output_info ppf = function
           then fprintf ppf "%s %d" text a
           else fprintf ppf "%ss %d-%d" text a b
       in
-      fprintf ppf "File \"%s\", " fname;
+      if fname <> "" then
+        fprintf ppf "File \"%s\", " fname;
       print_range "line" l1 l2;
       fprintf ppf ", ";
       print_range "col" c1 c2;
