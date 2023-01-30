@@ -2,20 +2,22 @@ open Printf
 open Support.Info
 
 let programs = [
-  (* ("error", "./sample/error/eval_nd-var_var.bfr"); *)
-  ("rev3", "./sample/misc/rev3.bfr");
-  ("nested", "./sample/misc/nested_array.bfr");
-  ("switch", "./sample/misc/switch.bfr");
-  ("fizzbuzz", "./sample/misc/fizzbuzz.bfr");
-  ("queens", "./sample/misc/queens.bfr");
-  ("bfi", "./sample/bfi.bfr");
+  ("rev3", "rev3.bfr");
+  ("nested", "nested_array.bfr");
+  ("switch", "switch.bfr");
+  ("fizzbuzz", "fizzbuzz.bfr");
+  ("queens", "queens.bfr");
+  ("bfi", "bfi.bfr");
 ]
 
 let () =
   List.iter
     (fun (name, path) ->
       let bf_code =
-        try Reusable.Program.gen_bf_from_source path with
+        try
+          Reusable.Program.gen_bf_from_source
+            ("./sample/misc/measurelen/" ^ path)
+        with
         | Reusable.Error.Exn_at msg_wi ->
             Reusable.Error.print msg_wi;
             exit 1;

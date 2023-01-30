@@ -1,0 +1,30 @@
+codegen $
+
+$build {
+  buf: array(_) {
+    c: cell;
+    p: index;
+  };
+} in
+
+**let input_end = '\n' in
+  let p = buf@p in
+  let c = p:c in $
+
+$dive p [
+  $alloc { f } in
+  + f
+  ! f [
+    , c
+    - c input_end
+    ? c [] [ - f ]
+    + c input_end
+    > p
+  ]
+]
+
+< p
+$iloop p [
+  < p
+  . c
+]
