@@ -71,8 +71,8 @@ let sandbox_tests =
   "sandbox" >:::
     List.map
       (test_error ~sandbox:true)
-      [ ( "top_prohibited-import_normal.bfr", (=) Top_Sandbox_import );
-        ( "top_prohibited-import_as.bfr", (=) Top_Sandbox_import );
+      [ ( "top_prohibited-import1.bfr", (=) Top_Sandbox_import );
+        ( "top_prohibited-import2.bfr", (=) Top_Sandbox_import );
       ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
