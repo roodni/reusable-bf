@@ -65,8 +65,7 @@ and pat' =
 
 type expr = expr' withinfo
 and expr' =
-  | ExVar of Var.t
-  | ExModuleVar of UVar.t * Var.t
+  | ExVar of UVar.t llist * Var.t
   | ExInt of int
   | ExBool of bool
   | ExStr of string
@@ -132,8 +131,7 @@ let rec validate_expr_depth n (expr: expr) =
   if n > 10000 then failwith "too deep expression";
   let validate_expr_depth = validate_expr_depth (n + 1) in
   match expr.v with
-  | ExVar _ | ExModuleVar _
-  | ExInt _ | ExBool _ | ExStr _ -> ();
+  | ExVar _ | ExInt _ | ExBool _ | ExStr _ -> ();
   | ExSelMem (ex, exopt, _) ->
       validate_expr_depth ex;
       Option.iter validate_expr_depth exopt;

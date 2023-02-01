@@ -32,6 +32,7 @@ let add_module_binding_to_envs uv mod_envs envs =
   { envs with
     module_env = UVE.extend uv mod_envs envs.module_env
   }
+
 (** [import_envs src dest] *)
 let import_envs src dest =
   { va_env = VE.merge src.va_env dest.va_env;
@@ -154,19 +155,17 @@ and eval ~recn (envs: envs) (expr: expr) : value =
   in
   let open Value in
   match expr with
-  | ExVar v -> begin
+  | ExVar (uvl, v) -> begin
+      let envs =
+        LList.fold_left
+          (fun envs uv -> match UVE.lookup uv envs.module_env with
+            | None -> Error.at info @@ Eval_Module_not_defined uv
+            | Some m -> m
+          ) envs uvl
+      in
       match VE.lookup v envs.va_env with
       | Some va -> va
       | None -> Error.at info @@ Eval_Variable_not_defined v
-    end
-  | ExModuleVar (uv, v) -> begin
-      match UVE.lookup uv envs.module_env with
-      | None -> Error.at info @@ Eval_Module_not_defined uv
-      | Some m -> begin
-          match VE.lookup v m.va_env with
-          | Some v -> v
-          | None -> Error.at info @@ Eval_Variable_not_defined v
-        end
     end
   | ExInt i -> VaInt i
   | ExBool b -> VaBool b

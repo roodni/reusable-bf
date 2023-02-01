@@ -138,8 +138,8 @@ stmt:
   | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
-  | v=VAR { withinfo v.i @@ ExVar v.v }
-  | uv=UVAR COLON v=VAR { withinfo2 uv.i v.i @@ ExModuleVar (uv.v, v.v) }
+  | v=VAR { withinfo v.i @@ ExVar (lnil, v.v) }
+  | uv=UVAR COLON l=mod_list v=VAR { withinfo2 uv.i v.i @@ ExVar (llist (uv.v :: l), v.v) }
   | i=INT { withinfo i.i @@ ExInt i.v }
   | c=CHAR { withinfo c.i @@ ExInt (int_of_char c.v) }
   | s=STRING { withinfo s.i @@ ExStr s.v }
@@ -156,6 +156,10 @@ expr:
       withinfo2 i1 i2 @@ ExList (llist (e :: l))
     }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
+
+mod_list:
+  | uv=UVAR COLON l=mod_list { uv.v :: l }
+  | { [] }
 
 expr_semi_list:
   | e=expr_full SEMI l=expr_semi_list { e :: l }
