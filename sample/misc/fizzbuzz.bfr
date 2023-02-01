@@ -1,4 +1,4 @@
-import "./lib.bfr"
+open import "./lib.bfr"
 
 let gen_counter_build st = [
   $build {

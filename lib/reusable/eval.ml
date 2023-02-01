@@ -26,14 +26,16 @@ let empty_envs =
   { va_env = VE.empty;
     module_env = UVE.empty;
   }
-
-let export_envs { va_env; module_env; } =
-  { va_env = VE.export va_env;
-    module_env = UVE.export module_env;
+let update_envs_with_va_env va_env envs =
+  { envs with va_env = VE.merge va_env envs.va_env }
+let add_module_binding_to_envs uv mod_envs envs =
+  { envs with
+    module_env = UVE.extend uv mod_envs envs.module_env
   }
+(** [import_envs src dest] *)
 let import_envs src dest =
-  { va_env = VE.import src.va_env dest.va_env;
-    module_env = UVE.import src.module_env dest.module_env;
+  { va_env = VE.merge src.va_env dest.va_env;
+    module_env = UVE.merge src.module_env dest.module_env;
   }
 
 module Value = struct
@@ -109,29 +111,32 @@ module Value = struct
 end
 
 
-let rec matches ~export va_env pat value =
+let matches pat value =
   let (let*) = Option.bind in
-  match pat.v, value with
-  | PatVar var, _ -> Some (VE.extend ~export var value va_env)
-  | PatWild, _ -> Some va_env
-  | PatCons (phd, ptl), VaList (vhd :: vtl) ->
-      let* va_env = matches ~export va_env phd vhd in
-      matches ~export va_env ptl (VaList vtl)
-  | PatNil, VaList [] -> Some va_env
-  | PatPair (pf, ps), VaPair (vf, vs) ->
-      let* va_env = matches ~export va_env pf vf in
-      matches ~export va_env ps vs
-  | PatInt pi, VaInt vi when pi = vi -> Some va_env
-  | PatBool pb, VaBool vb when pb = vb -> Some va_env
-  | _ -> None
+  let rec matches env pat value =
+    match pat.v, value with
+    | PatVar var, _ -> Some (VE.extend var value env)
+    | PatWild, _ -> Some env
+    | PatCons (phd, ptl), VaList (vhd :: vtl) ->
+        let* env = matches env phd vhd in
+        matches env ptl (VaList vtl)
+    | PatNil, VaList [] -> Some env
+    | PatPair (pf, ps), VaPair (vf, vs) ->
+        let* env = matches env pf vf in
+        matches env ps vs
+    | PatInt pi, VaInt vi when pi = vi -> Some env
+    | PatBool pb, VaBool vb when pb = vb -> Some env
+    | _ -> None
+  in
+  matches VE.empty pat value
 
-let rec eval_let_binding ~export ~recn (envs: envs) ((pat, expr) : let_binding) =
+let rec eval_let_binding ~recn (envs: envs) ((pat, expr) : let_binding) =
   (* この recn は呼び出し元の eval で増やす *)
   let v = eval ~recn envs expr in
-  let va_env_opt = matches ~export envs.va_env pat v in
-  match va_env_opt with
+  let matched_env = matches pat v in
+  match matched_env with
   | None -> Error.at (merge_info pat.i expr.i) @@ Eval_Match_failed
-  | Some va_env -> { envs with va_env }
+  | Some env -> env
 
 and eval ~recn (envs: envs) (expr: expr) : value =
   let { i=info; v=expr } = expr in
@@ -202,18 +207,20 @@ and eval ~recn (envs: envs) (expr: expr) : value =
         end
     end
   | ExFun (var, ex) -> VaFun (envs, var, ex)
-  | ExApp (ex_fn, ex_arg) -> begin
-      let va_fn = eval_mid envs ex_fn in
-      let va_arg = eval_mid envs ex_arg in
-      match va_fn with
-      | VaFun (envs_fun, pat_arg, ex_body) -> begin
-          let env_opt = matches ~export:false envs_fun.va_env pat_arg va_arg in
-          match env_opt with
+  | ExApp (fn_ex, arg_ex) -> begin
+      let fn_va = eval_mid envs fn_ex in
+      let arg_va = eval_mid envs arg_ex in
+      match fn_va with
+      | VaFun (fn_envs, arg_pat, body_ex) -> begin
+          let arg_env = matches arg_pat arg_va in
+          match arg_env with
           | None -> Error.at info @@ Eval_Match_failed
-          | Some va_env -> eval_tail { envs_fun with va_env } ex_body
+          | Some arg_env ->
+              let envs = update_envs_with_va_env arg_env fn_envs in
+              eval_tail envs body_ex
         end
       (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
-      | _ -> Error.at ex_fn.i @@ Eval_Wrong_data_type "function"
+      | _ -> Error.at fn_ex.i @@ Eval_Wrong_data_type "function"
     end
   | ExBlock st_list -> VaBlock (envs, st_list)
   | ExBOpInt (ex_left, bop, ex_right) -> begin
@@ -257,10 +264,9 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let cond = eval_mid envs ex_cond |> to_bool ex_cond.i in
       eval_tail envs (if cond then ex_then else ex_else)
   | ExLet (binding, expr) ->
-      let envs_let =
-        eval_let_binding ~export:false ~recn:(recn ()) envs binding
-      in
-      eval_tail envs_let expr
+      let matched_env = eval_let_binding ~recn:(recn ()) envs binding in
+      let envs = update_envs_with_va_env matched_env envs in
+      eval_tail envs expr
   | ExCons (ex_head, ex_tail) ->
       let head = eval_mid envs ex_head in
       let tail = eval_mid envs ex_tail |> to_list ex_tail.i in
@@ -268,17 +274,19 @@ and eval ~recn (envs: envs) (expr: expr) : value =
   | ExList el ->
       let vll = LList.map (eval_mid envs) el in
       VaList (LList.to_list_danger vll)
-  | ExMatch (ex_matched, pat_ex_list) -> begin
-      let va_matched = eval_mid envs ex_matched in
+  | ExMatch (matched_ex, clauses) -> begin
+      let matched_va = eval_mid envs matched_ex in
       let env_ex_opt =
         LList.find_map
           (fun (pat, ex) ->
-            matches ~export:false envs.va_env pat va_matched
-            |> Option.map (fun va_env -> (va_env, ex)))
-          pat_ex_list
+            matches pat matched_va
+            |> Option.map (fun env -> (env, ex)))
+          clauses
       in
       match env_ex_opt with
-      | Some (va_env, ex) -> eval_tail { envs with va_env } ex
+      | Some (env, ex) ->
+          let envs = update_envs_with_va_env env envs in
+          eval_tail envs ex
       | None -> Error.at info @@ Eval_Match_failed
     end
   | ExPair (ex1, ex2) ->

@@ -22,10 +22,10 @@ open Syntax
 %token <Support.Info.info> SLASH
 %token <Support.Info.info> ARROW  // ->
 %token <Support.Info.info> UNDER
-%token <Support.Info.info> BAR
+%token <Support.Info.info> BAR  // |
 %token <Support.Info.info> BARBAR // ||
 %token <Support.Info.info> ANDAND // &&
-
+%token <Support.Info.info> MOD  // %
 
 
 %token <Support.Info.info> ST  // $
@@ -38,8 +38,13 @@ open Syntax
 %token <Support.Info.info> LET IN
 %token <Support.Info.info> IF THEN ELSE
 %token <Support.Info.info> MATCH WITH
-%token <Support.Info.info> MOD
-%token <Support.Info.info> IMPORT AS
+
+%token <Support.Info.info> IMPORT
+%token <Support.Info.info> MODULE
+%token <Support.Info.info> OPEN
+%token <Support.Info.info> INCLUDE
+%token <Support.Info.info> STRUCT
+%token <Support.Info.info> END
 %token <Support.Info.info> CODEGEN
 
 %token <int Support.Info.withinfo> INT
@@ -78,8 +83,13 @@ toplevel_list:
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
   | i=CODEGEN LBRACKET sl=stmts RBRACKET { withinfo i @@ TopCodegen sl }
-  | i=IMPORT p=STRING { withinfo i @@ TopImport p.v }
-  | i=IMPORT p=STRING AS u=UVAR { withinfo i @@ TopImportAs (p.v, u.v) }
+  | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
+  | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
+  | i=MODULE v=UVAR EQ m=mod_expr { withinfo i @@ TopModule (v.v, m) }
+
+mod_expr:
+  | i=IMPORT s=STRING { withinfo2 i s.i @@ ModImport s.v }
+  | i1=STRUCT ts=toplevel_list i2=END { withinfo2 i1 i2 @@ ModStruct (llist ts) }
 
 field:
   | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 @@ llist el }

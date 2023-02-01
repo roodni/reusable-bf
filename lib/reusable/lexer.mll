@@ -3,24 +3,28 @@ open Support.Info
 module P = Parser
 
 let reserved = [
-  ("codegen", fun i -> P.CODEGEN i);
-  ("import", fun i -> P.IMPORT i);
-  ("as", fun i -> P.AS i);
-  ("cell", fun i -> P.CELL i);
-  ("index", fun i -> P.INDEX i);
+  ("_", fun i -> P.UNDER i);
   ("array", fun i -> P.ARRAY i);
+  ("cell", fun i -> P.CELL i);
+  ("codegen", fun i -> P.CODEGEN i);
+  ("else", fun i -> P.ELSE i);
+  ("end", fun i -> P.END i);
+  ("false", fun i -> P.FALSE i);
   ("fun", fun i -> P.FUN i);
   ("if", fun i -> P.IF i);
-  ("then", fun i -> P.THEN i);
-  ("else", fun i -> P.ELSE i);
-  ("let", fun i -> P.LET i);
+  ("import", fun i -> P.IMPORT i);
   ("in", fun i -> P.IN i);
+  ("include", fun i -> P.INCLUDE i);
+  ("index", fun i -> P.INDEX i);
+  ("let", fun i -> P.LET i);
   ("match", fun i -> P.MATCH i);
-  ("with", fun i -> P.WITH i);
   ("mod", fun i -> P.MOD i);
+  ("module", fun i -> P.MODULE i);
+  ("open", fun i -> P.OPEN i);
+  ("struct", fun i -> P.STRUCT i);
+  ("then", fun i -> P.THEN i);
   ("true", fun i -> P.TRUE i);
-  ("false", fun i -> P.FALSE i);
-  ("_", fun i -> P.UNDER i)
+  ("with", fun i -> P.WITH i);
 ]
 
 let string_to_char = function

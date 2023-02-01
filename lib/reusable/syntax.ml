@@ -102,15 +102,20 @@ and stmt' =
   | StExpand of expr
   | StDive of expr * stmts
 
-type toplevel = toplevel' withinfo
+type top_gen = stmts
+
+type program = toplevel llist
+and toplevel = toplevel' withinfo
 and toplevel' =
   | TopLet of let_binding
   | TopCodegen of top_gen
-  | TopImport of string
-  | TopImportAs of string * UVar.t
-and top_gen = stmts
-
-type program = toplevel llist
+  | TopOpen of mod_expr
+  | TopInclude of mod_expr
+  | TopModule of UVar.t * mod_expr
+and mod_expr = mod_expr' withinfo
+and mod_expr' =
+  | ModImport of string
+  | ModStruct of program
 
 
 let rec validate_pat_depth n (pat: pat) =

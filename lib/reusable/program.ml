@@ -19,78 +19,120 @@ let load_from_source path =
   close_in channel;
   res
 
+
+module FileMap = struct
+  (* ファイルパス (の指すファイル) をキーとするマップ
+     inodeとかを見る *)
+  module M = Map.Make(struct
+    type t = int * int
+    let compare = compare
+  end)
+
+  type progress = Loading | Loaded of Eval.envs
+  type t = progress M.t
+
+  let stats_to_key (stats: Unix.stats) =
+    (stats.st_ino, stats.st_dev)
+  let empty : t = M.empty
+
+  let add path v (m: t) =
+    let key = stats_to_key (Unix.stat path) in
+    M.add key v m
+
+  let find path (m: t) =
+    let key = stats_to_key (Unix.stat path) in
+    M.find_opt key m
+end
+
+
 type ctx =
   { envs: Eval.envs;
+    ex_envs: Eval.envs; (* エクスポートされる環境 *)
     top_gen_opt: top_gen option;
     curr_dirname: string;
-    path_history: string list;
+    filemap: FileMap.t;
     sandbox: bool;
   }
 let init_ctx ~sandbox curr_dirname =
   { envs = Eval.empty_envs;
+    ex_envs = Eval.empty_envs;
     top_gen_opt = None;
     curr_dirname;
-    path_history = [];
+    filemap = FileMap.empty;
     sandbox;
   }
 
 let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
-  let import_module path =
-    let path =
-      if FilePath.is_relative path then
-        FilePath.concat ctx.curr_dirname path
-        |> FilePath.reduce ~no_symlink:true
-      else path
-    in
-    let next_dirname = FilePath.dirname path in
-    if List.mem path ctx.path_history then
-      Error.at toplevel.i Top_Recursive_import
-    else
-      let toplevels = load_from_source path in
-      let ctx =
-        eval_toplevels
-          { envs = Eval.empty_envs;
-            top_gen_opt = None;
-            curr_dirname = next_dirname;
-            path_history = path :: ctx.path_history;
-            sandbox = ctx.sandbox;
-          }
-          toplevels
-      in
-      ctx.envs
-  in
   match toplevel.v with
   | TopLet binding ->
       ( let pat, expr = binding in
         validate_pat_depth 0 pat;
         validate_expr_depth 0 expr;
       );
-      let envs = Eval.eval_let_binding ~export:true ~recn:0 ctx.envs binding in
-      { ctx with envs }
+      let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
+      { ctx with
+        envs = Eval.update_envs_with_va_env env ctx.envs;
+        ex_envs = Eval.update_envs_with_va_env env ctx.ex_envs;
+      }
   | TopCodegen top_gen ->
       validate_stmts_depth 0 top_gen;
-      if ctx.top_gen_opt <> None then
+      if Option.is_some ctx.top_gen_opt then
         Error.at toplevel.i Top_Duplicated_codegen
       else
         { ctx with top_gen_opt=Some top_gen }
-  | TopImport filename ->
-      if ctx.sandbox then
-        Error.at toplevel.i Top_Sandbox_import;
-      let imported_envs = import_module filename in
-      let envs = Eval.import_envs imported_envs ctx.envs in
-      { ctx with envs }
-  | TopImportAs (filename, uv) ->
-      if ctx.sandbox then
-        Error.at toplevel.i Top_Sandbox_import;
-      let imported_envs = import_module filename |> Eval.export_envs in
-      let envs =
-        { ctx.envs with
-          module_env = Eval.UVE.extend uv imported_envs ctx.envs.module_env
-        }
-      in
-      { ctx with envs }
+  | TopOpen mod_ex ->
+      let ctx, mod_envs = eval_mod_expr ctx mod_ex in
+      { ctx with envs = Eval.import_envs mod_envs ctx.envs }
+  | TopInclude mod_ex ->
+      let ctx, mod_envs = eval_mod_expr ctx mod_ex in
+      { ctx with
+        envs = Eval.import_envs mod_envs ctx.envs;
+        ex_envs = Eval.import_envs mod_envs ctx.ex_envs;
+      }
+  | TopModule (uv, mod_ex) ->
+      let ctx, mod_envs = eval_mod_expr ctx mod_ex in
+      { ctx with
+        envs = Eval.add_module_binding_to_envs uv mod_envs ctx.envs;
+        ex_envs = Eval.add_module_binding_to_envs uv mod_envs ctx.ex_envs;
+      }
 and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
   LList.fold_left eval_toplevel ctx toplevels
+and eval_mod_expr ctx mod_expr =
+  match mod_expr.v with
+  | ModImport path -> begin
+      if ctx.sandbox then Error.at mod_expr.i Top_Sandbox_import;
+      (* TODO: ファイル読み込みに失敗したことを表すエラー (発生は2箇所) *)
+      let path =
+        if Filename.is_relative path then
+          Filename.concat ctx.curr_dirname path
+        else path
+      in
+      match FileMap.find path ctx.filemap with
+      | Some Loading -> Error.at mod_expr.i Top_Recursive_import
+      | Some (Loaded envs) -> (ctx, envs)
+      | None ->
+          let ctx' = {
+            envs = Eval.empty_envs;
+            ex_envs = Eval.empty_envs;
+            top_gen_opt = None;
+            curr_dirname = Filename.dirname path;
+            filemap = FileMap.add path Loading ctx.filemap;
+            sandbox = ctx.sandbox;
+          } in
+          let prog = load_from_source path in
+          let ctx' = eval_toplevels ctx' prog in
+          let envs = ctx'.ex_envs in
+          let filemap = FileMap.add path (Loaded envs) ctx'.filemap in
+          ({ ctx with filemap }, envs)
+    end
+  | ModStruct prog ->
+      let ctx' = {
+        ctx with
+        ex_envs = Eval.empty_envs;
+        top_gen_opt = None;
+      } in
+      let ctx' = eval_toplevels ctx' prog in
+      ({ ctx with filemap = ctx'.filemap }, ctx'.ex_envs)
 
 let gen_ir ~sandbox (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =

@@ -1,5 +1,5 @@
-import "./bfilib.bfr"
-import "./hello.bfr"
+open import "./bfilib.bfr"
+open import "./hello.bfr"
 
 codegen $
 

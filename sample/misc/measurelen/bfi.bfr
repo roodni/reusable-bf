@@ -3,7 +3,7 @@
      {brainfuckのコード}\{入力}
 *)
 
-import "./bfilib.bfr"
+open import "./bfilib.bfr"
 
 
 codegen $

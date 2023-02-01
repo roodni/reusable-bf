@@ -1,4 +1,4 @@
 // web playgroundでは禁止
-import "../lib.bfr" as Lib
+module Lib = import "../lib.bfr"
 
 codegen []
