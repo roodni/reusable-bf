@@ -1,0 +1,3 @@
+open import "module_import-rec_2.bfr"
+
+codegen []

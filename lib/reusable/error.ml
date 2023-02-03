@@ -19,8 +19,10 @@ type t =
   | Gen_Alloc_Array_not_implemented
   | Gen_Alloc_Index_must_be_array_member
   | Gen_Alloc_Unlimited_array_cannot_be_array_member
-  | Top_Recursive_import
-  | Top_Sandbox_import
+  | Module_Recursive_import
+  | Module_Sandbox_import
+  | Module_import_file_not_found of string
+  (* | Module_import_failed_to_read of string *)
   | Top_Duplicated_codegen
   | Top_Missing_codegen
   | Memory_Recursion_limit
@@ -31,8 +33,10 @@ let output ppf msg =
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
   | Top_Missing_codegen -> pf "There is no codegen declaration"
   | Top_Duplicated_codegen -> pf "The codegen declaration is duplicated"
-  | Top_Sandbox_import -> pf "In sandbox mode, import is prohibited"
-  | Top_Recursive_import -> pf "The import is recursive"
+  | Module_Sandbox_import -> pf "In sandbox mode, import is prohibited"
+  | Module_Recursive_import -> pf "The import is recursive"
+  | Module_import_file_not_found path -> pf "The file '%s' is not found" path
+  (* | Module_import_failed_to_read path -> pf "The file '%s' cannot be read" path *)
   | Gen_Alloc_Unlimited_array_cannot_be_array_member ->
       pf "An unlimited array cannot be allocated as a member of an array"
   | Gen_Alloc_Index_must_be_array_member ->

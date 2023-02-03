@@ -103,16 +103,17 @@ and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
   LList.fold_left eval_toplevel ctx toplevels
 and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
-  | ModImport path -> begin
-      if ctx.sandbox then Error.at mod_expr.i Top_Sandbox_import;
-      (* TODO: ファイル読み込みに失敗したことを表すエラー (発生は2箇所) *)
+  | ModImport p -> begin
+      if ctx.sandbox then Error.at mod_expr.i Module_Sandbox_import;
       let path =
-        if Filename.is_relative path then
-          Filename.concat ctx.curr_dirname path
-        else path
+        if Filename.is_relative p then
+          Filename.concat ctx.curr_dirname p
+        else p
       in
+      if not (Sys.file_exists path) then
+        Error.at mod_expr.i (Module_import_file_not_found p);
       match FileMap.find path ctx.filemap with
-      | Some Loading -> Error.at mod_expr.i Top_Recursive_import
+      | Some Loading -> Error.at mod_expr.i Module_Recursive_import
       | Some (Loaded envs) -> (ctx, envs)
       | None ->
           let ctx' = {

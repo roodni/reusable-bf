@@ -59,7 +59,8 @@ let cases =
     ( "parser_2.bfr", (=) Parser_Unexpected );
     ( "top_codegen-dup.bfr", (=) Top_Duplicated_codegen );
     ( "top_codegen-missing.bfr", (=) Top_Missing_codegen );
-    ( "top_import-rec_1.bfr", (=) Top_Recursive_import );
+    ( "module_import-rec_1.bfr", (=) Module_Recursive_import );
+    ( "module_import-not-found.bfr", (=) @@ Module_import_file_not_found "./file" );
     ( "memory_stack_eval.bfr", (=) Memory_Recursion_limit );
     ( "memory_stack_gen.bfr", (=) Memory_Recursion_limit );
   ]
@@ -71,8 +72,7 @@ let sandbox_tests =
   "sandbox" >:::
     List.map
       (test_error ~sandbox:true)
-      [ ( "top_prohibited-import1.bfr", (=) Top_Sandbox_import );
-        ( "top_prohibited-import2.bfr", (=) Top_Sandbox_import );
+      [ ( "module_prohibited-import.bfr", (=) Module_Sandbox_import );
       ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
