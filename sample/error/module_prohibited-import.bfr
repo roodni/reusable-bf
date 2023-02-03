@@ -1,4 +1,4 @@
 // web playgroundでは禁止
-open import "../lib.bfr"
+open import "../lib/std.bfr"
 
 codegen []

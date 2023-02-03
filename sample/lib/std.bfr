@@ -54,3 +54,98 @@ let gen_puts = fun l -> [
         ])
     0 l
 ]
+
+// リスト l を比較関数 compare でソートする
+let sort compare l =
+  fix
+    (fun sort -> fun rest sorted ->
+      match rest with
+      | () -> sorted
+      | pivot . rest ->
+          fix
+            (fun partition -> fun left right l ->
+              match l with
+              | () -> sort left (pivot . sort right sorted)
+              | hd . tl ->
+                  if compare hd pivot < 0
+                  then partition (hd . left) right tl
+                  else partition left (hd . right) tl)
+            () () rest)
+    l ()
+
+// セル dest からセル src の中身だけ引く
+// src はゼロになる
+// オーバーフローするとき文列 overflow を実行する
+let gen_sub_safe src dest overflow = [
+  ! src [
+    - src
+    ? dest [ - dest ] [
+      *overflow
+      *gen_del src
+    ]
+  ]
+]
+
+(* セル sel の中身で分岐する
+   sel は破壊される
+   整数と文列のペアのリスト cases の各要素のペアの整数を小さい順に見て
+   sel の中身と同じであれば文列を実行する
+   該当するものがなければ文列 default を実行する
+   文列中で sel の中身が変化しても良い
+*)
+let gen_switch sel cases default = [
+  **let cases =
+    sort (fun (n1, _) (n2, _) -> n1 - n2) cases
+  in $
+  $alloc {
+    sub_src; flag_eq; flag_els
+  } in
+  *fix
+    (fun loop prev cases ->
+      match cases with
+      | () -> default
+      | (num, block) . cases -> [
+          + sub_src (num - prev)
+          + flag_eq
+          *gen_sub_safe sub_src sel [ - flag_eq ]
+          ? sel [ - flag_eq ] []
+          + flag_els
+          ! flag_eq [
+            - flag_eq
+            - flag_els
+            *block
+          ]
+          ! flag_els [
+            - flag_els
+            *loop num cases
+          ]
+        ])
+    0 cases
+]
+
+(* セル sel の中身で分岐する
+   sel は分岐の前に復元される
+   sel の中身を i とする。文列のリスト blocks の
+   第 i 要素が存在する場合それを実行する
+   第 i 要素が存在しない場合文列 default を実行する
+   文列中で sel の中身が変化しても良い
+*)
+let gen_switch_nat sel blocks default = [
+  *fix
+    (fun loop i blocks ->
+      match blocks with
+      | () -> [
+          + sel i
+          *default
+        ]
+      | block . rest -> [
+          ? sel [
+            - sel
+            *loop (i + 1) rest
+          ] [
+            + sel i
+            *block
+          ]
+        ])
+    0 blocks
+]
