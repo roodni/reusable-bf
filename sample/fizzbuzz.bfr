@@ -1,0 +1,28 @@
+open import "lib/std.bfr"
+module Counter = import "lib/counter.bfr"
+
+codegen [
+  **Counter:gen_build @@ fun counter -> $
+
+  $build {
+    n: cell;
+    fizz: cell;
+    buzz: cell;
+  } in
+
+  *gen_geti n '\n'
+  + fizz 3
+  + buzz 5
+  ! n [
+    - n
+    *Counter:gen_incr counter
+    $alloc { fb: cell; } in
+    + fb 2
+    - fizz
+    ? fizz [ - fb ] [ + fizz 3  *gen_puts "Fizz" ]
+    - buzz
+    ? buzz [ - fb ] [ + buzz 5  *gen_puts "Buzz" ]
+    ? fb [] [ *Counter:gen_print counter ]
+    *gen_puts " "
+  ]
+]

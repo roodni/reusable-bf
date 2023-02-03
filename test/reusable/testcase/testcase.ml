@@ -76,7 +76,7 @@ let cases =
     };
     { name = "fizzbuzz";
       io_list = [ ("16\n", "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz 16 ") ];
-      filename = "sample/misc/fizzbuzz.bfr"
+      filename = "sample/fizzbuzz.bfr"
     };
     { name = "bug: diving cell reset fail";
       io_list = [ ("", "!!") ];

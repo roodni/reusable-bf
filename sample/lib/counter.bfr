@@ -1,0 +1,54 @@
+open import "./std.bfr"
+
+let gen_build st = [
+  $build {
+    counter: array(_) {
+      n: cell;
+      i: index;
+    };
+  } in
+  *st counter
+]
+
+let gen_incr counter = [
+  **let i = counter@i in
+    let n = i:n in $
+  > i
+  $iloop i [
+    ? n [] [ + n 10 ]
+    - n
+    ? n
+      [ *gen_reset_index i ]
+      [ + n 10  > i ]
+  ]
+]
+
+let gen_print counter = [
+  **let i = counter@i in $
+  $dive i [
+    ! i:(1)n [ > i ]
+    ! i:n
+      [ $alloc { x: cell; } in
+        + x ('9' + 1)
+        *gen_repeat i:n [ - x ]
+        . x
+        + i:n ('9' + 1)
+        *gen_repeat x [ - i:n ]
+        < i
+      ]
+  ]
+]
+
+// sample: atoi
+codegen [
+  **gen_build @@ fun cnt -> $
+
+  $build { a } in
+
+  , a
+  *gen_repeat a [
+    *gen_incr cnt
+  ]
+
+  *gen_print cnt
+]
