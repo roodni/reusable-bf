@@ -86,6 +86,10 @@ let cases =
       io_list = [ ("", "O") ];
       filename = "sample/misc/bop.bfr";
     };
+    { name = "submodule";
+      io_list = [ ("", "ABCC") ];
+      filename = "sample/misc/submodule.bfr"
+    }
   ]
   |> List.map
     (fun case -> { case with filename="../../" ^ case.filename })

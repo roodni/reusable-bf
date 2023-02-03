@@ -115,7 +115,7 @@ and mod_expr = mod_expr' withinfo
 and mod_expr' =
   | ModImport of string
   | ModStruct of program
-
+  | ModVar of UVar.t llist
 
 let rec validate_pat_depth n (pat: pat) =
   if n > 10000 then failwith "too deep pattern";

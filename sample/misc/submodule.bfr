@@ -1,0 +1,28 @@
+module Alpha = struct
+  let a = 0
+
+  module Beta = struct
+    let b = 0
+    let b = 1 + a
+
+    module Gamma = struct
+      let c = 1 + b
+    end
+
+    let a = 10
+  end
+
+  module X = Beta:Gamma
+end
+
+let gen_put n = [
+  $alloc { c } in
+  + c ('A' + n)
+  . c
+]
+
+codegen $
+*gen_put Alpha:a
+*gen_put Alpha:Beta:b
+*gen_put Alpha:Beta:Gamma:c
+*gen_put Alpha:X:c

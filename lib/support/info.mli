@@ -6,6 +6,7 @@ val create_info : Lexing.position -> Lexing.position -> info
 val unknown_info : info
 
 val withinfo : info -> 'a -> 'a withinfo
+val clearinfo : 'a withinfo -> 'a
 
 val merge_info : info -> info -> info
 

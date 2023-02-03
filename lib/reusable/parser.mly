@@ -90,6 +90,13 @@ toplevel:
 mod_expr:
   | i=IMPORT s=STRING { withinfo2 i s.i @@ ModImport s.v }
   | i1=STRUCT ts=toplevel_list i2=END { withinfo2 i1 i2 @@ ModStruct (llist ts) }
+  | l=separated_nonempty_list(COLON, UVAR) {
+      match l with
+      | [] -> assert false
+      | hd :: _ ->
+          let last = List.rev l |> List.hd in
+          withinfo2 hd.i last.i @@ ModVar (llist l |> LList.map clearinfo)
+    }
 
 field:
   | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 @@ llist el }
@@ -138,8 +145,13 @@ stmt:
   | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
-  | v=VAR { withinfo v.i @@ ExVar (lnil, v.v) }
-  | uv=UVAR COLON l=mod_list v=VAR { withinfo2 uv.i v.i @@ ExVar (llist (uv.v :: l), v.v) }
+  | l=uvar_list v=VAR {
+      match l with
+      | [] -> withinfo v.i @@ ExVar (lnil, v.v)
+      | hd :: _ ->
+          withinfo2 hd.i v.i @@
+            ExVar (llist l |> LList.map clearinfo, v.v)
+    }
   | i=INT { withinfo i.i @@ ExInt i.v }
   | c=CHAR { withinfo c.i @@ ExInt (int_of_char c.v) }
   | s=STRING { withinfo s.i @@ ExStr s.v }
@@ -157,8 +169,8 @@ expr:
     }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
 
-mod_list:
-  | uv=UVAR COLON l=mod_list { uv.v :: l }
+uvar_list:
+  | uv=UVAR COLON l=uvar_list { uv :: l }
   | { [] }
 
 expr_semi_list:

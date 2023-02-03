@@ -31,6 +31,7 @@ let create_info pos1 pos2 =
   }
 
 let withinfo i v = { i; v; }
+let clearinfo { v; _ } = v
 
 let merge_info i1 i2 =
   match i1, i2 with

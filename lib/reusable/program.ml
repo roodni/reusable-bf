@@ -37,7 +37,11 @@ module FileMap = struct
 
   let add path v (m: t) =
     let key = stats_to_key (Unix.stat path) in
-    M.add key v m
+    M.update key
+      (function
+        | None | Some Loading -> Some v
+        | Some (Loaded _) -> assert false
+      ) m
 
   let find path (m: t) =
     let key = stats_to_key (Unix.stat path) in
@@ -133,6 +137,18 @@ and eval_mod_expr ctx mod_expr =
       } in
       let ctx' = eval_toplevels ctx' prog in
       ({ ctx with filemap = ctx'.filemap }, ctx'.ex_envs)
+  | ModVar l -> begin
+      assert (l <> lnil);
+      let envs =
+        LList.fold_left
+          (fun Eval.{ module_env; _ } u ->
+            match Eval.UVE.lookup u module_env with
+            | None -> Error.at mod_expr.i (Eval_Module_not_defined u)
+            | Some envs -> envs
+          ) ctx.envs l
+      in
+      (ctx, envs)
+    end
 
 let gen_ir ~sandbox (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
