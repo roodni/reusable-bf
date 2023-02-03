@@ -56,8 +56,23 @@ let to_string code = Buffer.contents (to_buffer code)
 exception ParseError
 
 let parse stream =
-  let lookahead () = Stream.peek stream in
-  let consume () = Stream.junk stream in
+  let la = ref None in
+  let stream = ref stream in
+  let lookahead () =
+    if Option.is_some !la then !la
+    else
+      Seq.uncons !stream
+      |> Option.map
+        (fun (hd, tl) ->
+          la := Some hd;
+          stream := tl;
+          hd )
+  in
+  let consume () =
+    if Option.is_some !la
+      then (la := None;)
+      else (stream := Seq.drop 1 !stream;)
+  in
   let expect c =
     if lookahead () <> Some c then raise ParseError;
     consume ()

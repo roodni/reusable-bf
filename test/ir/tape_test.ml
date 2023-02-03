@@ -38,7 +38,7 @@ let test = "shift" >:: (fun _ ->
     let _, dump, _ =
       Bf.Exe.run_string
         ~cell_type:Bf.Exe.Overflow256
-        ~input:(Stream.of_string "")
+        ~input:""
         (Bf.Exe.from_code bf)
     in
     let ptr_max = List.length expected - 1 in

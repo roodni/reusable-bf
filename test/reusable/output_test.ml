@@ -7,7 +7,7 @@ let test_run Testcase.{ name; filename; io_list; } =
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string
-          ~input:(Stream.of_string ipt)
+          ~input:ipt
           ~cell_type:Bf.Exe.WrapAround256
           (Bf.Exe.from_code bf_code)
       in

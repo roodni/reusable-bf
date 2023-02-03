@@ -17,7 +17,7 @@ let test_run { name; program; input; output; is_ok; ptr_max } =
     let res, dump, output_actual =
       Exe.run_string
         ~cell_type:Exe.Overflow256
-        ~input:(Stream.of_string input)
+        ~input
         (Exe.from_code program)
     in
     assert_equal (Code.length program) (Code.to_buffer program |> Buffer.length);

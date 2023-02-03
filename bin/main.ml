@@ -69,7 +69,11 @@ let run_bf bf_code =
 let use_as_bf_interpreter () =
   let bf_code =
     let channel = get_channel () in
-    let code = Bf.Code.parse (Stream.of_channel channel) in
+    let code =
+      Seq.of_dispenser
+        (fun () -> In_channel.input_char channel)
+      |> Bf.Code.parse
+    in
     close_in channel;
     code
   in

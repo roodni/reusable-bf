@@ -7,7 +7,7 @@ homepage: "https://github.com/roodni/bf-reusable"
 bug-reports: "https://github.com/roodni/bf-reusable/issues"
 depends: [
   "dune" {>= "3.5"}
-  "ocaml" {>= "4.12" & < "4.14"}
+  "ocaml" {>= "4.14"}
   "ounit2" {with-test}
   "menhir"
   "fileutils"

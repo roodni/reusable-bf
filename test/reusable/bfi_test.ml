@@ -19,7 +19,7 @@ let test_run Testcase.{ name; filename; io_list; } =
       let res, _, opt_act =
         Bf.Exe.run_string
           ~cell_type:Bf.Exe.WrapAround256
-          ~input:(Stream.of_string ipt)
+          ~input:ipt
           BfI.bf_exe
       in
       assert_equal ~printer:(fun s -> s) opt opt_act;

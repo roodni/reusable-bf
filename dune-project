@@ -12,6 +12,6 @@
  (name bf-reusable)
  (synopsis "A programming language to generate brainf*ck code")
  (depends
-  (ocaml (and (>= 4.12) (< 4.14)))
+  (ocaml (and (>= 4.14)))
   (ounit2 :with-test)
   menhir fileutils))

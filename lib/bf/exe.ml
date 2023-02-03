@@ -257,10 +257,7 @@ let run_string ~input ~cell_type executable =
   let res, tape =
     run
       ~printer:(Buffer.add_char buf)
-      ~input:(fun () ->
-          try Some (Stream.next input) with
-          | Stream.Failure -> None
-        )
+      ~input:(String.to_seq input |> Seq.to_dispenser)
       ~cell_type
       executable
   in

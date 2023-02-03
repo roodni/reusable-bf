@@ -5,7 +5,7 @@ open Bf
 let test = "parse" >::: [
   "add shift" >:: (fun _ ->
       let s = "+++ +-+>>>*><>" in
-      let bf = Code.parse (Stream.of_string s) in
+      let bf = Code.parse (String.to_seq s) in
       assert_equal
         (llist [ Code.Add 4; Shift 4 ])
         bf
@@ -13,12 +13,12 @@ let test = "parse" >::: [
   "lbracket" >:: (fun _ ->
       assert_raises
         Code.ParseError
-        (fun () -> Code.parse (Stream.of_string "["))
+        (fun () -> Code.parse (String.to_seq "["))
     );
   "lbracket" >:: (fun _ ->
       assert_raises
         Code.ParseError
-        (fun () -> Code.parse (Stream.of_string "]"))
+        (fun () -> Code.parse (String.to_seq "]"))
     );
 ]
 
