@@ -11,6 +11,7 @@ let load filename channel =
         Error.at info Parser_Unexpected
       end
   in
+  validate_program_depth 0 program;
   program
 
 let load_from_source path =
@@ -69,17 +70,12 @@ let init_ctx ~sandbox curr_dirname =
 let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
   match toplevel.v with
   | TopLet binding ->
-      ( let pat, expr = binding in
-        validate_pat_depth 0 pat;
-        validate_expr_depth 0 expr;
-      );
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
       { ctx with
         envs = Eval.update_envs_with_va_env env ctx.envs;
         ex_envs = Eval.update_envs_with_va_env env ctx.ex_envs;
       }
   | TopCodegen top_gen ->
-      validate_stmts_depth 0 top_gen;
       if Option.is_some ctx.top_gen_opt then
         Error.at toplevel.i Top_Duplicated_codegen
       else

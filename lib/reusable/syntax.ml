@@ -183,3 +183,23 @@ and validate_stmts_depth n (stmts: stmts) =
     )
     stmts
 ;;
+
+let rec validate_mod_expr_depth n mod_expr =
+  if n > 10000 then failwith "too deep modules";
+  match mod_expr.v with
+  | ModImport _ | ModVar _ -> ()
+  | ModStruct prog ->
+      validate_program_depth (n + 1) prog
+and validate_program_depth n (prog: program) =
+  LList.iter
+    (fun top -> match top.v with
+      | TopLet (pat, expr) ->
+          validate_pat_depth 0 pat;
+          validate_expr_depth 0 expr;
+      | TopCodegen stmts ->
+          validate_stmts_depth 0 stmts;
+      | TopOpen modex | TopInclude modex | TopModule (_, modex) ->
+          validate_mod_expr_depth n modex
+    )
+    prog
+;;
