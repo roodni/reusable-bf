@@ -1,4 +1,4 @@
-open import "./lib.bfr"
+open import "../lib/std.bfr"
 
 codegen $
 
@@ -13,7 +13,7 @@ $build {
 } in
 
 
-*gen_input n '\n'
+*gen_geti n '\n'
 
 *gen_repeat_restore n [
   + row_rest

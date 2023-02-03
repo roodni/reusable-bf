@@ -1,4 +1,4 @@
-open import "./lib.bfr"
+open import "../lib/std.bfr"
 
 let puti = fun n -> [
   $alloc { x } in
