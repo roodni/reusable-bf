@@ -1,11 +1,10 @@
-open Support.Info
 open Syntax
 
 module VE = Env.Make(Var)
 module UVE = Env.Make(UVar)
 
 (* VarとIr.Idの対応、Fieldをコード生成することで得られる *)
-type irid_env = (Ir.Id.t * mtype) withinfo VE.t
+type irid_env = (Ir.Id.t * mtype) VE.t
 and mtype =
   | MtyCell
   | MtyIndex
@@ -100,7 +99,7 @@ module Envs = struct
   let extend_value_env_with_irid_env
       (diving: Ir.Sel.index option) (irid_env: irid_env) (env: va_env) =
     Seq.fold_left
-      (fun env (var, { v=(id, mtype); i=_ }) ->
+      (fun env (var, (id, mtype)) ->
         match mtype with
         | MtyCell ->
             let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in

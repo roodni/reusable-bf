@@ -74,7 +74,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       in
       match VE.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
-      | Some { v=(id, mtype); _ } -> begin
+      | Some (id, mtype) -> begin
           let sel =
             Ir.Sel.concat_member_to_tail parent_sel idx_id_opt (Ir.Sel.Member id) offset
           in
@@ -88,7 +88,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let sel, irid_env = eval_mid envs parent_ex |> Va.to_array parent_ex.i in
       match VE.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
-      | Some { v=(id, mtype); _ } -> begin
+      | Some (id, mtype) -> begin
           match mtype with
           | MtyIndex -> VaIndexSel ((sel, id), irid_env)
           | MtyCell | MtyArray _ ->
