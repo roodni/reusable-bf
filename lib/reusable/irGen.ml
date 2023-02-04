@@ -16,8 +16,8 @@ type ctx =
 
 
 (* Fieldを読んでIr.Fieldを拡張しながらVarとIr.Idの対応を返す *)
-let generate_field ~alloc (ir_main: Ir.Field.main) ir_field field =
-  let rec gen ?parent_name ~mergeable (nfield: Ir.Field.t) (field: Field.t): irid_env =
+let generate_field ~alloc envs (ir_main: Ir.Field.main) ir_field field =
+  let rec gen ?parent_name ~mergeable (nfield: Ir.Field.t) (field: field): irid_env =
     field
     |> LList.fold_left
       (fun (env: irid_env) { i=info; v=(var, mtype) } : irid_env ->
@@ -29,25 +29,28 @@ let generate_field ~alloc (ir_main: Ir.Field.main) ir_field field =
                   sprintf "%s/%s" parent_name (Var.to_string var) )
         in
         match mtype with
-        | Field.Cell ->
+        | MtyExCell ->
             Ir.Field.extend nfield irvar (Cell { ifable=false; mergeable });
             VE.extend var (irvar, MtyCell) env
-        | Field.Index ->
+        | MtyExIndex ->
             if nfield == ir_main.finite || alloc then
               Error.at info Gen_Alloc_Index_must_be_array_member;
             Ir.Field.extend nfield irvar Index;
             VE.extend var (irvar, MtyIndex) env
-        | Field.Array _ when alloc ->
+        | MtyExArray _ when alloc ->
             Error.at info Gen_Alloc_Array_not_implemented
-        | Field.Array { length=Some length; mem } ->
+        | MtyExArray { length=Some length_ex; mem } ->
+            let length = Eval.eval ~recn:0 envs length_ex |> Va.to_int length_ex.i in
+            if length < 0 then
+              Error.at info Gen_Field_Array_length_cannot_be_negative;
             let nmembers = Ir.Field.empty () in
             let narray = Ir.Field.Array { length; members=nmembers } in
             Ir.Field.extend nfield irvar narray;
             let env_members = gen ~mergeable:false nmembers mem in
             VE.extend var (irvar, MtyArray { length=Some length; mem=env_members }) env
-        | Field.Array { length=None; mem } ->
+        | MtyExArray { length=None; mem } ->
             if nfield != ir_main.finite then
-              Error.at info Gen_Alloc_Unlimited_array_cannot_be_array_member;
+              Error.at info Gen_Field_Unlimited_array_cannot_be_array_member;
             let env_members = gen ~parent_name:(Var.to_string var) ~mergeable:false ir_main.unlimited mem in
             VE.extend
               var
@@ -159,7 +162,9 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             in
             ((), code_shift)
         | StBuild (field, stmts) ->
-            let irid_env = generate_field ~alloc:false nmain nmain.finite field in
+            let irid_env =
+              generate_field ~alloc:false envs nmain nmain.finite field
+            in
             let va_env =
               Envs.extend_value_env_with_irid_env
                 None irid_env envs.va_env
@@ -177,7 +182,9 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
                       (* $diveでインデックス以外がdivingに指定されることは弾かれる *)
                 end
             in
-            let irid_env = generate_field ~alloc:true nmain irfield field in
+            let irid_env =
+              generate_field ~alloc:true envs nmain irfield field
+            in
             (* 確保するセルに対するゼロ初期化 *)
             let code_clean =
               VE.to_seq irid_env

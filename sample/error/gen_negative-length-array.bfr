@@ -1,0 +1,7 @@
+codegen $
+  **let len = -1 in $
+  $build {
+    a: array(len) { x };
+    b: cell;
+  } in
+  + b

@@ -18,7 +18,8 @@ type t =
   | Gen_Shift_interfere
   | Gen_Alloc_Array_not_implemented
   | Gen_Alloc_Index_must_be_array_member
-  | Gen_Alloc_Unlimited_array_cannot_be_array_member
+  | Gen_Field_Unlimited_array_cannot_be_array_member
+  | Gen_Field_Array_length_cannot_be_negative
   | Module_Recursive_import
   | Module_Sandbox_import
   | Module_import_file_not_found of string
@@ -37,8 +38,10 @@ let output ppf msg =
   | Module_Recursive_import -> pf "The import is recursive"
   | Module_import_file_not_found path -> pf "The file '%s' is not found" path
   (* | Module_import_failed_to_read path -> pf "The file '%s' cannot be read" path *)
-  | Gen_Alloc_Unlimited_array_cannot_be_array_member ->
+  | Gen_Field_Unlimited_array_cannot_be_array_member ->
       pf "An unlimited array cannot be allocated as a member of an array"
+  | Gen_Field_Array_length_cannot_be_negative ->
+      pf "The length of an array cannot be negative"
   | Gen_Alloc_Index_must_be_array_member ->
       pf "An index must be allocated as a member of an array"
   | Gen_Alloc_Array_not_implemented ->

@@ -23,30 +23,6 @@ module UVar : VarS = struct
   let to_string s = s
 end
 
-module Field = struct
-  type t = (Var.t * mtype) withinfo llist
-  and mtype =
-    | Cell
-    | Index
-    | Array of {
-        length : int option;
-        mem : t;
-      }
-
-  let rec validate_depth n (field: t) =
-    if n > 100 then failwith "Too deep field";
-    let validate_depth = validate_depth (n + 1) in
-    LList.iter
-      (fun { i=_; v=(_, mtype) } ->
-        match mtype with
-        | Cell | Index -> ();
-        | Array { mem; length=_; } ->
-            validate_depth mem;
-      )
-      field;
-  ;;
-end
-
 module BOp = struct
   type op_int =
     | Add | Sub | Mul | Div | Mod
@@ -96,10 +72,19 @@ and stmt' =
   | StIf of expr * stmts * stmts option
   | StILoop of expr * stmts
   | StShift of int * expr * expr option  (* sign, index, int *)
-  | StAlloc of Field.t * stmts
-  | StBuild of Field.t * stmts
+  | StAlloc of field * stmts
+  | StBuild of field * stmts
   | StExpand of expr
   | StDive of expr * stmts
+
+and field = (Var.t * mtype_expr) withinfo llist
+and mtype_expr =
+  | MtyExCell
+  | MtyExIndex
+  | MtyExArray of {
+      length: expr option;
+      mem: field;
+    }
 
 type top_gen = stmts
 
@@ -178,10 +163,25 @@ and validate_stmts_depth n (stmts: stmts) =
           validate_stmts_depth ss;
           Option.iter validate_stmts_depth ssopt;
       | StAlloc (field, stmts) | StBuild (field, stmts) ->
-          Field.validate_depth 0 field;
+          validate_field_depth (n + 1) field;
           validate_stmts_depth stmts;
     )
     stmts
+and validate_field_depth n (field: field) =
+  if n > 10000 then failwith "too deep field";
+  LList.iter
+    (fun { v=(_, mtype); _ } ->
+      match mtype with
+      | MtyExCell | MtyExIndex -> ()
+      | MtyExArray { mem; length; } -> begin
+          (match length with
+            | None -> ()
+            | Some expr -> validate_expr_depth (n + 1) expr;
+          );
+          validate_field_depth (n + 1) mem;
+        end
+    )
+    field
 ;;
 
 let rec validate_mod_expr_depth n mod_expr =

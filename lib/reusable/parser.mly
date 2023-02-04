@@ -107,17 +107,17 @@ field_elm_list:
   | { [] }
 
 field_elm:
-  | v=VAR COLON mt=field_elm_mtype { withinfo2 v.i mt.i (v.v, mt.v) }
-  | v=VAR { withinfo v.i (v.v, Field.Cell) }
+  | v=VAR COLON mt=mtype_expr { withinfo2 v.i mt.i (v.v, mt.v) }
+  | v=VAR { withinfo v.i (v.v, MtyExCell) }
 
-field_elm_mtype:
-  | i=CELL { withinfo i Field.Cell }
-  | i=INDEX { withinfo i Field.Index }
-  | i=ARRAY LPAREN l=INT RPAREN f=field {
-      withinfo2 i f.i @@ Field.Array { length=Some l.v; mem=f.v; }
+mtype_expr:
+  | i=CELL { withinfo i MtyExCell }
+  | i=INDEX { withinfo i MtyExIndex }
+  | i=ARRAY LPAREN e=expr_full RPAREN f=field {
+      withinfo2 i f.i @@ MtyExArray { length=Some e; mem=f.v; }
     }
   | i=ARRAY LPAREN UNDER RPAREN f=field {
-      withinfo2 i f.i @@ Field.Array { length=None; mem=f.v; }
+      withinfo2 i f.i @@ MtyExArray { length=None; mem=f.v; }
     }
 
 stmts:
