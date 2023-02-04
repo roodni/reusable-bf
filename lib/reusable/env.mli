@@ -4,6 +4,7 @@ module Make(V: Map.OrderedType): sig
   val empty : 'a t
   val extend : key -> 'a -> 'a t -> 'a t
   val lookup : key -> 'a t -> 'a option
+  val to_seq : 'a t -> (key * 'a) Seq.t
 
   (** [merge src dest] *)
   val merge : 'a t -> 'a t -> 'a t

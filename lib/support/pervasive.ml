@@ -53,4 +53,5 @@ module LList = struct
   let sort = List.sort
 
   let to_seq = List.to_seq
+  let of_seq = List.of_seq
 end

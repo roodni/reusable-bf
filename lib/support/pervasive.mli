@@ -46,4 +46,5 @@ module LList : sig
   val sort : ('a -> 'a -> int) -> 'a t -> 'a t
 
   val to_seq : 'a t ->'a Seq.t
+  val of_seq : 'a Seq.t -> 'a t
 end

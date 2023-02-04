@@ -5,6 +5,13 @@ open Syntax
 module VE = Env.Make(Var)
 module UVE = Env.Make(UVar)
 
+(* VarとIr.Idの対応、Fieldをコード生成することで得られる *)
+type irid_env = (Ir.Id.t * mtype) withinfo VE.t
+and mtype =
+  | MtyCell
+  | MtyIndex
+  | MtyArray of { length: int option; mem: irid_env }
+
 type value =
   | VaInt of int
   | VaBool of bool
@@ -13,8 +20,8 @@ type value =
   | VaList of value list
   | VaPair of value * value
   | VaCellSel of Ir.Sel.t
-  | VaArraySel of Ir.Sel.t * IrIdEnv.t
-  | VaIndexSel of Ir.Sel.index * IrIdEnv.t
+  | VaArraySel of Ir.Sel.t * irid_env
+  | VaIndexSel of Ir.Sel.index * irid_env
 and va_env = value VE.t
 and module_env = envs UVE.t
 and envs =
@@ -93,22 +100,22 @@ module Value = struct
     loop [(x, y)]
 
   let extend_env_with_irid_env
-      (diving: Ir.Sel.index option) (irid_env: IrIdEnv.t) (env: va_env) =
-    LList.fold_left
+      (diving: Ir.Sel.index option) (irid_env: irid_env) (env: va_env) =
+    Seq.fold_left
       (fun env (var, { v=(id, mtype); i=_ }) ->
         match mtype with
-        | IrIdEnv.Cell ->
+        | MtyCell ->
             let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
             VE.extend var (VaCellSel sel) env
-        | Array { mem; _ } ->
+        | MtyArray { mem; _ } ->
             let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
             VE.extend var (VaArraySel (sel, mem)) env
-        | Index -> env
+        | MtyIndex -> env
             (* 既存のフィールド確保の枠組みでは
                直下にindexのあるフィールドは確保されない *)
       )
       env
-      (IrIdEnv.to_llist irid_env)
+      (VE.to_seq irid_env)
 end
 
 
@@ -182,26 +189,26 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let parent_sel, idx_id_opt, irid_env =
         eval_mid envs parent_ex |> to_member_selectable parent_ex.i
       in
-      match IrIdEnv.lookup var irid_env with
+      match VE.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
       | Some { v=(id, mtype); _ } -> begin
           let sel =
             Ir.Sel.concat_member_to_tail parent_sel idx_id_opt (Ir.Sel.Member id) offset
           in
           match mtype with
-          | IrIdEnv.Cell -> VaCellSel sel
-          | Array { mem; _ } -> VaArraySel (sel, mem)
-          | Index -> Error.at info @@ Eval_Member_is_index var
+          | MtyCell -> VaCellSel sel
+          | MtyArray { mem; _ } -> VaArraySel (sel, mem)
+          | MtyIndex -> Error.at info @@ Eval_Member_is_index var
         end
     end
   | ExSelIdx (parent_ex, var) -> begin
       let sel, irid_env = eval_mid envs parent_ex |> to_array parent_ex.i in
-      match IrIdEnv.lookup var irid_env with
+      match VE.lookup var irid_env with
       | None -> Error.at info @@ Eval_Member_not_defined var
       | Some { v=(id, mtype); _ } -> begin
           match mtype with
-          | Index -> VaIndexSel ((sel, id), irid_env)
-          | Cell | Array _ ->
+          | MtyIndex -> VaIndexSel ((sel, id), irid_env)
+          | MtyCell | MtyArray _ ->
               Error.at info @@ Eval_Member_is_not_index var
         end
     end
