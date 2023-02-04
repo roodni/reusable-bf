@@ -10,7 +10,7 @@ $build {
   n;
   row_rest;
   rowi;
-} in
+}
 
 
 *gen_geti n '\n'
@@ -44,7 +44,7 @@ $build {
         > f_diff@i
       ]
 
-      $alloc { dup: cell; } in
+      $alloc { dup: cell; }
       ? f_col@i:flag [ + dup ] []
       ? f_sum@i:flag [ + dup ] []
       ? f_diff@i:flag [ + dup ] []
@@ -96,7 +96,7 @@ $build {
 ? rowi
   [ // 通常
     *gen_reset_index queens@i
-    $alloc { i: cell; j: cell; } in
+    $alloc { i: cell; j: cell; }
     *gen_repeat_restore n [ + i ]
     ! i [
       - i

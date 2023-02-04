@@ -5,9 +5,9 @@ $build {
     c: cell;
     p: index;
   };
-} in
+}
 
-$alloc { f } in
+$alloc { f }
 
 **let input_end = '\n' in
   let p = buf@p in

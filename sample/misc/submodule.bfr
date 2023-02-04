@@ -16,7 +16,7 @@ module Alpha = struct
 end
 
 let gen_put n = [
-  $alloc { c } in
+  $alloc { c }
   + c ('A' + n)
   . c
 ]

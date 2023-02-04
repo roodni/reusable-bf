@@ -122,8 +122,8 @@ mtype_expr:
 
 stmts:
   | s=stmt sl=stmts { lcons s sl }
-  | i=ST_ALLOC f=field IN sl=stmts { llist [ withinfo i @@ StAlloc (f.v, sl) ] }
-  | i=ST_BUILD f=field IN sl=stmts { llist [ withinfo i @@ StBuild (f.v, sl) ] }
+  | i=ST_ALLOC f=field sl=stmts { llist [ withinfo i @@ StAlloc (f.v, sl) ] }
+  | i=ST_BUILD f=field sl=stmts { llist [ withinfo i @@ StBuild (f.v, sl) ] }
   | i=ASTER2 e=expr_full { llist [ withinfo i @@ StExpand e ] } %prec prec_stmts
   | { lnil } %prec prec_stmts
 
@@ -140,8 +140,6 @@ stmt:
     }
   | i=ST_ILOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StILoop (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
-  | i=ST_ALLOC f=field LBRACKET sl=stmts RBRACKET { withinfo i @@ StAlloc (f.v, sl) }
-  | i=ST_BUILD f=field LBRACKET sl=stmts RBRACKET { withinfo i @@ StBuild (f.v, sl) }
   | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:

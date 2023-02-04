@@ -5,7 +5,7 @@ codegen [
         x: cell;
       }
     }
-  } in
+  }
 
   + a:b:x
 ]

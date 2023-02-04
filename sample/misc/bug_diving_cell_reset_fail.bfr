@@ -3,7 +3,7 @@ codegen $
 $build {
   a: array(_) { i: index };
   n;
-} in
+}
 
 > a@i
 
@@ -12,7 +12,7 @@ $build {
   - n
 
   $dive a@i [
-    $alloc { x: cell; } in
+    $alloc { x: cell; }
     < a@i
     + x '!'
     . x

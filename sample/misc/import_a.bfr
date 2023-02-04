@@ -1,5 +1,5 @@
 let gen_putc c = [
-  $alloc { x: cell; } in
+  $alloc { x: cell; }
   + x c
   . x
 ]

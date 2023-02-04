@@ -7,12 +7,12 @@ $build {
       i: index;
     };
   };
-} in
+}
 
 $dive a@i [
-  $alloc { x: cell; } in
+  $alloc { x: cell; }
   $dive a@i:b@i [
-    $alloc { y: cell; } in
+    $alloc { y: cell; }
     > a@i
   ]
 ]

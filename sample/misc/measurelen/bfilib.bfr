@@ -54,7 +54,7 @@ let gen_switch sel cases default = [
   in $
   $alloc {
     sub_src; flag_eq; flag_els
-  } in
+  }
   *fix
     (fun loop prev cases ->
       match cases with
@@ -107,7 +107,7 @@ let gen_add_multi src dest_and_coef_list = [
 // gen_add_multi と同様
 // ただしセル src は復元される
 let gen_add_multi_restore src dest_and_coef_list = [
-  $alloc { backup } in
+  $alloc { backup }
   *gen_add_multi src ((backup, 1) . dest_and_coef_list)
   *gen_add backup src
 ]

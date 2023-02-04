@@ -1,6 +1,6 @@
 codegen [
   $alloc {
     a: array(3) { x }
-  } in
+  }
   + a:x
 ]

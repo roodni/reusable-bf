@@ -27,7 +27,7 @@ let expe = (
 )
 
 codegen [
-  $build {x} in
+  $build {x}
   *(if res = expe then $
      + x 'O'
     else $

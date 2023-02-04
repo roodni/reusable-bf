@@ -14,7 +14,7 @@ let gen_repeat src block = [
 ]
 
 let gen_repeat_restore src block = [
-  $alloc { backup: cell; } in
+  $alloc { backup: cell; }
   *gen_repeat src [
     + backup
     *block
@@ -29,7 +29,7 @@ let gen_reset_index i = [
 
 
 let gen_geti dest ed = [
-  $alloc { x: cell; } in
+  $alloc { x: cell; }
   , x
   - x ed
   ! x [
@@ -42,7 +42,7 @@ let gen_geti dest ed = [
 ]
 
 let gen_puts = fun l -> [
-  $alloc { c: cell; } in
+  $alloc { c: cell; }
   *fix
     (fun loop prev l ->
       match l with
@@ -99,7 +99,7 @@ let gen_switch sel cases default = [
   in $
   $alloc {
     sub_src; flag_eq; flag_els
-  } in
+  }
   *fix
     (fun loop prev cases ->
       match cases with

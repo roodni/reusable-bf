@@ -1,7 +1,7 @@
 let a, b = 6, 5
 
 codegen [
-  $build {x} in
+  $build {x}
   + x (a * 10 + 5)
   . x
 ]

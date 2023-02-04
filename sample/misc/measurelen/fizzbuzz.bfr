@@ -6,7 +6,7 @@ let gen_counter_build st = [
       n: cell;
       i: index;
     };
-  } in
+  }
   *st counter
 ]
 
@@ -28,7 +28,7 @@ let gen_counter_print counter = [
   $dive i [
     ! i:(1)n [ > i ]
     ! i:n
-      [ $alloc { x: cell; } in
+      [ $alloc { x: cell; }
         + x ('9' + 1)
         *gen_add_multi i:n x (-1)
         . x
@@ -46,7 +46,7 @@ codegen [
     n: cell;
     fizz: cell;
     buzz: cell;
-  } in
+  }
 
   *gen_input n '\n'
   + fizz 3
@@ -54,7 +54,7 @@ codegen [
   ! n [
     - n
     *gen_counter_incr counter
-    $alloc { fb: cell; } in
+    $alloc { fb: cell; }
     + fb 2
     - fizz
     ? fizz [ - fb ] [ + fizz 3  *gen_puts "Fizz" ]

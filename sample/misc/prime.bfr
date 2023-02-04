@@ -13,7 +13,7 @@ let is_prime = fun n ->
     2
 
 codegen [
-  $build {sp} in
+  $build {sp}
   + sp ' '
 
   *fix

@@ -5,14 +5,14 @@ $build {
     c: cell;
     p: index;
   };
-} in
+}
 
 **let input_end = '\n' in
   let p = buf@p in
   let c = p:c in $
 
 $dive p [
-  $alloc { f } in
+  $alloc { f }
   + f
   ! f [
     , c

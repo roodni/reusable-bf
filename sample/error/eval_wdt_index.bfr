@@ -1,4 +1,4 @@
 codegen [
-  $build { x } in
+  $build { x }
   > x
 ]

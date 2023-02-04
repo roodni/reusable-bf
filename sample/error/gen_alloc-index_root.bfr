@@ -1,6 +1,6 @@
 codegen [
   $alloc {
     i: index;
-  } in
+  }
   > i
 ]

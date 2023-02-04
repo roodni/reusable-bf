@@ -7,7 +7,7 @@ $build {
   f: cell;
   r: cell;
   x: cell;
-} in
+}
 
 + b 'B'
 + f 'F'

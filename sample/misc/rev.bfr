@@ -5,7 +5,7 @@ $build {
     c: cell;
     p: index;
   };
-} in
+}
 
 + buf:c
 ! buf@p:c [

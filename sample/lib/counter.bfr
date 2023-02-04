@@ -6,7 +6,7 @@ let gen_build st = [
       n: cell;
       i: index;
     };
-  } in
+  }
   *st counter
 ]
 
@@ -28,7 +28,7 @@ let gen_print counter = [
   $dive i [
     ! i:(1)n [ > i ]
     ! i:n
-      [ $alloc { x: cell; } in
+      [ $alloc { x: cell; }
         + x ('9' + 1)
         *gen_repeat i:n [ - x ]
         . x
@@ -43,7 +43,7 @@ let gen_print counter = [
 codegen [
   **gen_build @@ fun cnt -> $
 
-  $build { a } in
+  $build { a }
 
   , a
   *gen_repeat a [

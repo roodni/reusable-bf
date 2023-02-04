@@ -2,6 +2,6 @@ let f (a, b) =
   a + b
 
 codegen [
-  $build { x } in
+  $build { x }
   + x (f 1 2)
 ]

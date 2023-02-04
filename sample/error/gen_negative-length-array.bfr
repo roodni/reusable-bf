@@ -3,5 +3,5 @@ codegen $
   $build {
     a: array(len) { x };
     b: cell;
-  } in
+  }
   + b

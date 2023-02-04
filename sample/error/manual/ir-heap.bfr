@@ -10,7 +10,7 @@ codegen $
   (fun f n ->
     if n <= 0 then []
     else
-      [ $build { x } in
+      [ $build { x }
         + x
         *f (n - 1)
         *f (n - 1)

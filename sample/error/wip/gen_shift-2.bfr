@@ -1,6 +1,6 @@
 codegen [
   $build {
     a: array(2) { i: index }
-  } in
+  }
   > a@i (-2)
 ]

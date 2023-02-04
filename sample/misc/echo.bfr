@@ -23,11 +23,11 @@ let if_eq = fun a -> fun b -> fun thn -> [
 
 codegen $
 
-$build { cont } in
+$build { cont }
 + cont
 ! cont [
   - cont
-  $alloc { input; diff; } in
+  $alloc { input; diff; }
   , input
   . input
   + diff '#'

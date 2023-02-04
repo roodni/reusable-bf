@@ -1,12 +1,12 @@
 let f = fun block -> [
-  $alloc { hoge } in
+  $alloc { hoge }
   ! hoge [ - hoge ]
   + hoge 'X'
   *block
 ]
 
 codegen [
-  $build { hoge } in
+  $build { hoge }
   + hoge 'O'
   *f [ . hoge ]
 ]

@@ -30,7 +30,7 @@ let cat s1 s2 = [ *s1  *s2 ]
 
 // 整数のリストを引数に取り、文字列を出力する文列を返す
 let gen_puts str = [
-  $alloc { cel; } in
+  $alloc { cel; }
   **let stmts, _ =
       fold_left
         (fun (stmts, prev) cha ->
@@ -111,7 +111,7 @@ brainfuckの処理系にはセルの中身が負になりうるものがあっ�
 
 ```
 (* 例 *)
-$alloc { x } in
+$alloc { x }
 
 , x
 - x 'A'

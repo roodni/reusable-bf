@@ -1,7 +1,7 @@
 open import "../lib/std.bfr"
 
 let puti = fun n -> [
-  $alloc { x } in
+  $alloc { x }
   + x '0'
   *fix
     (fun loop n ->

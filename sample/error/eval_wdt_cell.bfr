@@ -1,6 +1,6 @@
 codegen [
   $build {
     arr: array(3) { x }
-  } in
+  }
   + arr
 ]

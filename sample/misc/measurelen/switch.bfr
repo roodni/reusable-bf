@@ -3,7 +3,7 @@ open import "./hello.bfr"
 
 codegen $
 
-$build { x } in
+$build { x }
 , x
 
 *gen_switch x

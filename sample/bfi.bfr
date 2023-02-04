@@ -14,13 +14,13 @@ $build {
     depth: cell;
     p: index;
   }
-} in
+}
 
 $dive code@p [
   **let p = code@p in $
   $alloc {
     cont; flag_next
-  } in
+  }
   + cont
   ! cont [
     , p:inst
@@ -63,11 +63,11 @@ $build {
     v: cell;
     p: index;
   }
-} in
+}
 
 **let p = code@p in $
 $dive p [
-  $alloc { depth_cur } in
+  $alloc { depth_cur }
   ! p:inst [
     *gen_switch_nat p:inst
       ( [];
