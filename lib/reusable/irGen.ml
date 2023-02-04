@@ -1,14 +1,15 @@
 open Support.Pervasive
 open Support.Info
 open Syntax
+open Value
 
 open Printf
 
 type ctx =
-  { envs: Eval.envs;
+  { envs: envs;
     diving: Ir.Sel.index option;
       (* alloc文がフィールドを確保する位置 *)
-    diving_fields: (Ir.Sel.index * Eval.irid_env) llist;
+    diving_fields: (Ir.Sel.index * irid_env) llist;
       (* インデックスとその下に確保されたフィールドの対応 *)
     recn: int;
   }
@@ -16,10 +17,10 @@ type ctx =
 
 (* Fieldを読んでIr.Fieldを拡張しながらVarとIr.Idの対応を返す *)
 let generate_field (nmain: Ir.Field.main) nfield field =
-  let rec gen_using_field ?parent_name ~mergeable (nfield: Ir.Field.t) (field: Field.t): Eval.irid_env =
+  let rec gen_using_field ?parent_name ~mergeable (nfield: Ir.Field.t) (field: Field.t): irid_env =
     field
     |> LList.fold_left
-      (fun (env: Eval.irid_env) { i=info; v=(var, mtype) } : Eval.irid_env ->
+      (fun (env: irid_env) { i=info; v=(var, mtype) } : irid_env ->
         let nvar =
           Ir.Id.gen_named
             ( match parent_name with
@@ -30,33 +31,32 @@ let generate_field (nmain: Ir.Field.main) nfield field =
         match mtype with
         | Field.Cell ->
             Ir.Field.extend nfield nvar (Cell { ifable=false; mergeable });
-            Eval.VE.extend var (withinfo info (nvar, Eval.MtyCell)) env
+            VE.extend var (withinfo info (nvar, MtyCell)) env
         | Field.Index ->
             if nfield == nmain.finite then
               Error.at info Gen_Alloc_Index_must_be_array_member;
             Ir.Field.extend nfield nvar Index;
-            Eval.VE.extend var (withinfo info (nvar, Eval.MtyIndex)) env
+            VE.extend var (withinfo info (nvar, MtyIndex)) env
         | Field.Array { length=Some length; mem } ->
             let nmembers = Ir.Field.empty () in
             let narray = Ir.Field.Array { length; members=nmembers } in
             Ir.Field.extend nfield nvar narray;
             let env_members = gen_using_field ~mergeable:false nmembers mem in
-            Eval.VE.extend var (withinfo info (nvar, Eval.MtyArray { length=Some length; mem=env_members })) env
+            VE.extend var (withinfo info (nvar, MtyArray { length=Some length; mem=env_members })) env
         | Field.Array { length=None; mem } ->
             if nfield != nmain.finite then
               Error.at info Gen_Alloc_Unlimited_array_cannot_be_array_member;
             let env_members = gen_using_field ~parent_name:(Var.to_string var) ~mergeable:false nmain.unlimited mem in
-            Eval.VE.extend
+            VE.extend
               var
               (withinfo info
-                (Ir.Field.uarray_id, Eval.MtyArray { length=None; mem=env_members }))
+                (Ir.Field.uarray_id, MtyArray { length=None; mem=env_members }))
               env
-      ) Eval.VE.empty
+      ) VE.empty
   in
   gen_using_field ~mergeable:true nfield field
 
-let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
-  let open Eval.Value in
+let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let nmain = Ir.Field.empty_main () in
   let ctx = { envs; diving=None; diving_fields=lnil; recn=0 } in
   let rec gen (ctx: ctx) (stmts: stmts): unit * unit Ir.Code.t =
@@ -74,25 +74,25 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
         match stmt.v with
         | StAdd (sign, ex_sel, ex_i_opt) -> begin
             (* nsel というのは Ir.Sel の旧名の Named.Sel のこと *)
-            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
             let i =
               match ex_i_opt with
               | None -> 1
-              | Some ex_i -> eval envs ex_i |>  to_int ex_i.i
+              | Some ex_i -> eval envs ex_i |>  Va.to_int ex_i.i
             in
             let code = Ir.Code.from_cmds [ Add (i * sign, nsel) ] in
             ((), code)
           end
         | StPut ex_sel ->
-            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
             let code = Ir.Code.from_cmds [ Ir.Code.Put nsel ] in
             ((), code)
         | StGet ex_sel ->
-            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
             let code = Ir.Code.from_cmds [ Get nsel ] in
             ((), code)
         | StWhile (sel_ex, stmts) -> begin
-            let sel = eval envs sel_ex |> to_cell sel_ex.i in
+            let sel = eval envs sel_ex |> Va.to_cell sel_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
               Ir.Code.from_cmds [ Loop (sel, child_code) ]
@@ -100,14 +100,14 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             ((), code)
           end
         | StILoop (index_ex, stmts) ->
-            let index = eval envs index_ex |> to_index index_ex.i in
+            let index = eval envs index_ex |> Va.to_index index_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
               Ir.Code.from_cmds [ ILoop (index, child_code) ]
             in
             ((), code)
         | StIf (ex_sel, stmts_then, stmts_else) ->
-            let nsel = eval envs ex_sel |> to_cell ex_sel.i in
+            let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
             let nmtype = Ir.Sel.find_mtype nmain nsel in
             (match nmtype with
             | Ir.Field.Cell cell ->  cell.ifable <- true
@@ -123,14 +123,14 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
               Ir.Code.from_cmds [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_idx, ex_i_opt) ->
-            let index = eval envs ex_idx |> to_index ex_idx.i in
+            let index = eval envs ex_idx |> Va.to_index ex_idx.i in
             let i = sign * match ex_i_opt with
               | None -> 1
               | Some ex_i ->
                   (* XXX: いまのところ2以上のシフトは未実装
                      Parserで無効にしている
                   *)
-                  eval envs ex_i |> to_int ex_i.i
+                  eval envs ex_i |> Va.to_int ex_i.i
             in
             (* シフト時に移動させられるdiving下の一時セルのid *)
             let followers =
@@ -138,11 +138,11 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
               |> LList.filter_map
                 (fun (diving, irid_env) ->
                   if index = diving then (* セルの中身をコピーする *)
-                    Eval.VE.to_seq irid_env
+                    VE.to_seq irid_env
                     |> Seq.map
                       (fun (_, { v=(id, mtype); i=_ }) ->
                         match mtype with
-                        | Eval.MtyCell -> id
+                        | MtyCell -> id
                         | MtyArray _ | MtyIndex -> assert false
                             (* allocを試みた時点で弾かれるので到達できない *)
                       )
@@ -159,7 +159,10 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             ((), code_shift)
         | StBuild (field, stmts) ->
             let irid_env = generate_field nmain nmain.finite field in
-            let va_env = extend_env_with_irid_env None irid_env envs.va_env in
+            let va_env =
+              Envs.extend_value_env_with_irid_env
+                None irid_env envs.va_env
+            in
             let ctx = { ctx with envs={ envs with va_env } } in
             let (), child_code = gen ctx stmts in
             ((), child_code)
@@ -176,11 +179,11 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
             let irid_env = generate_field nmain irfield field in
             (* 確保するセルに対するゼロ初期化 *)
             let code_clean =
-              Eval.VE.to_seq irid_env
+              VE.to_seq irid_env
               |> Seq.map
                 (fun (_, { v=(id, mtype); i }) ->
                   match mtype with
-                  | Eval.MtyCell ->
+                  | MtyCell ->
                       let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
                       Ir.Code.from_cmds [ Reset sel ]
                   | MtyArray _ -> Error.at i Gen_Alloc_Array_not_implemented
@@ -190,7 +193,10 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
               |> LList.concat
             in
             (* 後続のコード生成 *)
-            let va_env = extend_env_with_irid_env diving irid_env envs.va_env in
+            let va_env =
+              Envs.extend_value_env_with_irid_env
+                diving irid_env envs.va_env
+            in
             let envs = { envs with va_env } in
             let diving_fields = match diving with
               | None -> diving_fields
@@ -202,10 +208,10 @@ let generate (envs : Eval.envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.
                IRの最適化である程度消える *)
             ((), code_clean @+ code_child @+ code_clean)
         | StExpand ex_block ->
-            let envs, stmts = eval envs ex_block |> to_block ex_block.i in
+            let envs, stmts = eval envs ex_block |> Va.to_block ex_block.i in
             gen { ctx with envs } stmts
         | StDive (index_ex, stmts) ->
-            let index = eval envs index_ex |> to_index index_ex.i in
+            let index = eval envs index_ex |> Va.to_index index_ex.i in
             gen { ctx with diving = Some index } stmts
       ) () stmts
     in

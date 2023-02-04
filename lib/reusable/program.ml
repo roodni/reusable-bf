@@ -1,6 +1,7 @@
 open Support.Pervasive
 open Support.Info
 open Syntax
+open Value
 
 let load filename channel =
   let lexbuf = Lexer.create filename channel in
@@ -29,7 +30,7 @@ module FileMap = struct
     let compare = compare
   end)
 
-  type progress = Loading | Loaded of Eval.envs
+  type progress = Loading | Loaded of envs
   type t = progress M.t
 
   let stats_to_key (stats: Unix.stats) =
@@ -51,16 +52,16 @@ end
 
 
 type ctx =
-  { envs: Eval.envs;
-    ex_envs: Eval.envs; (* エクスポートされる環境 *)
+  { envs: envs;
+    ex_envs: envs; (* エクスポートされる環境 *)
     top_gen_opt: top_gen option;
     curr_dirname: string;
     filemap: FileMap.t;
     sandbox: bool;
   }
 let init_ctx ~sandbox curr_dirname =
-  { envs = Eval.empty_envs;
-    ex_envs = Eval.empty_envs;
+  { envs = Envs.empty;
+    ex_envs = Envs.empty;
     top_gen_opt = None;
     curr_dirname;
     filemap = FileMap.empty;
@@ -72,8 +73,8 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
   | TopLet binding ->
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
       { ctx with
-        envs = Eval.update_envs_with_va_env env ctx.envs;
-        ex_envs = Eval.update_envs_with_va_env env ctx.ex_envs;
+        envs = Envs.extend_with_value_env env ctx.envs;
+        ex_envs = Envs.extend_with_value_env env ctx.ex_envs;
       }
   | TopCodegen top_gen ->
       if Option.is_some ctx.top_gen_opt then
@@ -82,18 +83,19 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
         { ctx with top_gen_opt=Some top_gen }
   | TopOpen mod_ex ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
-      { ctx with envs = Eval.import_envs mod_envs ctx.envs }
+      { ctx with envs = Envs.import mod_envs ctx.envs }
   | TopInclude mod_ex ->
+      (* 封印中 *)
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with
-        envs = Eval.import_envs mod_envs ctx.envs;
-        ex_envs = Eval.import_envs mod_envs ctx.ex_envs;
+        envs = Envs.import mod_envs ctx.envs;
+        ex_envs = Envs.import mod_envs ctx.ex_envs;
       }
   | TopModule (uv, mod_ex) ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with
-        envs = Eval.add_module_binding_to_envs uv mod_envs ctx.envs;
-        ex_envs = Eval.add_module_binding_to_envs uv mod_envs ctx.ex_envs;
+        envs = Envs.add_module_binding uv mod_envs ctx.envs;
+        ex_envs = Envs.add_module_binding uv mod_envs ctx.ex_envs;
       }
 and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
   LList.fold_left eval_toplevel ctx toplevels
@@ -113,8 +115,8 @@ and eval_mod_expr ctx mod_expr =
       | Some (Loaded envs) -> (ctx, envs)
       | None ->
           let ctx' = {
-            envs = Eval.empty_envs;
-            ex_envs = Eval.empty_envs;
+            envs = Envs.empty;
+            ex_envs = Envs.empty;
             top_gen_opt = None;
             curr_dirname = Filename.dirname path;
             filemap = FileMap.add path Loading ctx.filemap;
@@ -129,7 +131,7 @@ and eval_mod_expr ctx mod_expr =
   | ModStruct prog ->
       let ctx' = {
         ctx with
-        ex_envs = Eval.empty_envs;
+        ex_envs = Envs.empty;
         top_gen_opt = None;
       } in
       let ctx' = eval_toplevels ctx' prog in
@@ -138,8 +140,8 @@ and eval_mod_expr ctx mod_expr =
       assert (l <> lnil);
       let envs =
         LList.fold_left
-          (fun Eval.{ module_env; _ } u ->
-            match Eval.UVE.lookup u module_env with
+          (fun envs u ->
+            match UVE.lookup u envs.module_env with
             | None -> Error.at mod_expr.i (Eval_Module_not_defined u)
             | Some envs -> envs
           ) ctx.envs l
