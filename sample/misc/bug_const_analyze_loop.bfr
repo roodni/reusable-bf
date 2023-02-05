@@ -1,0 +1,19 @@
+open import "../lib/std.bfr"
+
+codegen $
+
+$alloc {a; b}
+
++ a
+, b  - b 'A'
+! b [ *gen_del b  - a ]
+
+(* 定数の解析のバグで
+   この時点で a の中身がゼロであると認識され
+   以下のループがデッドコードとして消去された
+*)
+! a [
+  + a ('A' - 1)
+  . a
+  *gen_del a
+]

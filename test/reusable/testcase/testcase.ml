@@ -89,6 +89,10 @@ let cases =
     { name = "submodule";
       io_list = [ ("", "ABCC") ];
       filename = "sample/misc/submodule.bfr"
+    };
+    { name = "bug: constant analyze for loop";
+      io_list = [ ("A", "A"); ("B", "") ];
+      filename = "sample/misc/bug_const_analyze_loop.bfr"
     }
   ]
   |> List.map
