@@ -15,6 +15,7 @@ let gen_build n st = [
   *st (n, fixed)
 ]
 
+
 let gen_move_last (n, arr) = [
   **let i = arr@i in $
   $dive i [
@@ -48,7 +49,6 @@ let gen_add_const m fi = [
 ]
 
 let gen_incr fi = gen_add_const 1 fi
-
 
 let gen_print_unsigned (n, arr) = [
   **let i = arr@i in $
@@ -94,6 +94,15 @@ let gen_neg fi = [
   *gen_incr fi
 ]
 
+let gen_if_neg (_, arr) neg non_neg = [
+  ? arr:(0)digit [ *neg ] [ *non_neg ]
+]
+
+let gen_abs fi = [
+  *gen_if_neg fi
+    [ *gen_neg fi ]
+    []
+]
 
 
 let gen_print fi = [
@@ -268,9 +277,9 @@ let gen_mul a b dest = [
 
 
 codegen [
-  **gen_build 6 @@ fun a -> $
-  **gen_build 3 @@ fun b -> $
-  **gen_build 9 @@ fun c -> $
+  **gen_build 5 @@ fun a -> $
+  **gen_build 5 @@ fun b -> $
+  **gen_build 10 @@ fun c -> $
   *gen_input ' ' a
   *gen_input '\n' b
   *gen_mul a b c
@@ -280,4 +289,5 @@ codegen [
   *gen_print b
   *gen_puts " = "
   *gen_print c
+  *gen_puts "\n"
 ]

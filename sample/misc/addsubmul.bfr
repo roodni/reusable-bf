@@ -1,0 +1,37 @@
+// https://atcoder.jp/contests/abc098/tasks/abc098_a
+open import "../lib/std.bfr"
+module I = import "../lib/fixedint.bfr"
+
+codegen $
+
+**I:gen_build 5 @@ fun a -> $
+**I:gen_build 5 @@ fun b -> $
+**I:gen_build 10 @@ fun x -> $
+
+
+*I:gen_input ' ' a
+*I:gen_input '\n' b
+
+*I:gen_mul a b x
+*I:gen_abs b
+*I:gen_add a b
+
+// b <- max(a + b, a - b)
+// x <- a * b
+
+*I:gen_neg b
+*I:gen_add b x
+*I:gen_neg b
+
+*I:gen_if_neg x
+  [
+    // x < b
+    *I:gen_print b
+  ]
+  [
+    // x >= b
+    *I:gen_add b x
+    *I:gen_print x
+  ]
+
+*gen_puts "\n"
