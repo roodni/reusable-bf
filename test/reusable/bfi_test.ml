@@ -8,10 +8,10 @@ module BfI = struct
     |> Bf.Exe.from_code
 end
 
-let test_run Testcase.{ name; filename; io_list; } =
-  name >:: (fun _ ->
+let test_run Testcase.{ path; io_list; _ } =
+  path >:: (fun _ ->
     let bf_code =
-      Reusable.Program.gen_bf_from_source filename
+      Reusable.Program.gen_bf_from_source path
       |> Bf.Code.to_string
     in
     io_list |> List.iter (fun (ipt, opt) ->
@@ -27,6 +27,8 @@ let test_run Testcase.{ name; filename; io_list; } =
     )
   )
 
-let test = "bfi" >::: List.map test_run Testcase.cases
+let test =
+  "bfi" >::: List.map test_run
+    Testcase.(cases |> List.filter (fun c -> c.run_bfi))
 
 let () = run_test_tt_main test

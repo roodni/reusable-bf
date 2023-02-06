@@ -1,9 +1,9 @@
 open OUnit2
 open Printf
 
-let test_run Testcase.{ name; filename; io_list; } =
-  name >:: (fun _ ->
-    let bf_code = Reusable.Program.gen_bf_from_source filename in
+let test_run Testcase.{ path; io_list; _ } =
+  path >:: (fun _ ->
+    let bf_code = Reusable.Program.gen_bf_from_source path in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string
@@ -33,7 +33,7 @@ let test_run Testcase.{ name; filename; io_list; } =
         print_newline ();
         print_endline @@ Bf.Code.to_string bf_code;
         Bf.Exe.Dump.dump dump;
-        printf "^^^ %s ^^^\n" name;
+        printf "^^^ %s ^^^\n" path;
         flush_all ();
         assert_bool "fail" false
       end

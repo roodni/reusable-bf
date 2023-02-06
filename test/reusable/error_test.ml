@@ -4,7 +4,7 @@ open Reusable
 
 let test_error ~sandbox (filename, f) =
   filename >:: fun _ ->
-    let path = "../../sample/error/" ^ filename in
+    let path = Filename.concat "../../sample/error/" filename in
     match Program.gen_bf_from_source ~sandbox path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at msg_wi ->
