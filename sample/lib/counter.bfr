@@ -1,3 +1,13 @@
+(* 無限10進カウンタ
+
+   0番目の要素は n=0 (ダミー)
+   1番目以降の要素は
+    n=0: 未到達
+    n=1..10: その桁の値は (10 - n)
+
+  インデックスは0に戻す
+*)
+
 open import "./std.bfr"
 
 let gen_build st = [
@@ -7,6 +17,7 @@ let gen_build st = [
       i: index;
     };
   }
+  + counter:(1)n 10
   *st counter
 ]
 
@@ -37,6 +48,24 @@ let gen_print counter = [
         < i
       ]
   ]
+]
+
+let gen_reset counter = [
+  **let i = counter@i in $
+  ! i:(1)n [ > i ]
+  ! i:n [
+    *gen_del i:n
+    < i
+  ]
+  + counter:(1)n 10
+]
+
+let gen_print_cell c counter = [
+  *gen_reset counter
+  *gen_repeat c [
+    *gen_incr counter
+  ]
+  *gen_print counter
 ]
 
 // sample: atoi

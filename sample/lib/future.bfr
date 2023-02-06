@@ -1,0 +1,51 @@
+open import "./std.bfr"
+
+(* 除算のスケルトンコード
+   divisor_cell で rem_cell を割り
+   商の数だけ quot_code を繰り返す
+   divisor_cell はゼロになり
+   rem_cell には余りが残る
+   (rem_cell に対して非破壊分岐を使用)
+*)
+let gen_div_skelton divisor_cell rem_cell quot_code = [
+  $alloc { bu }
+  ! divisor_cell [
+    ! divisor_cell [
+      - divisor_cell
+      ? rem_cell
+        [ - rem_cell  + bu ]
+        [ *gen_del divisor_cell
+          *gen_repeat bu [ + rem_cell ]
+        ]
+    ]
+    ! bu [
+      *gen_repeat bu [ + divisor_cell ]
+      *quot_code
+    ]
+  ]
+]
+
+// 定数除算
+let gen_const_div n rem_cell quot_code = [
+  $alloc { divisor }
+  + divisor n
+  *gen_div_skelton divisor rem_cell quot_code
+]
+
+
+(* i を 0 まで下げながら各配列要素について文列 st を繰り返す
+   i が最初に指していた要素も含む
+   stは i>0 の場合と i=0 の場合で複製されることに注意
+
+   foreachという名前は少々わかりにくいとも思う
+*)
+let gen_foreach i st = [
+  $iloop i [ *st  < i ]
+  *st
+]
+
+
+let gen_for_index i step_st loop_st = [
+  $iloop i [ *loop_st *step_st ]
+  *loop_st
+]

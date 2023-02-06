@@ -54,8 +54,7 @@ $dive code@p [
   ]
 ]
 
-$iloop code@p [ < code@p ]
-
+*gen_reset_index code@p
 
 // 実行
 $build {

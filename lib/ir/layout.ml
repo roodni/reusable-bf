@@ -38,7 +38,7 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
       let precedence id cost =
         let mtype_precedence =
           match Field.lookup field id with
-          | Field.Array _ -> 90
+          | Field.Array _ -> 25
           | Field.Cell { ifable=true; _ } when ifable_space_allocated -> 60
           | Field.Cell _ -> 30
           | Field.Index -> 20
