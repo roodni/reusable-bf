@@ -68,16 +68,25 @@ let gen_print_cell c counter = [
   *gen_print counter
 ]
 
-// sample: atoi
+
 codegen [
   **gen_build @@ fun cnt -> $
 
+  *gen_print cnt
+  *gen_puts "\n"
+
   $build { a }
+  + a 123
+  *gen_repeat a [ *gen_incr cnt ]
+  *gen_print cnt
+  *gen_puts "\n"
 
-  , a
-  *gen_repeat a [
-    *gen_incr cnt
-  ]
+  *gen_reset cnt
+  *gen_print cnt
+  *gen_puts "\n"
 
+  $build { a }
+  + a 4
+  *gen_repeat a [ *gen_incr cnt ]
   *gen_print cnt
 ]

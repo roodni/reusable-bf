@@ -93,6 +93,18 @@ let cases =
     { name = "bug: constant analyze for loop";
       io_list = [ ("A", "A"); ("B", "") ];
       filename = "sample/misc/bug_const_analyze_loop.bfr"
+    };
+    { name = "counter";
+      io_list = [ ("", "0\n123\n0\n4") ];
+      filename = "sample/lib/counter.bfr"
+    };
+    { name = "fixedint";
+      io_list = [ ("0 0\n", "0 0"); ("12 34\n", "46 408"); ("-1 2\n", "1 -2"); ("3 -4\n", "-1 -12"); ("-5 -6\n", "-11 30"); ];
+      filename = "sample/lib/fixedint.bfr"
+    };
+    { name = "add sub mul";
+      io_list = [ ("3 1\n", "4\n"); ("4 -2\n", "6\n"); ("0 0\n", "0\n") ];
+      filename = "sample/misc/addsubmul.bfr";
     }
   ]
   |> List.map

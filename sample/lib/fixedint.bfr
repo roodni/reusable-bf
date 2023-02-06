@@ -277,17 +277,17 @@ let gen_mul a b dest = [
 
 
 codegen [
-  **gen_build 5 @@ fun a -> $
+  **gen_build 3 @@ fun a -> $
   **gen_build 5 @@ fun b -> $
-  **gen_build 10 @@ fun c -> $
+  **gen_build 8 @@ fun c -> $
+
   *gen_input ' ' a
   *gen_input '\n' b
-  *gen_mul a b c
 
-  *gen_print a
-  *gen_puts " * "
+  *gen_mul a b c
+  *gen_add a b
+
   *gen_print b
-  *gen_puts " = "
+  *gen_puts " "
   *gen_print c
-  *gen_puts "\n"
 ]
