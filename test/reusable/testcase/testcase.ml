@@ -74,4 +74,6 @@ let cases =
         ("4 -2\n", "6\n");
         ("0 0\n", "0\n");
         ("1000 -1000\n", "2000\n") ];
+    case "sample/misc/bug_const_analyze_loop_heavy.bfr"
+      [ ("\n", "") ]
   ]

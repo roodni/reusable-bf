@@ -155,34 +155,35 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             in
             State.union thn_state_out els_state_out
         | Loop (cond, child) ->
-            (* テーブルの state_in は更新されるだけであって、
-               引数 state が同じなら update_tables の挙動は同じ
-               そのためループを抜けた時点での State の変化がなければ
-               ループを何回繰り返しても同じ?
+            (* テーブルの state_in は更新されるだけであって、引数 state が同じなら update_tables の挙動は同じ
+               そのためループを抜けた時点での State の変化がなければループを何回繰り返しても同じ?
             *)
             let rec update_until_fixed_point curr_state =
               let next_state = update_tables curr_state child in
-              let cond_p = State.find cond next_state in
-              if Possible.equal cond_p (Possible.Just 0) then next_state
-              else if State.equal curr_state next_state
+              if State.equal curr_state next_state
                 then next_state
-                else update_until_fixed_point next_state
+                else update_until_fixed_point (State.union curr_state next_state)
             in
-            let cond_p = State.find cond state in
-            if Possible.equal cond_p (Possible.Just 0)
-              then state (* ループに入らない場合 *)
+            if Possible.equal (State.find cond state) (Possible.Just 0) then
+              state (* ループに入らない場合 *)
+            else
+              let state_1 = update_tables state child in
+              let state_01 = State.union state state_1 in
+              if Possible.equal (State.find cond state_1) (Possible.Just 0) then
+                (* ループを1回で抜ける場合 *)
+                state_01 |> State.update cond (Possible.Just 0)
               else
-                (* ループに入るかもしれない場合 *)
-                State.union state (update_until_fixed_point state)
+                (* ループが何回か回る場合 *)
+                update_until_fixed_point state_01
                 |> State.update cond (Possible.Just 0)
         | ILoop (_, child) ->
             let rec update_until_fixed_point curr_state =
               let next_state = update_tables curr_state child in
               if State.equal curr_state next_state
                 then next_state
-                else update_until_fixed_point next_state
+                else update_until_fixed_point (State.union curr_state next_state)
             in
-            State.union state (update_until_fixed_point state)
+            update_until_fixed_point state
         )
       )
       initial_state
