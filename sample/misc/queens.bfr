@@ -1,4 +1,4 @@
-open import "../lib/std.bfr"
+open import "std.bfr"
 
 codegen $
 

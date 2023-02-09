@@ -1,5 +1,4 @@
 open Printf
-open Support.Info
 
 let programs = [
   ("rev3", "rev3.bfr");
@@ -16,7 +15,7 @@ let () =
       let bf_code =
         try
           Reusable.Program.gen_bf_from_source
-            ("./sample/misc/measurelen/" ^ path)
+            (Filename.concat "./sample/misc/measurelen/" path)
         with
         | Reusable.Error.Exn_at msg_wi ->
             Reusable.Error.print msg_wi;

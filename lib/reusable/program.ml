@@ -15,6 +15,34 @@ let load filename channel =
   validate_program_depth 0 program;
   program
 
+let lib_path =
+  [ Sys.getenv_opt "BFRE_LIB_PATH";
+    Sys.getenv_opt "DUNE_SOURCEROOT"
+      |> Option.map (fun r -> Filename.concat r "sample/lib");
+    Sys.getenv_opt "OPAM_SWITCH_PREFIX"
+      |> Option.map (fun r -> Filename.concat r "share/bf-reusable/lib");
+  ]
+  |> List.find_map Fun.id
+
+let find_source info curr_dir path =
+  if not (Filename.is_relative path) then path
+  else begin
+    let lib_dirs =
+      [ Some curr_dir; lib_path ] |> List.filter_map Fun.id
+    in
+    let found_path =
+      List.find_map
+        (fun dir ->
+          let path = Filename.concat dir path in
+          if Sys.file_exists path then Some path else None
+        )
+        lib_dirs
+    in
+    match found_path with
+    | Some p -> p
+    | None -> Error.at info (Module_import_file_not_found path)
+  end
+
 let load_from_source path =
   let channel = open_in path in
   let res = load path channel in
@@ -103,13 +131,7 @@ and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
       if ctx.sandbox then Error.at mod_expr.i Module_Sandbox_import;
-      let path =
-        if Filename.is_relative p then
-          Filename.concat ctx.curr_dirname p
-        else p
-      in
-      if not (Sys.file_exists path) then
-        Error.at mod_expr.i (Module_import_file_not_found p);
+      let path = find_source mod_expr.i ctx.curr_dirname p in
       match FileMap.find path ctx.filemap with
       | Some Loading -> Error.at mod_expr.i Module_Recursive_import
       | Some (Loaded envs) -> (ctx, envs)

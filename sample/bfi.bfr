@@ -1,9 +1,9 @@
-(* brainfuckインタプリタ
+(* 自分自身を実行可能なbrainfuckインタプリタ
    入力の形式:
      {brainfuckのコード}\{入力}
 *)
 
-open import "lib/std.bfr"
+open import "std.bfr"
 
 codegen $
 

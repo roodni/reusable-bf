@@ -4,8 +4,10 @@ type case = {
   run_bfi: bool;
 }
 
+let source_root = Sys.getenv "DUNE_SOURCEROOT"
+
 let case ?(run_bfi=true) path io_list =
-  { path = Filename.concat "../../" path;
+  { path = Filename.concat source_root path;
     io_list;
     run_bfi }
 

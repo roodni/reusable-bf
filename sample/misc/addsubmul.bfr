@@ -1,6 +1,6 @@
 // https://atcoder.jp/contests/abc098/tasks/abc098_a
-open import "../lib/std.bfr"
-module I = import "../lib/fixedint.bfr"
+open import "std.bfr"
+module I = import "fixedint.bfr"
 
 codegen $
 

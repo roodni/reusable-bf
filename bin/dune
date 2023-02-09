@@ -2,7 +2,3 @@
  (names main measurelen)
  (public_names bfre -)
  (libraries support bf ir reusable))
-
-(env
- (dev
-   (flags (:standard -w -33))))

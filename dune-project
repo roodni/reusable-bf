@@ -1,4 +1,4 @@
-(lang dune 3.5)
+(lang dune 3.6)
 (name bf-reusable)
 (using menhir 2.1)
 

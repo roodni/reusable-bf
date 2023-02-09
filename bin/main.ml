@@ -1,5 +1,4 @@
 open Printf
-open Support.Info
 
 (* コマンドライン引数 *)
 let flag_bf = ref false
@@ -43,8 +42,11 @@ let parse_args () =
   end;
 ;;
 
-let get_channel () =
-  if !flag_stdin then stdin else open_in !filename
+let get_source () =
+  if !flag_stdin then
+    (Sys.getcwd (), stdin)
+  else
+    (Filename.dirname !filename, open_in !filename)
 
 (** bfのコードを実行する *)
 let run_bf bf_code =
@@ -68,7 +70,7 @@ let run_bf bf_code =
 (** bfのインタプリタとして使う場合の処理 *)
 let use_as_bf_interpreter () =
   let bf_code =
-    let channel = get_channel () in
+    let _, channel = get_source () in
     let code =
       Seq.of_dispenser
         (fun () -> In_channel.input_char channel)
@@ -82,10 +84,9 @@ let use_as_bf_interpreter () =
 
 (** bf-reusableのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
-  let dirname = Filename.dirname !filename in
+  let dirname, channel = get_source () in
   let field, ir_code =
     try
-      let channel = get_channel () in
       let program = Reusable.Program.load !filename channel in
       close_in channel;
       Reusable.Program.gen_ir ~sandbox:!flag_sandbox dirname program
