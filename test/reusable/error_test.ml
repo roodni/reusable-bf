@@ -2,10 +2,10 @@ open OUnit2
 open Support.Info
 open Reusable
 
-let test_error ~sandbox (filename, f) =
+let test_error ?(path_limit=Program.NoLimit) (filename, f) =
   filename >:: fun _ ->
     let path = Filename.concat "../../sample/error/" filename in
-    match Program.gen_bf_from_source ~sandbox path with
+    match Program.gen_bf_from_source ~path_limit path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at msg_wi ->
         if not (f msg_wi.v) then begin
@@ -66,14 +66,15 @@ let cases =
     ( "memory_stack_gen.bfr", (=) Memory_Recursion_limit );
   ]
 
-let normal_tests = "normal" >::: List.map (test_error ~sandbox:false) cases
+let normal_tests = "normal" >::: List.map test_error cases
 
 let sandbox_tests =
   let open Error in
   "sandbox" >:::
     List.map
-      (test_error ~sandbox:true)
-      [ ( "module_prohibited-import.bfr", (=) Module_Sandbox_import );
+      (test_error ~path_limit:(Program.Limited ["std.bfr"]))
+      [ ( "module_prohibited-import.bfr", (=) Module_Limited_import );
+        ( "module_prohibited-import-submodule.bfr", (=) Module_Limited_import );
       ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->

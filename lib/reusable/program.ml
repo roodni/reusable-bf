@@ -24,7 +24,17 @@ let lib_path =
   ]
   |> List.find_map Fun.id
 
-let find_source info curr_dir path =
+type path_limit =
+  | NoLimit
+  | Limited of string list
+
+let find_source info path_limit curr_dir path =
+  ( match path_limit with
+    | NoLimit -> ()
+    | Limited l ->
+        if not (List.mem path l) then
+          Error.at info (Module_Limited_import)
+  );
   if not (Filename.is_relative path) then path
   else begin
     let lib_dirs =
@@ -85,15 +95,7 @@ type ctx =
     top_gen_opt: top_gen option;
     curr_dirname: string;
     filemap: FileMap.t;
-    sandbox: bool;
-  }
-let init_ctx ~sandbox curr_dirname =
-  { envs = Envs.empty;
-    ex_envs = Envs.empty;
-    top_gen_opt = None;
-    curr_dirname;
-    filemap = FileMap.empty;
-    sandbox;
+    path_limit: path_limit;
   }
 
 let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
@@ -130,8 +132,9 @@ and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
 and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
-      if ctx.sandbox then Error.at mod_expr.i Module_Sandbox_import;
-      let path = find_source mod_expr.i ctx.curr_dirname p in
+      let path =
+        find_source mod_expr.i ctx.path_limit ctx.curr_dirname p
+      in
       match FileMap.find path ctx.filemap with
       | Some Loading -> Error.at mod_expr.i Module_Recursive_import
       | Some (Loaded envs) -> (ctx, envs)
@@ -142,7 +145,7 @@ and eval_mod_expr ctx mod_expr =
             top_gen_opt = None;
             curr_dirname = Filename.dirname path;
             filemap = FileMap.add path Loading ctx.filemap;
-            sandbox = ctx.sandbox;
+            path_limit = NoLimit; (* import先でのimportは信用する *)
           } in
           let prog = load_from_source path in
           let ctx' = eval_toplevels ctx' prog in
@@ -171,18 +174,25 @@ and eval_mod_expr ctx mod_expr =
       (ctx, envs)
     end
 
-let gen_ir ~sandbox (dirname: string) (program: program)
+let gen_ir ~path_limit (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
-  let ctx = init_ctx ~sandbox dirname in
+  let ctx = {
+    envs = Envs.empty;
+    ex_envs = Envs.empty;
+    top_gen_opt = None;
+    curr_dirname = dirname;
+    filemap = FileMap.empty;
+    path_limit;
+  } in
   let ctx = eval_toplevels ctx program in
   match ctx.top_gen_opt with
   | None -> Error.at unknown_info Top_Missing_codegen
   | Some top_gen -> IrGen.generate ctx.envs top_gen
 
-let gen_bf_from_source ?(sandbox=false) path =
+let gen_bf_from_source ?(path_limit=NoLimit) path =
   let dirname = Filename.dirname path in
   let program = load_from_source path in
-  let field, ir_code = gen_ir dirname ~sandbox program in
+  let field, ir_code = gen_ir ~path_limit dirname program in
   (* 生存セル解析による最適化 *)
   let ir_code = Ir.Code.convert_idioms ir_code in
   let liveness = Ir.Liveness.analyze field ir_code in
