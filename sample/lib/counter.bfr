@@ -8,7 +8,7 @@
   インデックスは0に戻す
 *)
 
-open import "./std.bfr"
+open import "std.bfr"
 
 let gen_build st = [
   $build {
@@ -68,25 +68,14 @@ let gen_print_cell c counter = [
   *gen_print counter
 ]
 
-
+// 例: 入力された文字のASCIIコードを10進数で出力
 codegen [
   **gen_build @@ fun cnt -> $
 
-  *gen_print cnt
-  *gen_puts "\n"
-
-  $build { a }
-  + a 123
-  *gen_repeat a [ *gen_incr cnt ]
-  *gen_print cnt
-  *gen_puts "\n"
-
-  *gen_reset cnt
-  *gen_print cnt
-  *gen_puts "\n"
-
-  $build { a }
-  + a 4
-  *gen_repeat a [ *gen_incr cnt ]
+  $build { x }
+  , x
+  *gen_repeat x [
+    *gen_incr cnt
+  ]
   *gen_print cnt
 ]

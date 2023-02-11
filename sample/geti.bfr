@@ -1,0 +1,24 @@
+// Decimal integer input
+
+let gen_repeat c loop = [
+  ! c [ - c  *loop ]
+]
+
+let gen_geti dest ed = [
+  $alloc { x: cell; }
+  , x
+  - x ed
+  ! x [
+    - x ('0' - ed)
+    *gen_repeat dest [ + x 10 ]
+    *gen_repeat x [ + dest ]
+    , x
+    - x ed
+  ]
+]
+
+codegen [
+  $alloc { n: cell; }
+  *gen_geti n '\n'
+  . n
+]

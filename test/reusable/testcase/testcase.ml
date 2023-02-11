@@ -63,6 +63,8 @@ let cases =
     case "sample/misc/bug/const_analyze_loop.bfr"
       [ ("A", "A"); ("B", "") ];
     case "sample/lib/counter.bfr"
+      [ ("A", "65"); ("0", "48"); ("{", "123") ];
+    case "sample/misc/hoge/counter_test.bfr"
       [ ("", "0\n123\n0\n4") ];
     case "sample/lib/fixedint.bfr"  ~run_bfi:false
       [ ("0 0\n", "0 0");

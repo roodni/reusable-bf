@@ -1,3 +1,5 @@
+let abs i = if i < 0 then -i else i
+
 let fix f =
   let g x = f (fun y -> x x y) in
   g g
@@ -6,11 +8,8 @@ let gen_del x = [
   ! x [ - x ]
 ]
 
-let gen_repeat src block = [
-  ! src [
-     - src
-     *block
-  ]
+let gen_repeat c loop = [
+  ! c [ - c  *loop ]
 ]
 
 let gen_repeat_restore src block = [
@@ -41,18 +40,19 @@ let gen_geti dest ed = [
   ]
 ]
 
-let gen_puts = fun l -> [
-  $alloc { c: cell; }
+let gen_puts l = [
+  $alloc { c }
   *fix
-    (fun loop prev l ->
-      match l with
+    (fun loop prev l -> match l with
       | () -> []
-      | hd . tl -> [
-          + c (hd - prev)
-          . c
-          *loop hd tl
-        ])
-    0 l
+      | curr . rest ->
+          let out =
+            if abs (curr - prev) <= 3 + curr
+              then [ + c (curr - prev) ]
+              else [ *gen_del c  + c curr ]
+          in
+          [ *out  . c  *loop curr rest ]
+    ) 0 l
 ]
 
 // リスト l を比較関数 compare でソートする

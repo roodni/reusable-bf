@@ -1,7 +1,7 @@
 (* 固定長10進整数 *)
 
-open import "./std.bfr"
-open import "./future.bfr"
+open import "std.bfr"
+open import "future.bfr"
 
 let base = 10
 
@@ -276,10 +276,12 @@ let gen_mul a b dest = [
 ]
 
 
+// input: a b
+// output: (a + b) (a * b)
 codegen [
-  **gen_build 3 @@ fun a -> $
+  **gen_build 5 @@ fun a -> $
   **gen_build 5 @@ fun b -> $
-  **gen_build 8 @@ fun c -> $
+  **gen_build 10 @@ fun c -> $
 
   *gen_input ' ' a
   *gen_input '\n' b

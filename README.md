@@ -4,47 +4,37 @@ brainfuckに変換されるプログラミング言語です。
 - 抽象化されたポインタ操作
 - brainfuckに近い命令セット
 - ML風のメタプログラミング機構
-  * Q. これOCamlとかの内部DSLとして作るべきだったんじゃ
-  * A. ……
+  * 何かの内部DSLとして作るべきだったかもしれない
 
-## Hello World!
+## 例
 
 [Playgroundで試せます](https://roodni.github.io/bf-reusable-playground-frontend/)
 
-```ocaml
-// 不動点コンビネータ (型検査器は未実装)
-let fix f =
-  let g x = f (fun y -> x x y) in
-  g g
+```
+// Decimal integer input
 
-let fold_left f a l =
-  fix
-    (fun fold a l ->
-      match l with
-      | () -> a
-      | hd . tl -> fold (f a hd) tl
-    ) a l
-
-// 文列の結合
-let cat s1 s2 = [ *s1  *s2 ]
-
-// 整数のリストを引数に取り、文字列を出力する文列を返す
-let gen_puts str = [
-  $alloc { cel; }
-  **let stmts, _ =
-      fold_left
-        (fun (stmts, prev) cha ->
-          let out = [
-            + cel (cha - prev)
-            . cel
-          ] in
-          (cat stmts out, cha)
-        ) ([], 0) str
-    in
-    stmts
+let gen_repeat c loop = [
+  ! c [ - c  *loop ]
 ]
 
-codegen [ *gen_puts "Hello World!\n" ]
+let gen_geti dest ed = [
+  $alloc { x: cell; }
+  , x
+  - x ed
+  ! x [
+    - x ('0' - ed)
+    *gen_repeat dest [ + x 10 ]
+    *gen_repeat x [ + dest ]
+    , x
+    - x ed
+  ]
+]
+
+codegen [
+  $alloc { n: cell; }
+  *gen_geti n '\n'
+  . n
+]
 ```
 
 ## インストール
@@ -68,7 +58,7 @@ opam install .
 
 ### サンプルプログラムの実行例
 
-* `sample/hello.bfr`: ハローワールド
+* `sample/hello.bfr`: Hello World!
   ```sh
   bfre -r sample/hello.bfr
   ```
@@ -105,7 +95,7 @@ bf-reusableは`$alloc`で確保されたセルに対して以下の操作
 
 を必要に応じて自動挿入します。
 
-brainfuckの処理系にはセルの中身が負になりうるものがあって、これらの操作がエラーや無限ループになることがあります。そのような処理系であっても、以下の事項に留意することで、セルの中身が一時的に負になるようなプログラムを動作させることができます。
+これらの操作は、処理系によっては、セルの中身が負である場合にエラーや無限ループを引き起こす可能性があります。以下の事項に留意することで、セルの中身が一時的に負になるようなプログラムを動作させられます。
 * `$alloc`のスコープの終わりの時点でセルの中身を非負にする。
 * インデックスシフト文 (`> a@i` `< a@i`) の時点でセルの中身を非負にする。
 
