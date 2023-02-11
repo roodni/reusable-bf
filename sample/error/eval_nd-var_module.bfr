@@ -1,6 +1,0 @@
-let c = 0
-module B = import "../misc/import_b.bfr"
-
-let _ = B:c
-
-codegen []

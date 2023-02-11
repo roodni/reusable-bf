@@ -1,6 +1,6 @@
 // web playground では変なパスへのimportを禁止する
 
 open import "std.bfr" // 可能
-open import "../lib/std.bfr" // 禁止
+open import "./std.bfr" // 禁止
 
 codegen []

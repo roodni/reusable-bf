@@ -2,9 +2,11 @@ open OUnit2
 open Support.Info
 open Reusable
 
+let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "sample/misc/error"
+
 let test_error ?(path_limit=Program.NoLimit) (filename, f) =
   filename >:: fun _ ->
-    let path = Filename.concat "../../sample/error/" filename in
+    let path = Filename.concat error_dir filename in
     match Program.gen_bf_from_source ~path_limit path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at msg_wi ->
@@ -79,7 +81,7 @@ let sandbox_tests =
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
-    Program.gen_bf_from_source "../../sample/error/manual/large-bfcode.bfr"
+    Program.gen_bf_from_source (Filename.concat error_dir "manual/large-bfcode.bfr")
   in
   assert_equal max_int (Bf.Code.length bfcode)
 

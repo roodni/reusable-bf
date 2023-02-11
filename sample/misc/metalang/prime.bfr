@@ -1,6 +1,6 @@
 // トランスパイル時に素数を列挙する
 
-open import "../lib/std.bfr"
+open import "std.bfr"
 open import "./puti.bfr"
 
 let is_prime = fun n ->
