@@ -75,6 +75,31 @@ let gen_print_unsigned (n, arr) = [
   *gen_reset_index i
 ]
 
+let gen_print_unsigned_destructive (n, arr) = [
+  **let i = arr@i in $
+  $dive i [
+    $alloc { zc; c }
+    + zc (n - 1)
+    // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
+    ! zc [
+      ? i:digit
+        [ *gen_repeat zc [ + c ] ]
+        [ - zc  > i ]
+    ]
+    // 残りの桁を出力する
+    + c
+    ! c [
+      + i:digit '0'
+      . i:digit
+      - c
+      ! c [ *gen_repeat c [ + zc ]  > i ]
+      *gen_repeat zc [ + c ]
+    ]
+  ]
+  *gen_reset_index i
+]
+
+
 // 各桁反転
 let gen_flip fi = [
   **let n, arr = fi in $
@@ -118,6 +143,20 @@ let gen_print fi = [
     *gen_del is_neg
     *gen_neg fi
   ]
+]
+
+let gen_print_destructive fi = [
+  **let _, arr = fi in $
+  ? arr@i:digit
+    [
+      $dive arr@i [
+        $alloc { minus }
+        + minus '-'  . minus
+      ]
+      *gen_neg fi
+    ]
+    []
+  *gen_print_unsigned_destructive fi
 ]
 
 
