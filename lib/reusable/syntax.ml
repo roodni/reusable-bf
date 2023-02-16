@@ -70,7 +70,7 @@ and stmt' =
   | StGet of expr
   | StWhile of expr * stmts
   | StIf of expr * stmts * stmts option
-  | StILoop of expr * stmts
+  | StIndexLoop of expr * stmts
   | StIndexIf of expr * stmts
   | StShift of int * expr * expr option  (* sign, index, int *)
   | StAlloc of field * stmts
@@ -156,7 +156,8 @@ and validate_stmts_depth n (stmts: stmts) =
           Option.iter validate_expr_depth exopt;
       | StPut ex | StGet ex | StExpand ex ->
           validate_expr_depth ex;
-      | StWhile (ex, stmts) | StILoop (ex, stmts) | StDive (ex, stmts) | StIndexIf (ex, stmts) ->
+      | StWhile (ex, stmts) | StIndexLoop (ex, stmts)
+      | StDive (ex, stmts) | StIndexIf (ex, stmts) ->
           validate_expr_depth ex;
           validate_stmts_depth stmts;
       | StIf (ex, ss, ssopt) ->

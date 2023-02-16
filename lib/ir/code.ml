@@ -12,8 +12,8 @@ and 'a cmd =
   | Shift of { n:int; index:Sel.index; followers:Id.t llist }
   | Loop of Sel.t * 'a t
   | If of Sel.t * 'a t * 'a t
-  | ILoop of (Sel.index * 'a t)
-  | IIf of (Sel.index * 'a t)
+  | IndexLoop of (Sel.index * 'a t)
+  | IndexIf of (Sel.index * 'a t)
   | Reset of Sel.t
 
 (** アノテーション付きコマンド1つ単位で単純な書き換えを行う
@@ -39,12 +39,12 @@ and cmd_filter_map f = function
     (* ↑コンストラクタで新しい値を構成しないと型が合わない *)
   | Loop (sel, code) ->
       Loop (sel, filter_map f code)
-  | ILoop (index, code) ->
-      ILoop (index, filter_map f code)
+  | IndexLoop (index, code) ->
+      IndexLoop (index, filter_map f code)
   | If (sel, thn, els) ->
       If (sel, filter_map f thn, filter_map f els)
-  | IIf (index, code) ->
-      IIf (index, filter_map f code)
+  | IndexIf (index, code) ->
+      IndexIf (index, filter_map f code)
 
 (** アノテーションだけを書き換える *)
 let annot_map f code =
@@ -97,8 +97,8 @@ let output ppf output_annot code =
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
             print_block code;
-        | ILoop ((arr_sel, idx_id), code) ->
-            fprintf ppf "! %s@%s" (Sel.to_string arr_sel) (Id.simple_name idx_id);
+        | IndexLoop (index, code) ->
+            fprintf ppf "<!> %s" (Sel.index_to_string index);
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
             print_block code;
@@ -109,7 +109,7 @@ let output ppf output_annot code =
             print_block thn_code;
             fprintf ppf "@;<0 2>";
             print_block els_code;
-        | IIf (index, code) ->
+        | IndexIf (index, code) ->
             fprintf ppf "<?> %s" (Sel.index_to_string index);
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
@@ -140,11 +140,12 @@ let shift_followers n (arr_sel, idx_id) (followers: Id.t llist) =
     )
   |> LList.concat |> from_cmd_llist
 
-let desugar_ILoop ((arr_sel, idx_id), loop) =
+
+let extend_IndexLoop ((arr_sel, idx_id), loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
   from_cmds [ Loop (cond_sel, loop) ]
 
-let extend_IIf (index, code) =
+let extend_IndexIf (index, code) =
   let _, idx_id = index in
   let idx_sel = Sel.concat_member_to_index_tail index idx_id 0 in
   let prev_idx_sel = Sel.concat_member_to_index_tail index idx_id (-1) in
@@ -161,7 +162,6 @@ let extend_IIf (index, code) =
       @+ delete_annot code
     )
   ]
-;;
 
 
 (** イディオム[-]を専用コマンドに変換する *)
@@ -175,7 +175,7 @@ let convert_idioms code =
           | _ -> `Keep ()
         end
       | Add _ | Put _ | Get _ | Shift _ | Reset _
-      | ILoop _ | If _ | IIf _ ->
+      | IndexLoop _ | If _ | IndexIf _ ->
           `Keep ()
     )
     code

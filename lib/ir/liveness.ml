@@ -54,7 +54,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             let els_live_in = update_tables_and_compute_live_in succ_live_in els_code in
             tbl.live_out <- CellSet.union thn_live_in els_live_in;
             CellSet.add_sel_if_mergeable fmain cond_sel tbl.live_out
-        | IIf (_, thn_code) ->
+        | IndexIf (_, thn_code) ->
             let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
             tbl.live_out <- CellSet.union thn_live_in succ_live_in;
             tbl.live_out
@@ -77,7 +77,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             in
             update_until_fixed_point ();
             compute_loop_live_in ()
-        | ILoop (_, child_code) ->
+        | IndexLoop (_, child_code) ->
           (* LoopIndexでは条件分岐でマージ可能なセルを使わない *)
             tbl.live_out <- CellSet.union tbl.live_out succ_live_in;
             let rec update_until_fixed_point () =
@@ -188,12 +188,12 @@ end = struct
               ()
           | Add (_, sel) | Get sel | Reset sel ->
               add_interfere (Sel.last_id sel) live_out;
-          | Loop (_, code) | ILoop (_, code) ->
+          | Loop (_, code) | IndexLoop (_, code) ->
               scan_code code;
           | If (_, thn, els) ->
               scan_code thn;
               scan_code els;
-          | IIf (_, thn) ->
+          | IndexIf (_, thn) ->
               scan_code thn;
         )
         code
@@ -377,9 +377,9 @@ end = struct
                     |> CellSet.of_seq |> CellSet.elements |> llist
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
-            | ILoop (index, code) ->  ILoop (convert_index index, convert_code code)
+            | IndexLoop (index, code) ->  IndexLoop (convert_index index, convert_code code)
             | If (sel, thn, els) -> If (convert_sel sel, convert_code thn, convert_code els)
-            | IIf (index, thn) -> IIf (convert_index index, convert_code thn)
+            | IndexIf (index, thn) -> IndexIf (convert_index index, convert_code thn)
           in
           { cmd; annot=() }
         )

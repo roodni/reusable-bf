@@ -31,7 +31,7 @@ let gen_carry_from_curr (_, arr) = [
   **let i = arr@i in $
   $dive i [
     // i=1 まで繰り上げ
-    $iloop i [
+    <!> i [
       *gen_const_div
         base i:digit [ + i:(-1)digit ]
       < i
@@ -223,7 +223,7 @@ let gen_add src dest = [
   *gen_move_last src
   // 足す
   $dive sarr@i [
-    $iloop sarr@i [
+    <!> sarr@i [
       *gen_repeat_restore sarr@i:digit
         [ + darr@i:digit ]
       < sarr@i
@@ -235,7 +235,7 @@ let gen_add src dest = [
   // 桁が違う場合に符号拡張
   *(if sn < dn then $
       ? sarr:(0)digit
-        [ $iloop darr@i
+        [ <!> darr@i
             [ < darr@i  + darr@i:digit (base - 1) ]
         ]
         [ *gen_reset_index darr@i ]
@@ -272,7 +272,7 @@ let gen_mul a b dest = [
       // a * (b の符号拡張)
       ? barr@i:digit
         [
-          $iloop darr@i [
+          <!> darr@i [
             < darr@i  + dc
             $dive aarr@i [ *gen_repeat_restore aarr@i:digit [
               + darr@i:digit (base - 1)
@@ -280,7 +280,7 @@ let gen_mul a b dest = [
           ]
         ]
         [
-          $iloop darr@i [ < darr@i  + dc ]
+          <!> darr@i [ < darr@i  + dc ]
         ]
       // 繰り上げ
       // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
@@ -294,7 +294,7 @@ let gen_mul a b dest = [
       [
         // * b
         > darr@i
-        $iloop darr@i [
+        <!> darr@i [
           < darr@i
           *gen_move_last b
           *gen_for_index darr@i

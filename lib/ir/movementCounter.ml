@@ -131,10 +131,10 @@ let from_code (code: 'a Code.t): t =
             let wend_sel = scan_code cond_sel code in
             add_sel_to_sel tbl wend_sel cond_sel;
             cond_sel
-        | ILoop params ->
-            scan_code curr_sel (Code.desugar_ILoop params)
-        | IIf params ->
-            scan_code curr_sel (Code.extend_IIf params)
+        | IndexLoop params ->
+            scan_code curr_sel (Code.extend_IndexLoop params)
+        | IndexIf params ->
+            scan_code curr_sel (Code.extend_IndexIf params)
         | Shift { n; index; followers } -> begin
             let idx_id = snd index in
             let index_sel = Sel.concat_member_to_index_tail index idx_id 0 in

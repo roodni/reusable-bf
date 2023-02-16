@@ -14,7 +14,7 @@ let gen_counter_incr counter = [
   **let i = counter@i in
     let n = i:n in $
   > i
-  $iloop i [
+  <!> i [
     ? n [] [ + n 10 ]
     - n
     ? n

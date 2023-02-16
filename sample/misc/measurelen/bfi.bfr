@@ -55,7 +55,7 @@ $dive code@p [
   ]
 ]
 
-$iloop code@p [ < code@p ]
+<!> code@p [ < code@p ]
 
 
 // 実行

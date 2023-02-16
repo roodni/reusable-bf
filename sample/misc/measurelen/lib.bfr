@@ -30,7 +30,7 @@ let gen_add_multi src dest k = [
 
 
 let gen_reset_index i = [
-  $iloop i [ < i ]
+  <!> i [ < i ]
 ]
 
 let gen_set_index src i = [

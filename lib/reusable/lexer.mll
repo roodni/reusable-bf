@@ -120,12 +120,12 @@ and main = parse
   | "|" { P.BAR (info lexbuf) }
   | "||" { P.BARBAR (info lexbuf) }
   | "&&" { P.ANDAND (info lexbuf) }
+  | "<!>" { P.INDEX_LOOP (info lexbuf) }
   | "<?>" { P.INDEX_IF (info lexbuf) }
   | "$" { P.ST (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$build" { P.ST_BUILD (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
-  | "$iloop" { P.ST_ILOOP (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {
       match int_of_string_opt (Lexing.lexeme lexbuf) with
       | Some i -> P.INT (withinfo (info lexbuf) i)

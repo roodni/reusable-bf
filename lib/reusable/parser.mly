@@ -27,12 +27,12 @@ open Syntax
 %token <Support.Info.info> ANDAND // &&
 %token <Support.Info.info> MOD  // %
 
+%token <Support.Info.info> INDEX_LOOP // <!>
 %token <Support.Info.info> INDEX_IF // <?>
 
 %token <Support.Info.info> ST  // $
 %token <Support.Info.info> ST_ALLOC ST_BUILD
 %token <Support.Info.info> ST_DIVE
-%token <Support.Info.info> ST_ILOOP
 
 %token <Support.Info.info> CELL INDEX ARRAY
 %token <Support.Info.info> FUN
@@ -139,7 +139,7 @@ stmt:
   | i=QUES e=expr LBRACKET sl_t=stmts RBRACKET LBRACKET sl_e=stmts RBRACKET {
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
-  | i=ST_ILOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StILoop (e, sl) }
+  | i=INDEX_LOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexLoop (e, sl) }
   | i=INDEX_IF e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexIf (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
   | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }

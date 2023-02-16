@@ -23,7 +23,7 @@ let gen_repeat_restore src block = [
 
 
 let gen_reset_index i = [
-  $iloop i [ < i ]
+  <!> i [ < i ]
 ]
 
 
