@@ -35,17 +35,28 @@ let gen_const_div n rem_cell quot_code = [
 
 (* i を 0 まで下げながら各配列要素について文列 st を繰り返す
    i が最初に指していた要素も含む
-   stは i>0 の場合と i=0 の場合で複製されることに注意
-
-   foreachという名前は少々わかりにくいとも思う
+   st は i へのdive下で展開されることに注意
 *)
 let gen_foreach i st = [
-  $iloop i [ *st  < i ]
-  *st
+  $dive i [
+    $alloc { cont }
+    + cont
+    ! cont [
+      *st
+      *gen_del cont
+      <?> i [ < i  + cont ]
+    ]
+  ]
 ]
 
-
 let gen_for_index i step_st loop_st = [
-  $iloop i [ *loop_st *step_st ]
-  *loop_st
+  $dive i [
+    $alloc { cont }
+    + cont
+    ! cont [
+      *loop_st
+      *gen_del cont
+      <?> i [ *step_st  + cont ]
+    ]
+  ]
 ]

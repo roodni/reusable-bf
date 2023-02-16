@@ -120,6 +120,7 @@ and main = parse
   | "|" { P.BAR (info lexbuf) }
   | "||" { P.BARBAR (info lexbuf) }
   | "&&" { P.ANDAND (info lexbuf) }
+  | "<?>" { P.INDEX_IF (info lexbuf) }
   | "$" { P.ST (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$build" { P.ST_BUILD (info lexbuf) }

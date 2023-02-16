@@ -110,6 +110,13 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               Ir.Code.from_cmds [ ILoop (index, child_code) ]
             in
             ((), code)
+        | StIndexIf (index_ex, stmts) ->
+            let index = eval envs index_ex |> Va.to_index index_ex.i in
+            let (), child_code = gen ctx stmts in
+            let code =
+              Ir.Code.from_cmds [ IIf (index, child_code) ]
+            in
+            ((), code)
         | StIf (ex_sel, stmts_then, stmts_else) ->
             let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
             let nmtype = Ir.Sel.find_mtype nmain nsel in

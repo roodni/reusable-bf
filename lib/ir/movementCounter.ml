@@ -133,6 +133,8 @@ let from_code (code: 'a Code.t): t =
             cond_sel
         | ILoop params ->
             scan_code curr_sel (Code.desugar_ILoop params)
+        | IIf params ->
+            scan_code curr_sel (Code.extend_IIf params)
         | Shift { n; index; followers } -> begin
             let idx_id = snd index in
             let index_sel = Sel.concat_member_to_index_tail index idx_id 0 in

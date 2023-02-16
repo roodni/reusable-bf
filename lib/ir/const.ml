@@ -154,15 +154,21 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
               update_tables (State.update cond (Possible.Just 0) state) els
             in
             State.union thn_state_out els_state_out
+        | IIf (_, thn) ->
+            let thn_state_out = update_tables state thn in
+            State.union state thn_state_out
         | Loop (cond, child) ->
             (* テーブルの state_in は更新されるだけであって、引数 state が同じなら update_tables の挙動は同じ
                そのためループを抜けた時点での State の変化がなければループを何回繰り返しても同じ?
             *)
             let rec update_until_fixed_point curr_state =
-              let next_state = update_tables curr_state child in
+              let next_state =
+                update_tables curr_state child
+                |> State.union curr_state
+              in
               if State.equal curr_state next_state
                 then next_state
-                else update_until_fixed_point (State.union curr_state next_state)
+                else update_until_fixed_point next_state
             in
             if Possible.equal (State.find cond state) (Possible.Just 0) then
               state (* ループに入らない場合 *)
@@ -178,10 +184,13 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
                 |> State.update cond (Possible.Just 0)
         | ILoop (_, child) ->
             let rec update_until_fixed_point curr_state =
-              let next_state = update_tables curr_state child in
+              let next_state =
+                update_tables curr_state child
+                |> State.union curr_state
+              in
               if State.equal curr_state next_state
                 then next_state
-                else update_until_fixed_point (State.union curr_state next_state)
+                else update_until_fixed_point next_state
             in
             update_until_fixed_point state
         )
@@ -211,7 +220,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
     (fun Code.{ cmd; annot } ->
       let { state_in } = annot in
       match cmd with
-      | Add _ | Put _ | Get _ | ILoop _ | If _ ->
+      | Add _ | Put _ | Get _ | ILoop _ | If _ | IIf _ ->
           `Keep annot
       | Reset sel | Loop (sel, _) ->
           if Possible.equal (State.find sel state_in) (Possible.Just 0)

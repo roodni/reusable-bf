@@ -86,3 +86,6 @@ let rec to_string = function
         sprintf "%s@%s:%s" (Id.simple_name name) (Id.simple_name index) (to_string member)
       else
         sprintf "%s@%s:(%d)%s" (Id.simple_name name) (Id.simple_name index) offset (to_string member)
+
+let index_to_string (arr_sel, idx_id: index) =
+  sprintf "%s@%s" (to_string arr_sel) (Id.simple_name idx_id)

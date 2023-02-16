@@ -25,6 +25,8 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               (pos_cond, bf_move1 @+ ~~[ Bf.Code.Loop (bf_loop @+ bf_move2) ])
           | ILoop params ->
               gen_bf pos (Code.desugar_ILoop params)
+          | IIf params ->
+              gen_bf pos (Code.extend_IIf params)
           | Shift { n; index; followers } -> begin
               let idx_id = snd index in
               let pos_ptr =

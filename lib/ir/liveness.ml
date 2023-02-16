@@ -54,6 +54,10 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             let els_live_in = update_tables_and_compute_live_in succ_live_in els_code in
             tbl.live_out <- CellSet.union thn_live_in els_live_in;
             CellSet.add_sel_if_mergeable fmain cond_sel tbl.live_out
+        | IIf (_, thn_code) ->
+            let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
+            tbl.live_out <- CellSet.union thn_live_in succ_live_in;
+            tbl.live_out
         | Loop (cond_sel, child_code) ->
             (* 出口生存に初期値を設定 *)
             tbl.live_out <- CellSet.union tbl.live_out succ_live_in;
@@ -189,6 +193,8 @@ end = struct
           | If (_, thn, els) ->
               scan_code thn;
               scan_code els;
+          | IIf (_, thn) ->
+              scan_code thn;
         )
         code
     in
@@ -349,6 +355,7 @@ end = struct
       | None -> id
     in
     let convert_sel = Sel.convert_id id_to_mc in
+    let convert_index (arr_sel, idx_id) = (convert_sel arr_sel, id_to_mc idx_id) in
     (* コードのId書き換え *)
     let rec convert_code (code: 'a Code.t): unit Code.t =
       let open Code in
@@ -370,8 +377,9 @@ end = struct
                     |> CellSet.of_seq |> CellSet.elements |> llist
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
-            | ILoop ((sel, id), code) ->  ILoop ((convert_sel sel, id_to_mc id), convert_code code)
+            | ILoop (index, code) ->  ILoop (convert_index index, convert_code code)
             | If (sel, thn, els) -> If (convert_sel sel, convert_code thn, convert_code els)
+            | IIf (index, thn) -> IIf (convert_index index, convert_code thn)
           in
           { cmd; annot=() }
         )
