@@ -133,7 +133,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let code = Code.annot_map (fun _ -> { state_in=State.dummy }) code in
   let rec update_tables (initial_state: State.t) (code: code_with_possibles) : State.t =
     LList.fold_left
-      (fun (state: State.t) Code.{ cmd; annot=tbl } : State.t ->
+      (fun (state: State.t) Code.{ cmd; annot=tbl; _ } : State.t ->
         tbl.state_in <-
           if State.is_dummy tbl.state_in
             then state
@@ -217,7 +217,7 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
 
 let eliminate_never_entered_loop (code, _: analysis_result) =
   Code.filter_map
-    (fun Code.{ cmd; annot } ->
+    (fun Code.{ cmd; annot; info } ->
       let { state_in } = annot in
       match cmd with
       | Add _ | Put _ | Get _ | IndexLoop _ | If _ | IndexIf _ ->
@@ -235,6 +235,6 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
               )
               followers
           in
-          `Update { cmd=Shift { n; index; followers }; annot }
+          `Update { cmd=Shift { n; index; followers }; annot; info }
     )
     code

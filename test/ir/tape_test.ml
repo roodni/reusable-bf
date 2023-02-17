@@ -1,6 +1,7 @@
 open OUnit2
 open Ir
 open Support.Pervasive
+open Support.Info
 
 (* テープの状態を比較するテスト *)
 
@@ -29,7 +30,7 @@ let program =
     Add (7, ap_a);
     Shift { n=(-1); index=(a, p); followers=lnil };
     Add (-1, ap_a);
-  ] |> Code.from_cmds
+  ] |> Code.from_cmds ~info:unknown_info
 
 let expected = [0; 3; 1; 4; 0; 7]
 

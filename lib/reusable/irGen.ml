@@ -84,22 +84,22 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               | None -> 1
               | Some ex_i -> eval envs ex_i |>  Va.to_int ex_i.i
             in
-            let code = Ir.Code.from_cmds [ Add (i * sign, nsel) ] in
+            let code = Ir.Code.from_cmds ~info [ Add (i * sign, nsel) ] in
             ((), code)
           end
         | StPut ex_sel ->
             let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
-            let code = Ir.Code.from_cmds [ Ir.Code.Put nsel ] in
+            let code = Ir.Code.from_cmds ~info [ Ir.Code.Put nsel ] in
             ((), code)
         | StGet ex_sel ->
             let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
-            let code = Ir.Code.from_cmds [ Get nsel ] in
+            let code = Ir.Code.from_cmds ~info [ Get nsel ] in
             ((), code)
         | StWhile (sel_ex, stmts) -> begin
             let sel = eval envs sel_ex |> Va.to_cell sel_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds [ Loop (sel, child_code) ]
+              Ir.Code.from_cmds ~info [ Loop (sel, child_code) ]
             in
             ((), code)
           end
@@ -107,14 +107,14 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let index = eval envs index_ex |> Va.to_index index_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds [ IndexLoop (index, child_code) ]
+              Ir.Code.from_cmds ~info [ IndexLoop (index, child_code) ]
             in
             ((), code)
         | StIndexIf (index_ex, stmts) ->
             let index = eval envs index_ex |> Va.to_index index_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds [ IndexIf (index, child_code) ]
+              Ir.Code.from_cmds ~info [ IndexIf (index, child_code) ]
             in
             ((), code)
         | StIf (ex_sel, stmts_then, stmts_else) ->
@@ -127,11 +127,11 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             );
             let (), code_then = gen ctx stmts_then in
             let (), code_else = match stmts_else with
-              | None -> ((), Ir.Code.from_cmds [])
+              | None -> ((), Ir.Code.from_cmds ~info [])
               | Some stmts_else -> gen ctx stmts_else
             in
             let code =
-              Ir.Code.from_cmds [ If (nsel, code_then, code_else) ] in
+              Ir.Code.from_cmds ~info [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_idx, ex_i_opt) ->
             let index = eval envs ex_idx |> Va.to_index ex_idx.i in
@@ -165,7 +165,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               |> LList.concat
             in
             let code_shift =
-              Ir.Code.from_cmds [ Shift { n=i; index; followers } ]
+              Ir.Code.from_cmds ~info [ Shift { n=i; index; followers } ]
             in
             ((), code_shift)
         | StBuild (field, stmts) ->
@@ -200,7 +200,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
                   match mtype with
                   | MtyCell ->
                       let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
-                      Ir.Code.from_cmds [ Reset sel ]
+                      Ir.Code.from_cmds ~info [ Reset sel ]
                   | MtyArray _ | MtyIndex ->
                       (* field評価時にallocフラグが真であれば弾かれる *)
                       assert false

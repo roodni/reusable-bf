@@ -34,7 +34,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
     code
     |> LList.rev
     |> LList.fold_left
-      (fun (succ_live_in: CellSet.t) Code.{ cmd; annot=tbl } : CellSet.t ->
+      (fun (succ_live_in: CellSet.t) Code.{ cmd; annot=tbl; _ } : CellSet.t ->
         (* 各コマンドに対して
            - live_out のテーブルを更新する
            - live_in を計算する
@@ -182,7 +182,7 @@ end = struct
     (* 各ノードの干渉を追加する *)
     let rec scan_code (code: code_with_liveness) =
       LList.iter
-        (fun Code.{ cmd; annot={ live_out } } ->
+        (fun Code.{ cmd; annot={ live_out }; _ } ->
           match cmd with
           | Add (0, _) | Put _ | Shift _ ->
               ()
@@ -360,7 +360,7 @@ end = struct
     let rec convert_code (code: 'a Code.t): unit Code.t =
       let open Code in
       LList.map
-        (fun { cmd; _ } ->
+        (fun { cmd; info; _ } ->
           let cmd =
             match cmd with
             | Add (n, sel) -> Add (n, convert_sel sel)
@@ -381,7 +381,7 @@ end = struct
             | If (sel, thn, els) -> If (convert_sel sel, convert_code thn, convert_code els)
             | IndexIf (index, thn) -> IndexIf (convert_index index, convert_code thn)
           in
-          { cmd; annot=() }
+          { cmd; annot=(); info }
         )
         code
     in

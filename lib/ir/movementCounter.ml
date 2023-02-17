@@ -120,7 +120,7 @@ let from_code (code: 'a Code.t): t =
   let tbl = Hashtbl.create 200 in
   let rec scan_code initial_sel code =
     LList.fold_left
-      (fun curr_sel Code.{ cmd; _ } ->
+      (fun curr_sel Code.{ cmd; info; _ } ->
         match cmd with
         | Code.Add (0, _) -> curr_sel
         | Add (_, sel) | Put sel | Get sel | Reset sel ->
@@ -132,15 +132,15 @@ let from_code (code: 'a Code.t): t =
             add_sel_to_sel tbl wend_sel cond_sel;
             cond_sel
         | IndexLoop params ->
-            scan_code curr_sel (Code.extend_IndexLoop params)
+            scan_code curr_sel (Code.extend_IndexLoop ~info params)
         | IndexIf params ->
-            scan_code curr_sel (Code.extend_IndexIf params)
+            scan_code curr_sel (Code.extend_IndexIf ~info params)
         | Shift { n; index; followers } -> begin
             let idx_id = snd index in
             let index_sel = Sel.concat_member_to_index_tail index idx_id 0 in
             let prev_index_sel = Sel.concat_member_to_index_tail index idx_id (-1) in
             let curr_sel =
-              scan_code curr_sel (Code.shift_followers n index followers)
+              scan_code curr_sel (Code.shift_followers ~info n index followers)
             in
             match n with
             | 0 -> curr_sel

@@ -1,10 +1,15 @@
 open Support.Pervasive
+open Support.Info
 
 (** 中間言語のコード
     解析のため追加情報を付与できる
 *)
 type 'a t = 'a annotated llist
-and 'a annotated = { cmd:'a cmd; annot:'a }
+and 'a annotated =
+  { cmd: 'a cmd;
+    annot: 'a;
+    info: info;
+  }
 and 'a cmd =
   | Add of int * Sel.t
   | Put of Sel.t
@@ -26,7 +31,7 @@ let rec filter_map
     (fun annotated ->
       match f annotated with
       | `Update annotated -> Some annotated
-      | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot }
+      | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot; info=annotated.info }
       | `Delete -> None
     )
     code
@@ -55,9 +60,13 @@ let cmd_annot_map f cmd =
 let delete_annot code = annot_map (Fun.const ()) code
 
 
-let from_cmd_llist cmd_llist : unit t =
+let from_cmd_llist ~info cmd_llist : unit t =
   LList.map
-    (fun cmd -> { cmd=cmd_annot_map (Fun.const ()) cmd; annot=() })
+    (fun cmd -> {
+      cmd=cmd_annot_map (Fun.const ()) cmd;
+      annot=();
+      info
+    })
     cmd_llist
 let from_cmds cmd_list = from_cmd_llist (llist cmd_list)
 
@@ -71,7 +80,7 @@ let output ppf output_annot code =
       fprintf ppf " ]@]";
     in
     LList.iteri
-      (fun i { cmd; annot } ->
+      (fun i { cmd; annot; _ } ->
         if i > 0 then fprintf ppf "@,";
         (match cmd with
         | Add (n, sel) ->
@@ -124,7 +133,7 @@ let output ppf output_annot code =
 ;;
 
 
-let shift_followers n (arr_sel, idx_id) (followers: Id.t llist) =
+let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t llist) =
   followers
   |> LList.map
     (fun follower_id ->
@@ -133,29 +142,31 @@ let shift_followers n (arr_sel, idx_id) (followers: Id.t llist) =
       llist [
         Loop
           ( src_sel,
-            from_cmds
+            from_cmds ~info
               [ Add (-1, src_sel); Add (1, dest_sel); ]
           )
       ]
     )
-  |> LList.concat |> from_cmd_llist
+  |> LList.concat |> from_cmd_llist ~info
 
 
-let extend_IndexLoop ((arr_sel, idx_id), loop) =
+let extend_IndexLoop ~info ((arr_sel, idx_id), loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
-  from_cmds [ Loop (cond_sel, loop) ]
+  from_cmds ~info [ Loop (cond_sel, loop) ]
 
-let extend_IndexIf (index, code) =
+let extend_IndexIf ~info (index, code) =
   let _, idx_id = index in
   let idx_sel = Sel.concat_member_to_index_tail index idx_id 0 in
   let prev_idx_sel = Sel.concat_member_to_index_tail index idx_id (-1) in
-  from_cmds [
-    Loop (prev_idx_sel, from_cmds [
-      Add (-1, prev_idx_sel);
-      Add (1, idx_sel);
-    ]);
+  from_cmds ~info [
+    Loop (prev_idx_sel,
+      from_cmds ~info [
+        Add (-1, prev_idx_sel);
+        Add (1, idx_sel);
+      ]
+    );
     Loop (idx_sel,
-      from_cmds [
+      from_cmds ~info [
         Add (-1, idx_sel);
         Add (1, prev_idx_sel);
       ]
@@ -167,11 +178,11 @@ let extend_IndexIf (index, code) =
 (** イディオム[-]を専用コマンドに変換する *)
 let convert_idioms code =
   filter_map
-    (fun { cmd; _ } -> match cmd with
+    (fun { cmd; info; _ } -> match cmd with
       | Loop (sel1, child) -> begin
           match LList.to_list_danger child with
           | [ {cmd=Add (-1, sel2); _} ] when sel1 = sel2 ->
-              `Update { cmd=Reset sel1; annot=() }
+              `Update { cmd=Reset sel1; annot=(); info }
           | _ -> `Keep ()
         end
       | Add _ | Put _ | Get _ | Shift _ | Reset _

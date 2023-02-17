@@ -5,7 +5,7 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
   let rec gen_bf (pos_init: Pos.t) (code: unit Code.t) =
     let pos, bf_code_llist =
       LList.fold_left_map
-        (fun pos Code.{ cmd; _ }: (Pos.t * Bf.Code.t) ->
+        (fun pos Code.{ cmd; info; _ }: (Pos.t * Bf.Code.t) ->
           match cmd with
           | Add (0, _) -> (pos, ~~[])
           | Add (n, sel) ->
@@ -24,9 +24,9 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               let bf_move2 = Pos.gen_bf_move pos pos_cond in
               (pos_cond, bf_move1 @+ ~~[ Bf.Code.Loop (bf_loop @+ bf_move2) ])
           | IndexLoop params ->
-              gen_bf pos (Code.extend_IndexLoop params)
+              gen_bf pos (Code.extend_IndexLoop ~info params)
           | IndexIf params ->
-              gen_bf pos (Code.extend_IndexIf params)
+              gen_bf pos (Code.extend_IndexIf ~info params)
           | Shift { n; index; followers } -> begin
               let idx_id = snd index in
               let pos_ptr =
@@ -37,7 +37,7 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
                 |> Pos.from_sel_to_cell layout
               in
               let pos, bf_shift_followers =
-                gen_bf pos (Code.shift_followers n index followers)
+                gen_bf pos (Code.shift_followers ~info n index followers)
               in
               match n with
               | 0 -> (pos, ~~[])
@@ -81,8 +81,8 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               (ifable.pos_endif, bf)
           | Reset sel ->
               [ Code.Loop
-                (sel, [ Code.Add (-1, sel) ] |> Code.from_cmds)
-              ] |> Code.from_cmds
+                (sel, [ Code.Add (-1, sel) ] |> Code.from_cmds ~info)
+              ] |> Code.from_cmds ~info
               |> gen_bf pos
         )
         pos_init
