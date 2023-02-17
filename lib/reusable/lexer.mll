@@ -121,6 +121,7 @@ and main = parse
   | "||" { P.BARBAR (info lexbuf) }
   | "&&" { P.ANDAND (info lexbuf) }
   | "<!>" { P.INDEX_LOOP (info lexbuf) }
+  | "$iloop" { P.INDEX_LOOP (info lexbuf) }
   | "<?>" { P.INDEX_IF (info lexbuf) }
   | "$" { P.ST (info lexbuf) }
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
