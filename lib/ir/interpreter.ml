@@ -4,33 +4,38 @@ open Support.Info
 exception ExecutionError of string
 exception ExecutionExit of info * string
 
+module IdMap = Map.Make(Id)
+module IntHash = struct
+  type t = int
+  let equal = Int.equal
+  let hash i = i land max_int
+end
+module IntTable = Hashtbl.Make(IntHash)
+
 module Tape = struct
-  type t = (Id.t, value) Hashtbl.t
+  type t = value IdMap.t
   and value =
     | Cell of { mutable v: int }
     | Array of array_param
   and array_param = {
     length: int option;
-    indexes: (Id.t, int) Hashtbl.t;
-    values: (int, t) Hashtbl.t;
+    indexes: int ref IdMap.t;
+    values: t IntTable.t;
     ftype: Field.t;
   }
 
 
   let initial_indexes field =
-    let tbl = Hashtbl.create 5 in
     Field.fold
-      (fun id mty () -> match mty with
-        | Field.Index -> Hashtbl.add tbl id 0
-        | Cell _ | Array _ -> ()
+      (fun id mty tape -> match mty with
+        | Field.Index -> IdMap.add id (ref 0) tape
+        | Cell _ | Array _ -> tape
       )
-      field ();
-    tbl
+      field IdMap.empty
 
   let from_field field : t =
-    let tbl = Hashtbl.create 30 in
     Field.fold
-      (fun id mty () ->
+      (fun id mty tape ->
         let value =
           match mty with
           | Field.Cell _ ->
@@ -39,28 +44,28 @@ module Tape = struct
               Array {
                 length = Some length;
                 indexes = initial_indexes members;
-                values = Hashtbl.create length;
+                values = IntTable.create length;
                 ftype = members;
               } |> Option.some
           | Index -> None
         in
         match value with
-        | None -> ()
-        | Some value -> Hashtbl.add tbl id value
+        | None -> tape
+        | Some value -> IdMap.add id value tape
       )
-      field ();
-    tbl
+      field IdMap.empty
 
   let from_field_main Field.{ finite; unlimited } =
-    let tbl = from_field finite in
-    Hashtbl.add tbl Field.uarray_id
+    from_field finite
+    |> IdMap.add
+      Field.uarray_id
       (Array {
         length = None;
         indexes = initial_indexes unlimited;
-        values = Hashtbl.create 100;
+        values = IntTable.create 100;
         ftype = unlimited
-      });
-    tbl
+      })
+
 
   let validate_actual_index ap i =
     let length = Option.value ap.length ~default:max_int in
@@ -68,18 +73,20 @@ module Tape = struct
       raise @@ ExecutionError "Index out of range"
 
   let get_array_elm ap i =
-    try Hashtbl.find ap.values i with
+    try IntTable.find ap.values i with
     | Not_found ->
         let a = from_field ap.ftype in
-        Hashtbl.add ap.values i a;
+        IntTable.add ap.values i a;
         a
 
   let rec select tape = function
-    | Sel.Member id -> Hashtbl.find tape id
+    | Sel.Member id -> IdMap.find id tape
     | Array { name; index_opt; offset; member } ->
         let ap = select_array tape (Sel.Member name) in
         let i = match index_opt with
-          | Some idx_id -> Hashtbl.find ap.indexes idx_id + offset
+          | Some idx_id ->
+              let idx = IdMap.find idx_id ap.indexes in
+              !idx + offset
           | None -> offset
         in
         validate_actual_index ap i;
@@ -108,11 +115,12 @@ module Tape = struct
 
   let get_index tape (arr_sel, idx_id: Sel.index) =
     let ap = select_array tape arr_sel in
-    Hashtbl.find ap.indexes idx_id
+    !(IdMap.find idx_id ap.indexes)
 
   let shift_index tape n (arr_sel, idx_id: Sel.index) followers =
     let ap = select_array tape arr_sel in
-    let i = Hashtbl.find ap.indexes idx_id in
+    let idx = IdMap.find idx_id ap.indexes in
+    let i = !idx in
     let i' = i + n in
     validate_actual_index ap i';
     let elm = get_array_elm ap i in
@@ -128,7 +136,7 @@ module Tape = struct
         | _ -> assert false
       )
       followers;
-    Hashtbl.replace ap.indexes idx_id i'
+    idx := i';
 end
 
 let run ~printer ~input ~cell_type field ir_code =
