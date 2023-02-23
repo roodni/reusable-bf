@@ -14,3 +14,5 @@ val merge_info : info -> info -> info
 val withinfo2 : info -> info -> 'a -> 'a withinfo
 
 val output_info : Format.formatter -> info -> unit
+
+val lines_of_info : info -> (int * int) option

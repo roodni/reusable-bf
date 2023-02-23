@@ -1,0 +1,6 @@
+codegen $
+
+$build {x; y}
+
++ x 255
++ y 256

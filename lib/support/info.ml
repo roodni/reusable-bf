@@ -61,3 +61,7 @@ let output_info ppf = function
   | Unknown ->
       ();
 ;;
+
+let lines_of_info = function
+  | Loc { l_start; l_end; _ } -> Some (l_start, l_end)
+  | Unknown -> None

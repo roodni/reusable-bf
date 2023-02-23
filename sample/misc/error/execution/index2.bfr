@@ -1,0 +1,10 @@
+codegen $
+
+$build {
+  a: array(2) {
+    i: index
+  }
+}
+
+> a@i
+> a@i

@@ -1,0 +1,11 @@
+codegen $
+
+$build {
+  a: array(_) {
+    x: cell;
+    i: index;
+  }
+}
+
+> a@i
++ a@i:(-2)x

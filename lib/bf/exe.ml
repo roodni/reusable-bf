@@ -168,7 +168,7 @@ let run ~printer ~input ~cell_type executable =
             tape.(p) <- modify_cell_value (tape.(p) + n);
             loop cmds
         | Put ->
-            let v = tape.(!mut_p) in
+            let v = tape.(!mut_p) land 255 in
             printer (char_of_int v);
             loop cmds
         | Get ->

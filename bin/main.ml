@@ -1,8 +1,10 @@
 open Printf
+open Support.Info
 
 (* コマンドライン引数 *)
 let flag_bf = ref false
 let flag_run = ref false
+let flag_ir = ref false
 let arg_optimize_level = ref 10
 let flag_verbose = ref false
 let flag_show_liveness = ref false
@@ -19,6 +21,7 @@ let parse_args () =
   let speclist = Arg.[
     ("-b", Set flag_bf, " Load and run the brainfuck program instead of bf-reusable programs");
     ("-r", Set flag_run, " Run the bf-reusable program after compilation");
+    ("--ir", Set flag_ir, " Use IR interpreter");
     ("-v", Set flag_verbose, " Show detailed compilation information");
     ("--show-liveness", Set flag_show_liveness, " Show the result of liveness analysis");
     ("--show-layout", Set flag_show_layouts, " Show cell layouts");
@@ -55,6 +58,7 @@ let get_source () =
   else
     (Filename.dirname !filename, open_in !filename)
 
+
 (** bfのコードを実行する *)
 let run_bf bf_code =
   let exe = Bf.Exe.from_code bf_code in
@@ -72,6 +76,17 @@ let run_bf bf_code =
         eprintf "Execution error: %s\n" e;
         exit 1;
   end;
+;;
+
+let run_ir field ir_code =
+  let res = Ir.Interpreter.run_stdio ~cell_type:WrapAround256 field ir_code in
+  match res with
+  | Ok () -> ()
+  | Error (info, msg) ->
+      Format.eprintf "@[<v>";
+      output_info Format.err_formatter info;
+      Format.eprintf "  Execution error: %s@." msg;
+      exit 1
 ;;
 
 (** bfのインタプリタとして使う場合の処理 *)
@@ -109,6 +124,10 @@ let use_as_bfr_compiler () =
       Reusable.Error.print msg_wi;
       exit 1
   in
+
+  (* TODO: IR最適化をmainに書くのをやめる *)
+  if !flag_ir && !flag_run then
+    arg_optimize_level := 0;
 
   (* 生存セル解析による最適化 *)
   let field, ir_code, liveness_opt =
@@ -202,7 +221,9 @@ let use_as_bfr_compiler () =
 
   (* コンパイル結果の出力または実行 *)
   if !flag_run then begin
-    run_bf bf_code;
+    if !flag_ir
+      then run_ir field ir_code
+      else run_bf bf_code;
   end else begin
     Buffer.output_buffer stdout bf_code_buf;
     print_newline ();
