@@ -2,14 +2,16 @@ type case = {
   path: string;
   io_list: (string * string) list;
   run_bfi: bool;
+  cell_type: Bf.Exe.cell_type
 }
 
 let source_root = Sys.getenv "DUNE_SOURCEROOT"
 
-let case ?(run_bfi=true) path io_list =
+let case ?(run_bfi=true) ?(cell_type=Bf.Exe.Overflow256) path io_list =
   { path = Filename.concat source_root path;
     io_list;
-    run_bfi }
+    run_bfi; cell_type;
+  }
 
 let cases =
   [
@@ -42,7 +44,7 @@ let cases =
       [ ("", "BC123") ];
     case "sample/misc/hoge/nested_array.bfr"
       [ ("", "XYPQqRSrs012MNmn") ];
-    case "sample/misc/hoge/queens.bfr"
+    case "sample/misc/hoge/queens.bfr" ~cell_type:WrapAround256
       [ ("2\n", "NO ANSWER\n");
         ( "4\n",
           ". Q . . \n" ^

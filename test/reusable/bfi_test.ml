@@ -8,7 +8,7 @@ module BfI = struct
     |> Bf.Exe.from_code
 end
 
-let test_run Testcase.{ path; io_list; _ } =
+let test_run Testcase.{ path; io_list; cell_type; _ } =
   path >:: (fun _ ->
     let bf_code =
       Reusable.Program.gen_bf_from_source path
@@ -18,7 +18,7 @@ let test_run Testcase.{ path; io_list; _ } =
       let ipt = bf_code ^ "\\" ^ ipt in
       let res, _, opt_act =
         Bf.Exe.run_string
-          ~cell_type:Bf.Exe.WrapAround256
+          ~cell_type
           ~input:ipt
           BfI.bf_exe
       in

@@ -4,7 +4,7 @@ open Printf
 open Support.Info
 
 let output_test =
-  let test_run Testcase.{ path; io_list; _ } =
+  let test_run Testcase.{ path; io_list; cell_type; _ } =
     path >:: (fun _ ->
       let progarm = Reusable.Program.load_from_source path in
       let field, ir_code =
@@ -17,7 +17,7 @@ let output_test =
         (fun (ipt, opt_expe) ->
           let res, opt_act =
             Ir.Interpreter.run_string
-              ~cell_type:WrapAround256
+              ~cell_type
               ~input:ipt
               field ir_code
           in

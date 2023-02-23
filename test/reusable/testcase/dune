@@ -1,3 +1,4 @@
 (library
  (name testcase)
+ (libraries bf)
  (flags (:standard -warn-error -a)))

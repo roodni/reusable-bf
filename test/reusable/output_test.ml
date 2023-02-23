@@ -1,14 +1,14 @@
 open OUnit2
 open Printf
 
-let test_run Testcase.{ path; io_list; _ } =
+let test_run Testcase.{ path; io_list; cell_type; _ } =
   path >:: (fun _ ->
     let bf_code = Reusable.Program.gen_bf_from_source path in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string
           ~input:ipt
-          ~cell_type:Bf.Exe.WrapAround256
+          ~cell_type
           (Bf.Exe.from_code bf_code)
       in
       let failed = ref false in
