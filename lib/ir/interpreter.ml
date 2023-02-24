@@ -96,6 +96,14 @@ module Tape = struct
     | Cell _ -> assert false
     | Array ap -> ap
 
+  let modify_cell_value ~cell_type v =
+    match cell_type with
+    | Bf.Exe.OCamlInt -> v
+    | WrapAround256 -> v land 255
+    | Overflow256 ->
+        if 0 <= v && v < 256 then v
+        else raise @@ ExecutionError "Overflow"
+
   let get_cell tape sel =
     match select tape sel with
     | Cell {v} -> v
@@ -103,14 +111,12 @@ module Tape = struct
   let set_cell tape sel v ~cell_type =
     match select tape sel with
     | Cell c ->
-        let v = match cell_type with
-          | Bf.Exe.OCamlInt -> v
-          | WrapAround256 -> v land 255
-          | Overflow256 ->
-              if 0 <= v && v < 256 then v
-              else raise @@ ExecutionError "Overflow"
-        in
-        c.v <- v
+        c.v <- modify_cell_value ~cell_type v
+    | Array _ -> assert false
+  let add_cell tape n sel ~cell_type =
+    match select tape sel with
+    | Cell c ->
+        c.v <- modify_cell_value ~cell_type (c.v + n)
     | Array _ -> assert false
 
   let get_index tape (arr_sel, idx_id: Sel.index) =
@@ -147,8 +153,7 @@ let run ~printer ~input ~cell_type field ir_code =
         try
           match cmd with
           | Add (n, s) ->
-              let v = Tape.get_cell tape s in
-              Tape.set_cell ~cell_type tape s (v + n)
+              Tape.add_cell ~cell_type tape n s
           | Put s ->
               let v = Tape.get_cell tape s land 255 in
               printer (char_of_int v)
