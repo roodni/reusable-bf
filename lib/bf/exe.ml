@@ -127,7 +127,9 @@ module Dump = struct
       (* 値の出力 *)
       (i_left -- i_right) |> List.iter (fun i ->
         print_string "|";
-        printf "%*d" len d.cells.(i)
+        if d.cells.(i) = 0
+        then printf "%*s" len ""
+        else printf "%*d" len d.cells.(i)
       );
       printf "|\n";
       if i_right < d.p_max then
