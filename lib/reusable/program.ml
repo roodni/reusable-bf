@@ -189,23 +189,14 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   | None -> Error.at unknown_info Top_Missing_codegen
   | Some top_gen -> IrGen.generate ctx.envs top_gen
 
-let gen_bf_from_source ?(path_limit=NoLimit) path =
+let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
   let dirname = Filename.dirname path in
   let program = load_from_source path in
   let field, ir_code = gen_ir ~path_limit dirname program in
-  (* 生存セル解析による最適化 *)
-  let ir_code = Ir.Code.convert_idioms ir_code in
-  let liveness = Ir.Liveness.analyze field ir_code in
-  let graph = Ir.Liveness.Graph.create field liveness in
-  let field, ir_code =
-    Ir.Liveness.Graph.create_program_with_merged_cells
-      graph field ir_code
+  let opt_context =
+    Ir.Opt.{ field; code=ir_code; chan=stderr; dump=false }
   in
-  (* 条件セルがゼロになるループの除去 *)
-  let const_analysis_result = Ir.Const.analyze field ir_code in
-  let ir_code = Ir.Const.eliminate_never_entered_loop const_analysis_result in
-  (* メンバ並び順最適化 *)
-  let mcounter = Ir.MovementCounter.from_code ir_code in
-  (* bf生成 *)
-  let layout = Ir.Layout.create mcounter field in
-  Ir.BfGen.gen_bf layout ir_code
+  let _, bf_code =
+    Ir.Opt.codegen_by_level opt_level opt_context
+  in
+  bf_code

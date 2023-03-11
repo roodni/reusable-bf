@@ -5,13 +5,10 @@ open Support.Info
 let flag_bf = ref false
 let flag_run = ref false
 let flag_ir = ref false
-let arg_optimize_level = ref 10
-let flag_verbose = ref false
-let flag_show_liveness = ref false
+let arg_optimize_level = ref Ir.Opt.max_level
+let flag_print_opt = ref false
+let channel_print_opt = ref stderr
 let flag_show_layouts = ref false
-let flag_show_possible_cell_values = ref false
-let flags_compile_information =
-  [flag_show_liveness; flag_show_layouts; flag_show_possible_cell_values]
 let flag_dump_tape = ref false
 let flag_sandbox = ref false
 let arg_limit_import_paths = ref None
@@ -19,15 +16,18 @@ let flag_stdin = ref false
 let filename = ref ""
 let parse_args () =
   let speclist = Arg.[
-    ("-b", Set flag_bf, " Load and run the brainfuck program instead of bf-reusable programs");
-    ("-r", Set flag_run, " Run the bf-reusable program after compilation");
-    ("--ir", Set flag_ir, " Use IR interpreter");
-    ("-v", Set flag_verbose, " Show detailed compilation information");
-    ("--show-liveness", Set flag_show_liveness, " Show the result of liveness analysis");
-    ("--show-layout", Set flag_show_layouts, " Show cell layouts");
-    ("--show-cell-values", Set flag_show_possible_cell_values, " ");
-    ("--optimize", Set_int arg_optimize_level, " Set the optimization level (0-3)");
+    ("-b", Set flag_bf, " Load and run a brainfuck program instead of bf-reusable programs");
+    ("-r", Set flag_run, " Run a bf-reusable program after compilation");
+    ("--ir", Set flag_ir, " Use the IR interpreter");
     ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
+    ("-v", Set flag_show_layouts, " Show detailed compilation information");
+    ("--show-layout", Set flag_show_layouts, " ");
+    ("--optimize",
+      Set_int arg_optimize_level,
+      sprintf " Set optimization level (0-%d)" Ir.Opt.max_level);
+    ("--opt", Set_int arg_optimize_level, " ");
+    ("--print-opt", Set flag_print_opt, " ");
+    ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " ");
     ("--sandbox", Set flag_sandbox, " ");
     ("--limit-import-paths",
       String (fun s ->
@@ -41,10 +41,6 @@ let parse_args () =
     sprintf "Usage: %s <options> <file>" Sys.argv.(0)
   in
   Arg.parse speclist (fun s -> filename := s ) usage_msg;
-
-  if !flag_verbose then begin
-    List.iter (fun r -> r := true) flags_compile_information;
-  end;
 
   if Array.length Sys.argv = 1 then begin
     Arg.usage speclist usage_msg;
@@ -125,106 +121,49 @@ let use_as_bfr_compiler () =
       exit 1
   in
 
-  (* TODO: IR最適化をmainに書くのをやめる *)
+  (* 最適化とコード生成 *)
   if !flag_ir && !flag_run then
     arg_optimize_level := 0;
 
-  (* 生存セル解析による最適化 *)
-  let field, ir_code, liveness_opt =
-    if !arg_optimize_level < 2 then (field, ir_code, None)
-    else
-      let ir_code = Ir.Code.convert_idioms ir_code in
-      let liveness = Ir.Liveness.analyze field ir_code in
-      let graph = Ir.Liveness.Graph.create field liveness in
-      let field, ir_code =
-        Ir.Liveness.Graph.create_program_with_merged_cells graph field ir_code
-      in
-      (field, ir_code, Some (liveness, graph))
+  let opt_context =
+    Ir.Opt.{field; code=ir_code; chan=(!channel_print_opt); dump=(!flag_print_opt)}
+  in
+  let layout, bf_code =
+    Ir.Opt.codegen_by_level !arg_optimize_level opt_context
   in
 
-  (* 条件セルがゼロになるループの除去 *)
-  let ir_code, const_analysis_opt =
-    if !arg_optimize_level < 3 then (ir_code, None)
-    else
-      let result = Ir.Const.analyze field ir_code in
-      let ir_code = Ir.Const.eliminate_never_entered_loop result in
-      (Ir.Code.delete_annot ir_code, Some result)
+  (* 詳細情報の出力 *)
+  let output_bf_code_info chan =
+    let ppf = Format.formatter_of_out_channel chan in
+    Format.pp_open_vbox ppf 0;
+    Format.fprintf ppf "[LAYOUT]@,";
+    Ir.Layout.output ppf layout;
+    Format.fprintf ppf "@,@,";
+    Format.fprintf ppf "[CODE SIZE]@,";
+    Format.fprintf ppf "%d bytes@," (Bf.Code.length bf_code);
+    Format.pp_print_newline ppf ();
   in
+  if !flag_show_layouts then begin
+    print_endline "[ === COMPILATION INFO ===";
+    print_newline ();
+    output_bf_code_info stdout;
+    print_endline "]";
+  end;
+  if !flag_print_opt then begin
+    output_bf_code_info !channel_print_opt;
+  end;
 
-  (* セル並び順最適化 *)
-  let mcounter =
-    if !arg_optimize_level < 1
-      then Ir.MovementCounter.empty ()
-      else Ir.MovementCounter.from_code ir_code
-  in
-
-  (* bf生成 *)
-  let layout = Ir.Layout.create mcounter field in
-  let bf_code = Ir.BfGen.gen_bf layout ir_code in
+  (* コンパイル結果の出力または実行 *)
   if !flag_sandbox && Bf.Code.length bf_code > 100000 then begin
     eprintf "The output code size is too large\n";
     exit 1;
   end;
-  let bf_code_buf = Bf.Code.to_buffer bf_code in
-
-  (* 詳細情報の出力 *)
-  if List.exists (!) flags_compile_information then begin
-    print_endline "[ --- COMPILATION INFO ---";
-    print_newline ();
-
-    if !flag_show_liveness then begin
-      match liveness_opt with
-      | None -> ()
-      | Some (liveness, graph) ->
-          print_endline "[LIVENESS]";
-          Ir.Liveness.output_analysis_result Format.std_formatter liveness;
-          Format.print_flush ();
-          print_endline "\n";
-
-          Format.printf "@[<hov>";
-          Ir.Liveness.Graph.output_dot Format.std_formatter graph;
-          Format.printf "@]";
-          Format.print_flush ();
-          print_endline "\n";
-    end;
-
-    if !flag_show_possible_cell_values then begin
-      match const_analysis_opt with
-      | None -> ()
-      | Some result ->
-          print_endline "[POSSIBLE CELL VALUES]";
-          Format.printf "@[<v>";
-          Ir.Const.output_analysis_result Format.std_formatter result;
-          Format.printf "@]";
-          Format.print_flush ();
-          print_endline "\n";
-    end;
-
-    (* let tbl = Ir.MovementCounter.from_code ir_code in
-    Ir.MovementCounter.dump tbl;
-    print_newline (); *)
-
-    if !flag_show_layouts then begin
-      Format.printf "@[<v>[LAYOUT]@,";
-      Ir.Layout.output Format.std_formatter layout;
-      Format.printf "@]";
-      Format.print_flush ();
-      print_endline "\n";
-    end;
-
-    print_endline "[CODE SIZE]";
-    printf "%d bytes\n" (Buffer.length bf_code_buf);
-    print_newline ();
-
-    print_endline "]";
-  end;
-
-  (* コンパイル結果の出力または実行 *)
   if !flag_run then begin
     if !flag_ir
       then run_ir field ir_code
       else run_bf bf_code;
   end else begin
+    let bf_code_buf = Bf.Code.to_buffer bf_code in
     Buffer.output_buffer stdout bf_code_buf;
     print_newline ();
   end
