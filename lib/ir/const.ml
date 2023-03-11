@@ -1,4 +1,5 @@
 open Support.Pervasive
+open Printf
 
 (* セルの中身が定数になる場合の最適化
    - 条件セルがゼロになるループの除去 (ループ、リセット、一時セル連れ回し)
@@ -7,23 +8,55 @@ open Support.Pervasive
     - once loop(2回目の分岐で必ず抜けるループ)の検出
 *)
 
+module ISet = Set.Make(Int)
+
 (** セルが保持しうる数 *)
 module Possible = struct
-  type t = Just of int | Any
+  type t = Just of int | Just2 of int * int | Any
 
   let add n = function
     | Any -> Any
-    | Just m ->
-        let x = n + m in
+    | Just x ->
+        let x = x + n in
         if 0 <= x && x < 128 then Just x else Any
+    | Just2 (x, y) ->
+        let x = x + n in
+        let y = y + n in
+        if 0 <= x && x < 128 && 0 <= y && y < 128
+          then Just2 (x, y)
+          else Any
 
   let union v1 v2 =
+    let append v s =
+      match v with
+      | Just n -> ISet.add n s
+      | Just2 (n, m) ->
+          s |> ISet.add n |> ISet.add m
+      | Any -> assert false
+    in
     match v1, v2 with
-    | Just n1, Just n2 when n1 = n2 -> Just n1
-    | _ -> Any
+    | Any, _ | _, Any -> Any
+    | _ -> begin
+        let l =
+          ISet.empty |> append v1 |> append v2
+          |> ISet.to_seq |> List.of_seq
+        in
+        match l with
+        | [n] -> Just n
+        | [n; m] -> Just2 (n, m)
+        | _ -> Any
+      end
+
+  let zero = Just 0
+  let remove_zero = function
+    | Any -> Any
+    | Just n -> Just n
+    | Just2 (n, m) ->
+        if n = 0 then Just m else Just2 (n, m)
 
   let to_string = function
     | Just n -> string_of_int n
+    | Just2 (n, m) -> sprintf "%d|%d" n m
     | Any -> "any"
 
   (** 「セルが保持しうる値」が同じであることを判定する
@@ -50,7 +83,7 @@ module State = struct
           | Cell { mergeable; _ } ->
               let p =
                 (* 配列メンバの非一時セルは解析が面倒なので飛ばす *)
-                if mergeable then Tracking (Possible.Just 0) else NoTracking
+                if mergeable then Tracking Possible.zero else NoTracking
               in
               IdMap.add id p state
           | Index -> state
@@ -77,6 +110,15 @@ module State = struct
       (function
         | Some NoTracking -> Some NoTracking
         | Some (Tracking _) -> Some (Tracking possible)
+        | None -> assert false
+      )
+      state
+  let update_f sel f (state: t) : t =
+    IdMap.update
+      (Sel.last_id sel)
+      (function
+        | Some NoTracking -> Some NoTracking
+        | Some (Tracking p) -> Option.some @@ Tracking (f p)
         | None -> assert false
       )
       state
@@ -139,49 +181,50 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             then state
             else State.union tbl.state_in state;
         (match cmd with
-        | Add (n, sel) ->
-            State.update sel
-              (State.find sel state |> Possible.add n)
-              state
-        | Get sel -> State.update sel (Possible.Any) state
-        | Reset sel -> State.update sel (Possible.Just 0) state
+        | Add (n, sel) -> State.update_f sel (Possible.add n) state
+        | Get sel -> State.update sel Possible.Any state
+        | Reset sel -> State.update sel Possible.zero state
         | Put _ -> state
         | Shift _ -> state
             (* いまのところ配列メンバの非一時セルを扱わないので無視して良い *)
         | If (cond, thn, els) ->
-            let thn_state_out = update_tables state thn in
+            let thn_state_out =
+              update_tables (State.update_f cond Possible.remove_zero state) thn
+            in
             let els_state_out =
-              update_tables (State.update cond (Possible.Just 0) state) els
+              update_tables (State.update cond Possible.zero state) els
             in
             State.union thn_state_out els_state_out
         | IndexIf (_, thn) ->
             let thn_state_out = update_tables state thn in
             State.union state thn_state_out
         | Loop (cond, child) ->
-            (* テーブルの state_in は更新されるだけであって、引数 state が同じなら update_tables の挙動は同じ
-               そのためループを抜けた時点での State の変化がなければループを何回繰り返しても同じ?
-            *)
             let rec update_until_fixed_point curr_state =
+              (* curr_stateはループに入るときの状態 (条件セルがゼロを含むことがある) *)
               let next_state =
-                update_tables curr_state child
+                update_tables
+                  (State.update_f cond Possible.remove_zero curr_state)
+                  child
                 |> State.union curr_state
               in
               if State.equal curr_state next_state
                 then next_state
                 else update_until_fixed_point next_state
             in
-            if Possible.equal (State.find cond state) (Possible.Just 0) then
+            if Possible.equal (State.find cond state) Possible.zero then
               state (* ループに入らない場合 *)
             else
-              let state_1 = update_tables state child in
+              let state_1 =
+                update_tables (State.update_f cond Possible.remove_zero state) child
+              in
               let state_01 = State.union state state_1 in
-              if Possible.equal (State.find cond state_1) (Possible.Just 0) then
+              if Possible.equal (State.find cond state_1) Possible.zero then
                 (* ループを1回で抜ける場合 *)
-                state_01 |> State.update cond (Possible.Just 0)
+                state_01 |> State.update cond Possible.zero
               else
                 (* ループが何回か回る場合 *)
                 update_until_fixed_point state_01
-                |> State.update cond (Possible.Just 0)
+                |> State.update cond Possible.zero
         | IndexLoop (_, child) ->
             let rec update_until_fixed_point curr_state =
               let next_state =
@@ -223,7 +266,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
       | Add _ | Put _ | Get _ | IndexLoop _ | If _ | IndexIf _ ->
           `Keep annot
       | Reset sel | Loop (sel, _) ->
-          if Possible.equal (State.find sel state_in) (Possible.Just 0)
+          if Possible.equal (State.find sel state_in) Possible.zero
             then `Delete
             else `Keep annot
       | Shift { n; index; followers } ->
@@ -231,7 +274,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
             LList.filter
               (fun id ->
                 let sel = Sel.concat_member_to_index_tail index id 0 in
-                not @@ Possible.equal (State.find sel state_in) (Possible.Just 0)
+                not @@ Possible.equal (State.find sel state_in) Possible.zero
               )
               followers
           in

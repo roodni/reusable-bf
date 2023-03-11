@@ -11,6 +11,7 @@ let legacy = [
 
 let current = [
   ("addsubmul", "./sample/misc/bf/addsubmul.bfr");
+  ("ifelse", "./sample/misc/bf/ifelse.bfr")
 ]
 
 let () =
