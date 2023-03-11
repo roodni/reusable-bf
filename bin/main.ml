@@ -143,14 +143,14 @@ let use_as_bfr_compiler () =
     Format.fprintf ppf "%d bytes@," (Bf.Code.length bf_code);
     Format.pp_print_newline ppf ();
   in
+  if !flag_print_opt then begin
+    output_bf_code_info !channel_print_opt;
+  end;
   if !flag_show_layouts then begin
     print_endline "[ === COMPILATION INFO ===";
     print_newline ();
     output_bf_code_info stdout;
     print_endline "]";
-  end;
-  if !flag_print_opt then begin
-    output_bf_code_info !channel_print_opt;
   end;
 
   (* コンパイル結果の出力または実行 *)
