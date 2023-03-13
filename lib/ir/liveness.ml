@@ -2,15 +2,18 @@
 
 open Support.Pervasive
 
+
+module IdSet = Set.Make(Id)
+module IdMap = Map.Make(Id)
+
 module CellSet = struct
-  module IdSet = Set.Make(Id)
   include IdSet
 
   let remove_sel sel cs = remove (Sel.last_id sel) cs
-  let add_sel_if_mergeable fmain sel cs =
+  let add_sel_if_sticky fmain sel cs =
     match Sel.find_mtype fmain sel with
-    | Field.Cell { mergeable=true; _ } -> add (Sel.last_id sel) cs
-    | Cell { mergeable=false; _ } -> cs
+    | Field.Cell { sticky=true; _ } -> add (Sel.last_id sel) cs
+    | Cell { sticky=false; _ } -> cs
     | _ -> assert false
 
   let to_string cs =
@@ -48,12 +51,12 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             CellSet.remove_sel sel succ_live_in
         | Add (_, sel) | Put sel -> (* use *)
             tbl.live_out <- succ_live_in;
-            CellSet.add_sel_if_mergeable fmain sel succ_live_in
+            CellSet.add_sel_if_sticky fmain sel succ_live_in
         | If (cond_sel, thn_code, els_code) ->
             let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
             let els_live_in = update_tables_and_compute_live_in succ_live_in els_code in
             tbl.live_out <- CellSet.union thn_live_in els_live_in;
-            CellSet.add_sel_if_mergeable fmain cond_sel tbl.live_out
+            CellSet.add_sel_if_sticky fmain cond_sel tbl.live_out
         | IndexIf (_, thn_code) ->
             let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
             tbl.live_out <- CellSet.union thn_live_in succ_live_in;
@@ -63,7 +66,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             tbl.live_out <- CellSet.union tbl.live_out succ_live_in;
             (* 現在の出口生存から入口生存を計算する *)
             let compute_loop_live_in () =
-              CellSet.add_sel_if_mergeable fmain cond_sel tbl.live_out
+              CellSet.add_sel_if_sticky fmain cond_sel tbl.live_out
             in
             (* 不動点に達するまで出口生存を更新する *)
             let rec update_until_fixed_point () =
@@ -144,18 +147,56 @@ end = struct
         children = Hashtbl.create 10;
         colored_groups_memo = None;
       } in
+      (* ノードの登録 *)
       Field.fold
         (fun (id: Id.t) (mtype: Field.mtype) (): unit ->
           match mtype with
-          | Cell { mergeable=true; _ } ->
+          | Cell { sticky=true; _ } ->
               graph.nodes <- CellSet.add id graph.nodes;
               Hashtbl.add cell_to_graph id graph;
-          | Cell { mergeable=false; _ } | Index -> ()
+          | Cell { sticky=false; _ } | Index -> ()
           | Array { members; _ } ->
               Hashtbl.add graph.children id (from_field members)
         )
-        field
-        ();
+        field ();
+      (* 異なるインデックス下のstickyセルは干渉する *)
+      let idx_to_cells, no_idx_cells =
+      Field.fold
+        (fun id mtype (idx_to_cells, no_idx_cells) ->
+          match mtype with
+          | Cell { sticky=true; idx_id; _ } -> begin
+              match idx_id with
+              | None -> (idx_to_cells, id :: no_idx_cells)
+              | Some idx_id ->
+                  let l =
+                    IdMap.find_opt idx_id idx_to_cells
+                    |> Option.value ~default:[]
+                  in
+                  (IdMap.add idx_id (id :: l) idx_to_cells, no_idx_cells)
+            end
+          | Cell { sticky=false; _ } | Index | Array _ ->
+              (idx_to_cells, no_idx_cells)
+        )
+        field (IdMap.empty, [])
+      in
+      let cells_by_id =
+        no_idx_cells ::
+        (IdMap.bindings idx_to_cells |> List.map snd)
+      in
+      let rec add_interferes = function
+        | [] -> ()
+        | cells :: rest ->
+            cells |> List.iter (fun cell ->
+              rest |> List.iter (fun other_cells ->
+                other_cells |> List.iter (fun other_cell ->
+                  add_edge graph cell other_cell
+                )
+              )
+            );
+            add_interferes rest
+      in
+      add_interferes cells_by_id;
+      (* グラフを返す *)
       graph
     in
     let graph = from_field finite in
@@ -310,12 +351,18 @@ end = struct
       List.iter
         (fun (group: Id.t list) ->
           let merged_id = Id.gen_merged group in
+          let merged_idx_id =
+            match Field.lookup field (List.hd group) with
+            | Cell { idx_id; _ } -> idx_id
+            | Array _ | Index -> assert false
+          in
           let merged_ifable = ref false in
           List.iter
             (fun id ->
               (match Field.lookup field id with
-              | Cell { ifable=true; _ } -> merged_ifable := true;
-              | Cell { ifable=false; _ } -> ()
+              | Cell { ifable; idx_id; _ } ->
+                  if ifable then merged_ifable := true;
+                  assert (merged_idx_id = idx_id);
               | Array _ | Index -> assert false
               );
               Hashtbl.add id_convert_tbl id merged_id;
@@ -323,16 +370,20 @@ end = struct
             group;
           Field.extend mc_field
             merged_id
-            (Field.Cell { ifable=(!merged_ifable); mergeable=true; });
+            (Field.Cell {
+              ifable=(!merged_ifable);
+              sticky=true;
+              idx_id=merged_idx_id;
+            });
         )
         colored_groups;
       (* その他のメンバの転記 *)
       Field.fold
         (fun (id: Id.t) (mtype: Field.mtype) (): unit ->
           (match mtype with
-          | Cell { mergeable=true; _ } ->
+          | Cell { sticky=true; _ } ->
               ()
-          | Cell { mergeable=false; _ } | Index ->
+          | Cell { sticky=false; _ } | Index ->
               Field.extend mc_field id mtype;
           | Array { length; members } ->
               let members_graph = Hashtbl.find g.children id in

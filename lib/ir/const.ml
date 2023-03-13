@@ -80,10 +80,10 @@ module State = struct
       Field.fold
         (fun (id: Id.t) (mtype: Field.mtype) (state: t): t ->
           match mtype with
-          | Cell { mergeable; _ } ->
+          | Cell { sticky; _ } ->
               let p =
                 (* 配列メンバの非一時セルは解析が面倒なので飛ばす *)
-                if mergeable then Tracking Possible.zero else NoTracking
+                if sticky then Tracking Possible.zero else NoTracking
               in
               IdMap.add id p state
           | Index -> state

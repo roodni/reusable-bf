@@ -1,0 +1,33 @@
+open import "std.bfr"
+
+codegen $
+
+$build {
+  a: array(_) {
+    i: index;
+    j: index;
+  }
+}
+
+(*
+  xとyがマージされて、yに残っていたゴミがxに移って出力が狂う
+  考えられる解決策は2つ
+  (1) shift先のセルをクリアしてからコピーする
+  (2) 異なるインデックス下のstickyセルのマージを許容しない
+  異なるインデックス下のstickyセルは
+  デッドコード除去も暴走する可能性 (ゼロ初期化したつもりが初期化できてない)
+  があるので (2) が妥当かと思う
+*)
+$dive a@i [
+  $alloc {x}
+  $dive a@j [
+    $alloc {y}
+
+    > a@j
+    + y
+    *gen_del x
+    > a@i
+    + x 'A'
+    . x
+  ]
+]

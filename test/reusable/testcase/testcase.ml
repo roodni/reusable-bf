@@ -81,5 +81,7 @@ let cases =
         ("0 0\n", "0\n");
         ("1000 -1000\n", "2000\n") ];
     case "sample/misc/bug/const_analyze_loop_heavy.bfr"
-      [ ("\n", "") ]
+      [ ("\n", "") ];
+    case "sample/misc/bug/shift_liveness.bfr"
+      [ ("", "A") ];
   ]

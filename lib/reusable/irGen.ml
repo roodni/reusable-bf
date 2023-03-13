@@ -16,8 +16,20 @@ type ctx =
 
 
 (* Fieldを読んでIr.Fieldを拡張しながらVarとIr.Idの対応を返す *)
-let generate_field ~alloc envs (ir_main: Ir.Field.main) ir_field field =
-  let rec gen ?parent_name ~mergeable (nfield: Ir.Field.t) (field: field): irid_env =
+let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
+  let ir_field, ir_idx_id =
+    if alloc then
+      match ctx.diving with
+      | None -> (ir_main.finite, None)
+      | Some (arr_sel, idx_id) -> begin
+          match Ir.Sel.find_mtype ir_main arr_sel with
+          | Ir.Field.Array { members; _ } -> (members, Some idx_id)
+          | Cell _ | Index -> assert false
+              (* $diveでインデックス以外がdivingに指定されることは弾かれる *)
+        end
+    else (ir_main.finite, None)
+  in
+  let rec gen ?parent_name ~sticky (nfield: Ir.Field.t) (field: field): irid_env =
     field
     |> LList.fold_left
       (fun (env: irid_env) { i=info; v=(var, mtype) } : irid_env ->
@@ -30,7 +42,8 @@ let generate_field ~alloc envs (ir_main: Ir.Field.main) ir_field field =
         in
         match mtype with
         | MtyExCell ->
-            Ir.Field.extend nfield irvar (Cell { ifable=false; mergeable });
+            Ir.Field.extend nfield irvar
+              (Cell { ifable=false; sticky; idx_id=ir_idx_id });
             VE.extend var (irvar, MtyCell) env
         | MtyExIndex ->
             if nfield == ir_main.finite || alloc then
@@ -40,25 +53,25 @@ let generate_field ~alloc envs (ir_main: Ir.Field.main) ir_field field =
         | MtyExArray _ when alloc ->
             Error.at info Gen_Alloc_Array_not_implemented
         | MtyExArray { length=Some length_ex; mem } ->
-            let length = Eval.eval ~recn:0 envs length_ex |> Va.to_int length_ex.i in
+            let length = Eval.eval ~recn:0 ctx.envs length_ex |> Va.to_int length_ex.i in
             if length < 0 then
               Error.at info Gen_Field_Array_length_cannot_be_negative;
             let nmembers = Ir.Field.empty () in
             let narray = Ir.Field.Array { length; members=nmembers } in
             Ir.Field.extend nfield irvar narray;
-            let env_members = gen ~mergeable:false nmembers mem in
+            let env_members = gen ~sticky:false nmembers mem in
             VE.extend var (irvar, MtyArray { length=Some length; mem=env_members }) env
         | MtyExArray { length=None; mem } ->
             if nfield != ir_main.finite then
               Error.at info Gen_Field_Unlimited_array_cannot_be_array_member;
-            let env_members = gen ~parent_name:(Var.to_string var) ~mergeable:false ir_main.unlimited mem in
+            let env_members = gen ~parent_name:(Var.to_string var) ~sticky:false ir_main.unlimited mem in
             VE.extend
               var
               (Ir.Field.uarray_id, MtyArray { length=None; mem=env_members })
               env
       ) VE.empty
   in
-  gen ~mergeable:true ir_field field
+  gen ~sticky:true ir_field field
 
 let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let nmain = Ir.Field.empty_main () in
@@ -170,7 +183,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             ((), code_shift)
         | StBuild (field, stmts) ->
             let irid_env =
-              generate_field ~alloc:false envs nmain nmain.finite field
+              generate_field ~alloc:false ctx nmain field
             in
             let va_env =
               Envs.extend_value_env_with_irid_env
@@ -180,17 +193,8 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let (), child_code = gen ctx stmts in
             ((), child_code)
         | StAlloc (field, stmts) ->
-            let irfield = match diving with
-              | None -> nmain.finite
-              | Some (arr_sel, _) -> begin
-                  match Ir.Sel.find_mtype nmain arr_sel with
-                  | Ir.Field.Array { members; _ } -> members
-                  | Cell _ | Index -> assert false
-                      (* $diveでインデックス以外がdivingに指定されることは弾かれる *)
-                end
-            in
             let irid_env =
-              generate_field ~alloc:true envs nmain irfield field
+              generate_field ~alloc:true ctx nmain field
             in
             (* 確保するセルに対するゼロ初期化 *)
             let code_clean =

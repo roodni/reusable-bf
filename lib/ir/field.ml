@@ -1,7 +1,8 @@
 (** 変数名とテープ位置の確保の仕方(mtype)の対応 *)
 type t = (Id.t, mtype) Hashtbl.t
 and mtype =
-  | Cell of { mutable ifable: bool; mergeable: bool }
+  | Cell of { mutable ifable: bool; sticky: bool; idx_id: Id.t option }
+      (* sticky: finite直下のセル・または配列メンバの一時セル *)
   | Array of { length: int; members: t }
   | Index
 type main = { finite: t; unlimited: t }
