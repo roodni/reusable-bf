@@ -28,6 +28,7 @@ module LList : sig
 
   val length : 'a t -> int
   val rev : 'a t -> 'a t
+  val concat_map : ('a -> 'b t) -> 'a t -> 'b t
   val concat : 'a t t -> 'a t
 
   val iter : ('a -> unit) -> 'a t -> unit

@@ -21,21 +21,26 @@ and 'a cmd =
   | IndexIf of (Sel.index * 'a t)
   | Reset of Sel.t
 
-(** アノテーション付きコマンド1つ単位で単純な書き換えを行う
+(** アノテーション付きコマンドをそれぞれ0個以上のコマンドで置き換える
     構造を維持して再帰的に書き換えることも可能
 *)
-let rec filter_map
-    (f: 'a annotated -> [`Update of 'b annotated | `Keep of 'b | `Delete])
+let rec concat_map
+    (f: 'a annotated -> [`Insert of 'b cmd * 'b | `Keep of 'b] list)
     (code: 'a t) : 'b t =
-  LList.filter_map
+  LList.concat_map
     (fun annotated ->
-      match f annotated with
-      | `Update annotated -> Some annotated
-      | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot; info=annotated.info }
-      | `Delete -> None
+      (* match f annotated with
+      | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot; info=annotated.info } *)
+      List.map
+        (function
+          | `Insert (cmd, annot) -> { cmd; annot; info=annotated.info }
+          | `Keep annot ->
+              { cmd=cmd_concat_map f annotated.cmd; annot; info=annotated.info } )
+        (f annotated)
+      |> llist
     )
     code
-and cmd_filter_map f = function
+and cmd_concat_map f = function
   | Add (n, sel) -> Add (n, sel)
   | Put sel -> Put sel
   | Get sel -> Get sel
@@ -43,19 +48,19 @@ and cmd_filter_map f = function
   | Shift params -> Shift params
     (* ↑コンストラクタで新しい値を構成しないと型が合わない *)
   | Loop (sel, code) ->
-      Loop (sel, filter_map f code)
+      Loop (sel, concat_map f code)
   | IndexLoop (index, code) ->
-      IndexLoop (index, filter_map f code)
+      IndexLoop (index, concat_map f code)
   | If (sel, thn, els) ->
-      If (sel, filter_map f thn, filter_map f els)
+      If (sel, concat_map f thn, concat_map f els)
   | IndexIf (index, code) ->
-      IndexIf (index, filter_map f code)
+      IndexIf (index, concat_map f code)
 
 (** アノテーションだけを書き換える *)
 let annot_map f code =
-  filter_map (fun { annot; _ } -> `Keep (f annot)) code
+  concat_map (fun { annot; _ } -> [`Keep (f annot)]) code
 let cmd_annot_map f cmd =
-  cmd_filter_map (fun { annot; _ } -> `Keep (f annot)) cmd
+  cmd_concat_map (fun { annot; _ } -> [`Keep (f annot)]) cmd
 
 let delete_annot code = annot_map (Fun.const ()) code
 
@@ -177,16 +182,17 @@ let extend_IndexIf ~info (index, code) =
 
 (** イディオム[-]を専用コマンドに変換する *)
 let convert_idioms code =
-  filter_map
-    (fun { cmd; info; _ } -> match cmd with
+  concat_map
+    (fun { cmd; _ } ->
+      match cmd with
       | Loop (sel1, child) -> begin
           match LList.to_list_danger child with
           | [ {cmd=Add (-1, sel2); _} ] when sel1 = sel2 ->
-              `Update { cmd=Reset sel1; annot=(); info }
-          | _ -> `Keep ()
+              [`Insert (Reset sel1, ())]
+          | _ -> [`Keep ()]
         end
       | Add _ | Put _ | Get _ | Shift _ | Reset _
       | IndexLoop _ | If _ | IndexIf _ ->
-          `Keep ()
+          [`Keep ()]
     )
     code

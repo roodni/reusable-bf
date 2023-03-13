@@ -30,8 +30,8 @@ $build { x; a }
       [ + a 1  . a ]
   ]
   [
-    *gen_geti x '\n'
-    *gen_ifelse x
-      [ + a 2  . a ]
-      [ + a 3  . a ]
+    //*gen_geti x '\n'
+    //*gen_ifelse x
+    //  [ + a 2  . a ]
+    //  [ + a 3  . a ]
   ]

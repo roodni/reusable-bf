@@ -35,6 +35,7 @@ module LList = struct
 
   let length = List.length
   let rev = List.rev
+  let concat_map = List.concat_map
   let concat ll = List.concat_map Fun.id ll
 
   let iter = List.iter

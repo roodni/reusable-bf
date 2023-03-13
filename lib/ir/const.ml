@@ -48,6 +48,10 @@ module Possible = struct
       end
 
   let zero = Just 0
+  let is_zero = function
+    | Just 0 -> true
+    | _ -> false
+
   let remove_zero = function
     | Any -> Any
     | Just n -> Just n
@@ -72,6 +76,10 @@ module State = struct
   type t = elt IdMap.t
 
   let dummy_id = Id.gen_special "DUMMY"
+
+  (* 全てがAnyである状態
+     findやunionの引数にできる
+  *)
   let dummy : t = IdMap.singleton dummy_id NoTracking
   let is_dummy (s: t) = IdMap.mem dummy_id s
 
@@ -97,9 +105,11 @@ module State = struct
     |> init_with_field unlimited
 
   let find sel (state: t) =
-    match IdMap.find (Sel.last_id sel) state with
-    | Tracking p -> p
-    | NoTracking -> Possible.Any
+    if is_dummy state then Possible.Any
+    else
+      match IdMap.find (Sel.last_id sel) state with
+      | Tracking p -> p
+      | NoTracking -> Possible.Any
 
   (* セレクタの指すセルの保持しうる数を変更した追跡状態を返す
      ただし非追跡のセレクタの場合は無視する (そのうち全てを追跡対象にしたい)
@@ -133,6 +143,8 @@ module State = struct
       s1 s2
 
   let union (s1: t) (s2: t) : t =
+    if is_dummy s1 then s2 else
+    if is_dummy s2 then s1 else
     IdMap.union
       (fun _ e1 e2 ->
         match e1, e2 with
@@ -152,7 +164,7 @@ module State = struct
         | Tracking Possible.Any -> ()
         | Tracking p ->
             Format.fprintf ppf "%s%s->%s"
-              !sep (Id.numbered_name id) (Possible.to_string p);
+              !sep (Id.number_only_name id) (Possible.to_string p);
             sep := ", ";
       )
       state;
@@ -162,24 +174,24 @@ end
 
 
 type table = {
-  (* 直前のコマンドの終了直後のセルのとりうる値の追跡状態
-     ループの場合、入れ子になったコマンド終了直後の状態はここでは扱わない
-     (once loop検出のため対応する予定がある)
-  *)
+  (* 直前のコマンドの終了直後の追跡状態 *)
   mutable state_in: State.t;
+  (* ループ内の末尾のコマンド終了直後の追跡状態 *)
+  mutable state_loop_end: State.t;
 }
 type code_with_possibles = table Code.t
 type analysis_result = code_with_possibles * State.t
 
 let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
-  let code = Code.annot_map (fun _ -> { state_in=State.dummy }) code in
+  let code =
+    Code.annot_map
+      (fun _ -> {state_in=State.dummy; state_loop_end=State.dummy})
+      code
+  in
   let rec update_tables (initial_state: State.t) (code: code_with_possibles) : State.t =
     LList.fold_left
       (fun (state: State.t) Code.{ cmd; annot=tbl; _ } : State.t ->
-        tbl.state_in <-
-          if State.is_dummy tbl.state_in
-            then state
-            else State.union tbl.state_in state;
+        tbl.state_in <- State.union tbl.state_in state;
         (match cmd with
         | Add (n, sel) -> State.update_f sel (Possible.add n) state
         | Get sel -> State.update sel Possible.Any state
@@ -211,20 +223,23 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
                 then next_state
                 else update_until_fixed_point next_state
             in
-            if Possible.equal (State.find cond state) Possible.zero then
+            if Possible.is_zero (State.find cond state) then
               state (* ループに入らない場合 *)
             else
               let state_1 =
                 update_tables (State.update_f cond Possible.remove_zero state) child
               in
               let state_01 = State.union state state_1 in
-              if Possible.equal (State.find cond state_1) Possible.zero then
+              if Possible.is_zero (State.find cond state_1) then begin
                 (* ループを1回で抜ける場合 *)
+                tbl.state_loop_end <- State.union tbl.state_loop_end state_1;
                 state_01 |> State.update cond Possible.zero
-              else
+              end else begin
                 (* ループが何回か回る場合 *)
-                update_until_fixed_point state_01
-                |> State.update cond Possible.zero
+                let state_fixed = update_until_fixed_point state_01 in
+                tbl.state_loop_end <- State.union tbl.state_loop_end state_fixed;
+                state_fixed |> State.update cond Possible.zero
+              end
         | IndexLoop (_, child) ->
             let rec update_until_fixed_point curr_state =
               let next_state =
@@ -248,9 +263,13 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
   let open Format in
   fprintf ppf "@[<v>";
   Code.output ppf
-    (fun ppf { state_in } ->
+    (fun ppf { state_in; state_loop_end } ->
       fprintf ppf "\t";
       State.output ppf state_in;
+      if not (State.is_dummy state_loop_end) then begin
+        fprintf ppf "@;<1 2>";
+        State.output ppf state_loop_end;
+      end
     )
     code;
   fprintf ppf "@,$end\t";
@@ -258,26 +277,67 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
   fprintf ppf "@]";
 ;;
 
+let insert_reset_before_zero_use (code, _: analysis_result) =
+  let rec iter code =
+    Code.concat_map
+      (fun Code.{ cmd; annot; info } ->
+        let { state_in; state_loop_end } = annot in
+        match cmd with
+        | Add (_, s) | Put s ->
+            if Possible.is_zero (State.find s state_in) then
+              [`Insert (Code.Reset s, annot); `Keep annot]
+            else [`Keep annot]
+        | If (cond, _, _) ->
+            if Possible.is_zero (State.find cond state_in) then
+              [`Insert (Code.Reset cond, annot); `Keep annot]
+            else [`Keep annot]
+        | Loop (cond, child) ->
+            let child =
+              if Possible.is_zero (State.find cond state_loop_end) then
+                iter child
+                @+ llist [ Code.{cmd=Reset cond; annot; info} ]
+              else iter child
+            in
+            let res = [`Insert (Code.Loop (cond, child), annot)] in
+            if Possible.is_zero (State.find cond state_in)
+              then `Insert (Code.Loop (cond, child), annot) :: res
+              else res
+        | Shift { index; followers; _ } ->
+            LList.fold_left
+              (fun code id ->
+                let sel = Sel.concat_member_to_index_tail index id 0 in
+                if Possible.is_zero (State.find sel state_in) then
+                  `Insert (Code.Reset sel, annot) :: code
+                else code
+              )
+              [`Keep annot] followers
+        | Reset _ | Get _ | IndexLoop _ | IndexIf _->
+            [`Keep annot]
+      )
+      code
+  in
+  iter code
+
 let eliminate_never_entered_loop (code, _: analysis_result) =
-  Code.filter_map
-    (fun Code.{ cmd; annot; info } ->
-      let { state_in } = annot in
+  Code.concat_map
+    (fun Code.{ cmd; annot; _ } ->
+      let { state_in; _ } = annot in
       match cmd with
       | Add _ | Put _ | Get _ | IndexLoop _ | If _ | IndexIf _ ->
-          `Keep annot
+          [`Keep annot]
       | Reset sel | Loop (sel, _) ->
-          if Possible.equal (State.find sel state_in) Possible.zero
-            then `Delete
-            else `Keep annot
+          if Possible.is_zero (State.find sel state_in)
+            then []
+            else [`Keep annot]
       | Shift { n; index; followers } ->
           let followers =
             LList.filter
               (fun id ->
                 let sel = Sel.concat_member_to_index_tail index id 0 in
-                not @@ Possible.equal (State.find sel state_in) Possible.zero
+                not @@ Possible.is_zero (State.find sel state_in)
               )
               followers
           in
-          `Update { cmd=Shift { n; index; followers }; annot; info }
+          [`Insert (Shift {n; index; followers}, annot)]
     )
     code
