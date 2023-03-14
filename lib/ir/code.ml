@@ -20,6 +20,9 @@ and 'a cmd =
   | IndexLoop of (Sel.index * 'a t)
   | IndexIf of (Sel.index * 'a t)
   | Reset of Sel.t
+  | Use of Sel.t
+      (* 生存情報解析でuse判定になるだけのダミー命令
+         allocセルを使用後にゼロクリアするために使う *)
 
 (** アノテーション付きコマンドをそれぞれ0個以上のコマンドで置き換える
     構造を維持して再帰的に書き換えることも可能
@@ -55,6 +58,7 @@ and cmd_concat_map f = function
       If (sel, concat_map f thn, concat_map f els)
   | IndexIf (index, code) ->
       IndexIf (index, concat_map f code)
+  | Use (sel) -> Use (sel)
 
 (** アノテーションだけを書き換える *)
 let annot_map f code =
@@ -128,6 +132,9 @@ let output ppf output_annot code =
             output_annot ppf annot;
             fprintf ppf "@;<0 2>";
             print_block code;
+        | Use sel ->
+            fprintf ppf "$use %s" (Sel.to_string sel);
+            output_annot ppf annot;
         )
       )
       code
@@ -192,7 +199,8 @@ let convert_idioms code =
           | _ -> [`Keep ()]
         end
       | Add _ | Put _ | Get _ | Shift _ | Reset _
-      | IndexLoop _ | If _ | IndexIf _ ->
+      | IndexLoop _ | If _ | IndexIf _ 
+      | Use _ ->
           [`Keep ()]
     )
     code

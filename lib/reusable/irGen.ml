@@ -17,18 +17,19 @@ type ctx =
 
 (* Fieldを読んでIr.Fieldを拡張しながらVarとIr.Idの対応を返す *)
 let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
-  let ir_field, ir_idx_id =
+  let ir_field =
     if alloc then
       match ctx.diving with
-      | None -> (ir_main.finite, None)
-      | Some (arr_sel, idx_id) -> begin
-          match Ir.Sel.find_mtype ir_main arr_sel with
-          | Ir.Field.Array { members; _ } -> (members, Some idx_id)
+      | None -> ir_main.finite
+      | Some (arr_sel, _) -> begin
+          match Ir.Field.find_by_sel ir_main arr_sel with
+          | Ir.Field.Array { members; _ } -> members
           | Cell _ | Index -> assert false
               (* $diveでインデックス以外がdivingに指定されることは弾かれる *)
         end
-    else (ir_main.finite, None)
+    else ir_main.finite
   in
+  let diving_index = if alloc then ctx.diving else None in
   let rec gen ?parent_name ~sticky (nfield: Ir.Field.t) (field: field): irid_env =
     field
     |> LList.fold_left
@@ -43,7 +44,7 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
         match mtype with
         | MtyExCell ->
             Ir.Field.extend nfield irvar
-              (Cell { ifable=false; sticky; idx_id=ir_idx_id });
+              (Cell { ifable=false; sticky; index=diving_index });
             VE.extend var (irvar, MtyCell) env
         | MtyExIndex ->
             if nfield == ir_main.finite || alloc then
@@ -132,7 +133,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             ((), code)
         | StIf (ex_sel, stmts_then, stmts_else) ->
             let nsel = eval envs ex_sel |> Va.to_cell ex_sel.i in
-            let nmtype = Ir.Sel.find_mtype nmain nsel in
+            let nmtype = Ir.Field.find_by_sel nmain nsel in
             (match nmtype with
             | Ir.Field.Cell cell ->  cell.ifable <- true
             | _ -> assert false
@@ -196,15 +197,15 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let irid_env =
               generate_field ~alloc:true ctx nmain field
             in
-            (* 確保するセルに対するゼロ初期化 *)
-            let code_clean =
+            (* 確保するセルの初期化・後処理 *)
+            let gen_for_allocated_cells f : unit Ir.Code.t =
               VE.to_seq irid_env
               |> Seq.map
                 (fun (_, (id, mtype)) ->
                   match mtype with
                   | MtyCell ->
                       let sel = Ir.Sel.concat_member_to_index_opt_tail diving id 0 in
-                      Ir.Code.from_cmds ~info [ Reset sel ]
+                      Ir.Code.from_cmds ~info (f sel)
                   | MtyArray _ | MtyIndex ->
                       (* field評価時にallocフラグが真であれば弾かれる *)
                       assert false
@@ -212,7 +213,9 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               |> LList.of_seq
               |> LList.concat
             in
-            (* 後続のコード生成 *)
+            let code_init = gen_for_allocated_cells (fun sel -> [Reset sel]) in
+            let code_end = gen_for_allocated_cells (fun sel -> [Reset sel; Use sel]) in
+            (* 子コードの生成 *)
             let va_env =
               Envs.extend_value_env_with_irid_env
                 diving irid_env envs.va_env
@@ -226,7 +229,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let (), code_child = gen ctx stmts in
             (* ゼロ初期化は開始時と終了時に行う
                IRの最適化である程度消える *)
-            ((), code_clean @+ code_child @+ code_clean)
+            ((), code_init @+ code_child @+ code_end)
         | StExpand ex_block ->
             let envs, stmts = eval envs ex_block |> Va.to_block ex_block.i in
             gen { ctx with envs } stmts

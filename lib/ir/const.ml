@@ -1,10 +1,8 @@
 open Support.Pervasive
 open Printf
 
-(* セルの中身が定数になる場合の最適化
-   - 条件セルがゼロになるループの除去 (ループ、リセット、一時セル連れ回し)
+(* 抽象解釈による最適化
    - XXX: 関連して実装したい最適化は他にもある
-    - 初期化コマンド挿入による生存期間カット
     - once loop(2回目の分岐で必ず抜けるループ)の検出
 *)
 
@@ -69,10 +67,10 @@ module Possible = struct
 end
 
 
+module IdMap = Map.Make(Id)
 module State = struct
-  module IdMap = Map.Make(Id)
 
-  type elt = Tracking of Possible.t | NoTracking
+  type elt = Tracking of Possible.t * Sel.t | NoTracking
   type t = elt IdMap.t
 
   let dummy_id = Id.gen_special "DUMMY"
@@ -88,10 +86,13 @@ module State = struct
       Field.fold
         (fun (id: Id.t) (mtype: Field.mtype) (state: t): t ->
           match mtype with
-          | Cell { sticky; _ } ->
+          | Cell { sticky; index; _ } ->
               let p =
-                (* 配列メンバの非一時セルは解析が面倒なので飛ばす *)
-                if sticky then Tracking Possible.zero else NoTracking
+                if sticky then
+                  let sel = Sel.concat_member_to_index_opt_tail index id 0 in
+                  Tracking (Possible.zero, sel)
+                else NoTracking
+                  (* 配列メンバの非一時セルは解析が面倒なので飛ばす *)
               in
               IdMap.add id p state
           | Index -> state
@@ -108,8 +109,17 @@ module State = struct
     if is_dummy state then Possible.Any
     else
       match IdMap.find (Sel.last_id sel) state with
-      | Tracking p -> p
+      | Tracking (p, _) -> p
       | NoTracking -> Possible.Any
+
+  let fold (f: 'a -> Possible.t -> Sel.t -> 'a) init (state: t) =
+    IdMap.fold
+      (fun _ elt accu ->
+        match elt with
+        | Tracking (possible, sel) -> f accu possible sel
+        | NoTracking -> accu
+      )
+      state init
 
   (* セレクタの指すセルの保持しうる数を変更した追跡状態を返す
      ただし非追跡のセレクタの場合は無視する (そのうち全てを追跡対象にしたい)
@@ -119,7 +129,7 @@ module State = struct
       (Sel.last_id sel)
       (function
         | Some NoTracking -> Some NoTracking
-        | Some (Tracking _) -> Some (Tracking possible)
+        | Some (Tracking (_, sel)) -> Some (Tracking (possible, sel))
         | None -> assert false
       )
       state
@@ -128,7 +138,7 @@ module State = struct
       (Sel.last_id sel)
       (function
         | Some NoTracking -> Some NoTracking
-        | Some (Tracking p) -> Option.some @@ Tracking (f p)
+        | Some (Tracking (p, sel)) -> Option.some @@ Tracking (f p, sel)
         | None -> assert false
       )
       state
@@ -137,7 +147,7 @@ module State = struct
     IdMap.equal
       (fun e1 e2 ->
         match e1, e2 with
-        | Tracking p1, Tracking p2 -> Possible.equal p1 p2
+        | Tracking (p1, _), Tracking (p2, _) -> Possible.equal p1 p2
         | NoTracking, NoTracking -> true
         | _ -> false)
       s1 s2
@@ -148,7 +158,8 @@ module State = struct
     IdMap.union
       (fun _ e1 e2 ->
         match e1, e2 with
-        | Tracking p1, Tracking p2 -> Some (Tracking (Possible.union p1 p2))
+        | Tracking (p1, sel), Tracking (p2, _) ->
+            Some (Tracking (Possible.union p1 p2, sel))
         | NoTracking, NoTracking -> Some NoTracking
         | _ -> assert false
       )
@@ -161,8 +172,8 @@ module State = struct
       (fun id elt ->
         match elt with
         | NoTracking -> ()
-        | Tracking Possible.Any -> ()
-        | Tracking p ->
+        | Tracking (Possible.Any, _) -> ()
+        | Tracking (p, _) ->
             Format.fprintf ppf "%s%s->%s"
               !sep (Id.number_only_name id) (Possible.to_string p);
             sep := ", ";
@@ -196,7 +207,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
         | Add (n, sel) -> State.update_f sel (Possible.add n) state
         | Get sel -> State.update sel Possible.Any state
         | Reset sel -> State.update sel Possible.zero state
-        | Put _ -> state
+        | Put _ | Use _ -> state
         | Shift _ -> state
             (* いまのところ配列メンバの非一時セルを扱わないので無視して良い *)
         | If (cond, thn, els) ->
@@ -277,13 +288,14 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
   fprintf ppf "@]";
 ;;
 
-let insert_reset_before_zero_use (code, _: analysis_result) =
+let insert_reset_before_zero_use code get_const get_liveness =
   let rec iter code =
     Code.concat_map
       (fun Code.{ cmd; annot; info } ->
-        let { state_in; state_loop_end } = annot in
+        let { state_in; state_loop_end } = get_const annot in
+        let Liveness.{ live_in; _ } = get_liveness annot in
         match cmd with
-        | Add (_, s) | Put s ->
+        | Add (_, s) | Put s | Use s ->
             if Possible.is_zero (State.find s state_in) then
               [`Insert (Code.Reset s, annot); `Keep annot]
             else [`Keep annot]
@@ -298,10 +310,23 @@ let insert_reset_before_zero_use (code, _: analysis_result) =
                 @+ llist [ Code.{cmd=Reset cond; annot; info} ]
               else iter child
             in
-            let res = [`Insert (Code.Loop (cond, child), annot)] in
-            if Possible.is_zero (State.find cond state_in)
-              then `Insert (Code.Loop (cond, child), annot) :: res
-              else res
+            let zero_cells =
+              (* ゼロであり、かつ入口生存のセル *)
+              State.fold
+                (fun zero_cells possible sel ->
+                  if Possible.is_zero possible
+                     && Liveness.CellSet.mem (Sel.last_id sel) live_in
+                    then sel :: zero_cells
+                    else zero_cells
+                )
+                [] state_in
+            in
+            List.fold_left
+              (fun code cell ->
+                `Insert (Code.Reset cell, annot) :: code
+              )
+              [`Insert (Code.Loop (cond, child), annot)]
+              zero_cells
         | Shift { index; followers; _ } ->
             LList.fold_left
               (fun code id ->
@@ -323,7 +348,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
     (fun Code.{ cmd; annot; _ } ->
       let { state_in; _ } = annot in
       match cmd with
-      | Add _ | Put _ | Get _ | IndexLoop _ | If _ | IndexIf _ ->
+      | Add _ | Put _ | Get _ | IndexLoop _ | If _ | IndexIf _ | Use _ ->
           [`Keep annot]
       | Reset sel | Loop (sel, _) ->
           if Possible.is_zero (State.find sel state_in)

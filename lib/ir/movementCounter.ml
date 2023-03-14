@@ -122,7 +122,7 @@ let from_code (code: 'a Code.t): t =
     LList.fold_left
       (fun curr_sel Code.{ cmd; info; _ } ->
         match cmd with
-        | Code.Add (0, _) -> curr_sel
+        | Code.Add (0, _) | Use _ -> curr_sel
         | Add (_, sel) | Put sel | Get sel | Reset sel ->
             add_sel_to_sel tbl curr_sel sel;
             sel

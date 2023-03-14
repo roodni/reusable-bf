@@ -7,7 +7,7 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
       LList.fold_left_map
         (fun pos Code.{ cmd; info; _ }: (Pos.t * Bf.Code.t) ->
           match cmd with
-          | Add (0, _) -> (pos, ~~[])
+          | Add (0, _) | Use _ -> (pos, ~~[])
           | Add (n, sel) ->
               let pos_dest = Pos.from_sel_to_cell layout sel in
               (pos_dest, Pos.gen_bf_move pos pos_dest @+ ~~[ Bf.Code.Add n ])

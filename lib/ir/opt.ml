@@ -10,7 +10,11 @@ type 'a context = {
 (* 生存セル解析による最適化 *)
 let merge_cells ctx =
   let code = Code.convert_idioms ctx.code in
-  let liveness = Liveness.analyze ctx.field code in
+  let initial_live_in, code =
+    Liveness.analyze ctx.field code (fun tbl () -> tbl) Fun.id
+  in
+  let code = Liveness.eliminate_never_used_reset ctx.field code in
+  let liveness = (initial_live_in, code) in
   let graph = Liveness.Graph.create ctx.field liveness in
   let field, code =
     Liveness.Graph.create_program_with_merged_cells graph ctx.field code
@@ -28,7 +32,9 @@ let merge_cells ctx =
 (* 条件セルがゼロになるループの除去 *)
 let eliminate_never_entered_loop ctx =
   let result = Const.analyze ctx.field ctx.code in
-  let code = Const.eliminate_never_entered_loop result in
+  let code =
+    Const.eliminate_never_entered_loop result
+  in
   if ctx.dump then begin
     let ppf = formatter_of_out_channel ctx.chan in
     fprintf ppf "@[<v>[POSSIBLE CELL VALUES]@,";
@@ -41,13 +47,19 @@ let eliminate_never_entered_loop ctx =
    生存期間が短くなる
 *)
 let insert_reset_before_zero_use ctx =
-  let result = Const.analyze ctx.field ctx.code in
-  let code = Const.insert_reset_before_zero_use result in
+  let const_result = Const.analyze ctx.field ctx.code in
+  let code, _ = const_result in
+  let _, code =
+    Liveness.analyze ctx.field code
+      (fun liveness const -> (liveness, const))
+      fst
+  in
+  let code = Const.insert_reset_before_zero_use code snd fst in
   if ctx.dump then begin
     let ppf = formatter_of_out_channel ctx.chan in
     pp_open_vbox ppf 0;
     fprintf ppf "[RESET INSERTION BEFORE ZERO USE]@,";
-    Const.output_analysis_result ppf result;
+    Const.output_analysis_result ppf const_result;
     fprintf ppf "@,@."
   end;
   { ctx with code }

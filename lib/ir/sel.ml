@@ -57,26 +57,6 @@ let concat_member_to_index_opt_tail index_opt mem_id offset =
   | Some index, _ -> concat_member_to_index_tail index mem_id offset
 ;;
 
-(** セレクタの指すテープ位置のmtypeを取得する *)
-let find_mtype (fmain: Field.main) (sel: t) =
-  let rec find_mtype field = function
-    | Member id ->
-        if fmain.finite == field
-          then Field.lookup_main fmain id
-          else Field.lookup field id
-    | Array { name; member; _ } ->
-        let mtype =
-          if fmain.finite == field
-            then Field.lookup_main fmain name
-            else Field.lookup field name
-        in begin
-          match mtype with
-          | Field.Array { members; _ } -> find_mtype members member
-          | _ -> assert false
-        end
-  in
-  find_mtype fmain.finite sel
-
 let rec to_string = function
   | Member id -> Id.numbered_name id
   | Array { name; index_opt=None; offset; member } ->

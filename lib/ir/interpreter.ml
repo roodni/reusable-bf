@@ -182,6 +182,7 @@ let run ~printer ~input ~cell_type field ir_code =
                 loop the;
           | Reset s ->
               Tape.set_cell ~cell_type tape s 0
+          | Use _ -> ()
         with ExecutionError msg -> raise @@ ExecutionExit (info, msg)
       )
       ir_code
