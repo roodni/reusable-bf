@@ -187,8 +187,10 @@ end
 type table = {
   (* 直前のコマンドの終了直後の追跡状態 *)
   mutable state_in: State.t;
-  (* ループ内の末尾のコマンド終了直後の追跡状態 *)
-  mutable state_loop_end: State.t;
+  (* 子コードの末尾のコマンド終了直後の追跡状態 *)
+  mutable state_block_end: State.t;
+  (* ?のelse用 *)
+  mutable state_else_end: State.t;
 }
 type code_with_possibles = table Code.t
 type analysis_result = code_with_possibles * State.t
@@ -196,7 +198,11 @@ type analysis_result = code_with_possibles * State.t
 let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
   let code =
     Code.annot_map
-      (fun _ -> {state_in=State.dummy; state_loop_end=State.dummy})
+      (fun _ -> {
+        state_in=State.dummy;
+        state_block_end=State.dummy;
+        state_else_end=State.dummy;
+      })
       code
   in
   let rec update_tables (initial_state: State.t) (code: code_with_possibles) : State.t =
@@ -214,12 +220,15 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
             let thn_state_out =
               update_tables (State.update_f cond Possible.remove_zero state) thn
             in
+            tbl.state_block_end <- State.union tbl.state_block_end thn_state_out;
             let els_state_out =
               update_tables (State.update cond Possible.zero state) els
             in
+            tbl.state_else_end <- State.union tbl.state_else_end els_state_out;
             State.union thn_state_out els_state_out
         | IndexIf (_, thn) ->
             let thn_state_out = update_tables state thn in
+            tbl.state_block_end <- State.union tbl.state_block_end thn_state_out;
             State.union state thn_state_out
         | Loop (cond, child) ->
             let rec update_until_fixed_point curr_state =
@@ -243,12 +252,12 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
               let state_01 = State.union state state_1 in
               if Possible.is_zero (State.find cond state_1) then begin
                 (* ループを1回で抜ける場合 *)
-                tbl.state_loop_end <- State.union tbl.state_loop_end state_1;
+                tbl.state_block_end <- State.union tbl.state_block_end state_1;
                 state_01 |> State.update cond Possible.zero
               end else begin
                 (* ループが何回か回る場合 *)
                 let state_fixed = update_until_fixed_point state_01 in
-                tbl.state_loop_end <- State.union tbl.state_loop_end state_fixed;
+                tbl.state_block_end <- State.union tbl.state_block_end state_fixed;
                 state_fixed |> State.update cond Possible.zero
               end
         | IndexLoop (_, child) ->
@@ -262,7 +271,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
                 else update_until_fixed_point next_state
             in
             let state_fixed = update_until_fixed_point state in
-            tbl.state_loop_end <- State.union tbl.state_loop_end state_fixed;
+            tbl.state_block_end <- State.union tbl.state_block_end state_fixed;
             state_fixed
         )
       )
@@ -276,12 +285,12 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
   let open Format in
   fprintf ppf "@[<v>";
   Code.output ppf
-    (fun ppf { state_in; state_loop_end } ->
+    (fun ppf { state_in; state_block_end; _ } ->
       fprintf ppf "\t";
       State.output ppf state_in;
-      if not (State.is_dummy state_loop_end) then begin
+      if not (State.is_dummy state_block_end) then begin
         fprintf ppf "@;<1 2>";
-        State.output ppf state_loop_end;
+        State.output ppf state_block_end;
       end
     )
     code;
@@ -316,20 +325,36 @@ let insert_reset_before_zero_use code get_const get_liveness =
               `Insert (Code.Reset sel, annot) :: accu)
             before cells
         in
-        let { state_in; state_loop_end } = get_const annot in
-        let Liveness.{ live_in; _ } = get_liveness annot in
+        let { state_in; state_block_end; state_else_end } = get_const annot in
+        let Liveness.{ live_in; live_out } = get_liveness annot in
         match cmd with
         | Add (_, s) | Put s | Use s ->
             if Possible.is_zero (State.find s state_in) then
               [`Insert (Code.Reset s, annot); `Keep annot]
             else [`Keep annot]
-        | If (cond, _, _) ->
+        | If (cond, code_then, code_else) ->
+            let zero_cells_then = zero_cells live_out state_block_end in
+            let zero_cells_else = zero_cells live_out state_else_end in
+            let cmd =
+              Code.If
+                ( cond,
+                  iter code_then @+ reset_cells zero_cells_then,
+                  iter code_else @+ reset_cells zero_cells_else )
+            in
+            let res = `Insert (cmd, annot) in
             if Possible.is_zero (State.find cond state_in) then
-              [`Insert (Code.Reset cond, annot); `Keep annot]
-            else [`Keep annot]
+              [`Insert (Code.Reset cond, annot); res]
+            else [res]
+        | IndexIf (cond, code_then) ->
+            let zero_cells_then = zero_cells live_out state_block_end in
+            let cmd =
+              Code.IndexIf
+                ( cond, iter code_then @+ reset_cells zero_cells_then)
+            in
+            [`Insert (cmd, annot)]
         | Loop (cond, child) ->
             (* ループ終わりのゼロ初期化挿入 *)
-            let zero_cells_loop_end = zero_cells live_in state_loop_end in
+            let zero_cells_loop_end = zero_cells live_in state_block_end in
             let child =
               iter child @+ reset_cells zero_cells_loop_end
             in
@@ -338,7 +363,7 @@ let insert_reset_before_zero_use code get_const get_liveness =
             reset_cells_insertion zero_cells_init
               [`Insert (Code.Loop (cond, child), annot)]
         | IndexLoop (cond, child) ->
-            let zero_cells_loop_end = zero_cells live_in state_loop_end in
+            let zero_cells_loop_end = zero_cells live_in state_block_end in
             let child =
               iter child @+ reset_cells zero_cells_loop_end
             in
@@ -354,7 +379,7 @@ let insert_reset_before_zero_use code get_const get_liveness =
                 else code
               )
               [`Keep annot] followers
-        | Reset _ | Get _ | IndexIf _->
+        | Reset _ | Get _ ->
             [`Keep annot]
       )
       code

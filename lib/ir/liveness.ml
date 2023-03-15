@@ -28,6 +28,8 @@ type table = {
 }
 let create_table () = {
   live_out=CellSet.empty;
+    (* ! <!> のlive_outは分岐直後の生存情報
+       ? <?> のlive_outは直後の命令のlive_inと同じ *)
   live_in=CellSet.empty;
 }
 
@@ -67,14 +69,15 @@ let analyze (fmain: Field.main) (code: 'a Code.t) (set: table -> 'a -> 'b) (get:
               tbl.live_out <- succ_live_in;
               CellSet.add_sel_if_sticky fmain sel succ_live_in
           | If (cond_sel, thn_code, els_code) ->
+              tbl.live_out <- succ_live_in;
               let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
               let els_live_in = update_tables_and_compute_live_in succ_live_in els_code in
               tbl.live_out <- CellSet.union thn_live_in els_live_in;
               CellSet.add_sel_if_sticky fmain cond_sel tbl.live_out
           | IndexIf (_, thn_code) ->
+              tbl.live_out <- succ_live_in;
               let thn_live_in = update_tables_and_compute_live_in succ_live_in thn_code in
-              tbl.live_out <- CellSet.union thn_live_in succ_live_in;
-              tbl.live_out
+              CellSet.union thn_live_in succ_live_in;
           | Loop (cond_sel, child_code) ->
               (* 出口生存に初期値を設定 *)
               tbl.live_out <- CellSet.union tbl.live_out succ_live_in;
