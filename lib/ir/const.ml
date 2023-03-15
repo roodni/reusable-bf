@@ -289,6 +289,16 @@ let output_analysis_result ppf (code, state_out: analysis_result) =
 ;;
 
 let insert_reset_before_zero_use code get_const get_liveness =
+  let zero_cells live_in state_in =
+    (* ゼロであり、かつ生存しているセルを列挙する *)
+    State.fold
+      (fun zero_cells possible sel ->
+        if Possible.is_zero possible
+            && Liveness.CellSet.mem (Sel.last_id sel) live_in
+          then sel :: zero_cells else zero_cells
+      )
+      [] state_in
+  in
   let rec iter code =
     Code.concat_map
       (fun Code.{ cmd; annot; info } ->
@@ -304,29 +314,24 @@ let insert_reset_before_zero_use code get_const get_liveness =
               [`Insert (Code.Reset cond, annot); `Keep annot]
             else [`Keep annot]
         | Loop (cond, child) ->
+            (* ループ終わりのゼロ初期化挿入 *)
+            let zero_cells_loop_end = zero_cells live_in state_loop_end |> llist in
+            let reset_cells_loop_end =
+              LList.map
+                (fun sel -> Code.{cmd=Reset sel; annot; info})
+                zero_cells_loop_end
+            in
             let child =
               if Possible.is_zero (State.find cond state_loop_end) then
-                iter child
-                @+ llist [ Code.{cmd=Reset cond; annot; info} ]
+                iter child @+ reset_cells_loop_end
               else iter child
             in
-            let zero_cells =
-              (* ゼロであり、かつ入口生存のセル *)
-              State.fold
-                (fun zero_cells possible sel ->
-                  if Possible.is_zero possible
-                     && Liveness.CellSet.mem (Sel.last_id sel) live_in
-                    then sel :: zero_cells
-                    else zero_cells
-                )
-                [] state_in
-            in
+            (* ループ前のゼロ初期化挿入 *)
+            let zero_cells_init = zero_cells live_in state_in in
             List.fold_left
-              (fun code cell ->
-                `Insert (Code.Reset cell, annot) :: code
-              )
+              (fun code cell -> `Insert (Code.Reset cell, annot) :: code)
               [`Insert (Code.Loop (cond, child), annot)]
-              zero_cells
+              zero_cells_init
         | Shift { index; followers; _ } ->
             LList.fold_left
               (fun code id ->
