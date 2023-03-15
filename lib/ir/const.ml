@@ -3,7 +3,7 @@ open Printf
 
 (* 抽象解釈による最適化
    - XXX: 関連して実装したい最適化は他にもある
-    - once loop(2回目の分岐で必ず抜けるループ)の検出
+    - 2回目の分岐で必ず抜けるループの検出
 *)
 
 module ISet = Set.Make(Int)
@@ -261,7 +261,9 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
                 then next_state
                 else update_until_fixed_point next_state
             in
-            update_until_fixed_point state
+            let state_fixed = update_until_fixed_point state in
+            tbl.state_loop_end <- State.union tbl.state_loop_end state_fixed;
+            state_fixed
         )
       )
       initial_state
@@ -298,10 +300,22 @@ let insert_reset_before_zero_use code get_const get_liveness =
           then sel :: zero_cells else zero_cells
       )
       [] state_in
+    |> llist
   in
   let rec iter code =
     Code.concat_map
       (fun Code.{ cmd; annot; info } ->
+        let reset_cells cells =
+          LList.map
+            (fun sel -> Code.{cmd=Reset sel; annot; info})
+            cells
+        in
+        let reset_cells_insertion cells before =
+          LList.fold_left
+            (fun accu sel ->
+              `Insert (Code.Reset sel, annot) :: accu)
+            before cells
+        in
         let { state_in; state_loop_end } = get_const annot in
         let Liveness.{ live_in; _ } = get_liveness annot in
         match cmd with
@@ -315,23 +329,22 @@ let insert_reset_before_zero_use code get_const get_liveness =
             else [`Keep annot]
         | Loop (cond, child) ->
             (* ループ終わりのゼロ初期化挿入 *)
-            let zero_cells_loop_end = zero_cells live_in state_loop_end |> llist in
-            let reset_cells_loop_end =
-              LList.map
-                (fun sel -> Code.{cmd=Reset sel; annot; info})
-                zero_cells_loop_end
-            in
+            let zero_cells_loop_end = zero_cells live_in state_loop_end in
             let child =
-              if Possible.is_zero (State.find cond state_loop_end) then
-                iter child @+ reset_cells_loop_end
-              else iter child
+              iter child @+ reset_cells zero_cells_loop_end
             in
             (* ループ前のゼロ初期化挿入 *)
             let zero_cells_init = zero_cells live_in state_in in
-            List.fold_left
-              (fun code cell -> `Insert (Code.Reset cell, annot) :: code)
+            reset_cells_insertion zero_cells_init
               [`Insert (Code.Loop (cond, child), annot)]
-              zero_cells_init
+        | IndexLoop (cond, child) ->
+            let zero_cells_loop_end = zero_cells live_in state_loop_end in
+            let child =
+              iter child @+ reset_cells zero_cells_loop_end
+            in
+            let zero_cells_init = zero_cells live_in state_in in
+            reset_cells_insertion zero_cells_init
+              [`Insert (Code.IndexLoop (cond, child), annot)]
         | Shift { index; followers; _ } ->
             LList.fold_left
               (fun code id ->
@@ -341,7 +354,7 @@ let insert_reset_before_zero_use code get_const get_liveness =
                 else code
               )
               [`Keep annot] followers
-        | Reset _ | Get _ | IndexLoop _ | IndexIf _->
+        | Reset _ | Get _ | IndexIf _->
             [`Keep annot]
       )
       code
