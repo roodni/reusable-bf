@@ -11,7 +11,8 @@ $build {
 ! n [
   - n
 
-  $dive a@i [
+  *[
+    $dive a@i
     $alloc { x: cell; }
     < a@i
     + x '!'

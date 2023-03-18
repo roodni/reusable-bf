@@ -76,7 +76,7 @@ and stmt' =
   | StAlloc of field * stmts
   | StBuild of field * stmts
   | StExpand of expr
-  | StDive of expr * stmts
+  | StDive of expr option * stmts
 
 and field = (Var.t * mtype_expr) withinfo llist
 and mtype_expr =
@@ -157,8 +157,10 @@ and validate_stmts_depth n (stmts: stmts) =
       | StPut ex | StGet ex | StExpand ex ->
           validate_expr_depth ex;
       | StWhile (ex, stmts) | StIndexLoop (ex, stmts)
-      | StDive (ex, stmts) | StIndexIf (ex, stmts) ->
+      | StDive (Some ex, stmts) | StIndexIf (ex, stmts) ->
           validate_expr_depth ex;
+          validate_stmts_depth stmts;
+      | StDive (None, stmts) ->
           validate_stmts_depth stmts;
       | StIf (ex, ss, ssopt) ->
           validate_expr_depth ex;

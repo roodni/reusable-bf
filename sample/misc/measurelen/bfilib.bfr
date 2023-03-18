@@ -150,3 +150,5 @@ let gen_switch_nat sel blocks default = [
         ])
     0 blocks
 ]
+
+let dive i st = [ $dive i  *st ]

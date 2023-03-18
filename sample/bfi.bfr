@@ -16,7 +16,7 @@ $build {
   }
 }
 
-$dive code@p [
+*dive code@p [
   **let p = code@p in $
   $alloc {
     cont; flag_next
@@ -65,7 +65,7 @@ $build {
 }
 
 **let p = code@p in $
-$dive p [
+*dive p [
   $alloc { depth_cur }
   ! p:inst [
     *gen_switch_nat p:inst

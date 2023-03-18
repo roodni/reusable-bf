@@ -34,14 +34,13 @@ let gen_const_div n rem_cell quot_code = [
 
 
 let gen_for_index i step_st loop_st = [
-  $dive i [
-    $alloc { cont }
-    + cont
-    ! cont [
-      - cont
-      *loop_st
-      <?> i [ *step_st  + cont ]
-    ]
+  $dive i
+  $alloc { cont }
+  + cont
+  ! cont [
+    - cont
+    *loop_st
+    <?> i [ *step_st  + cont ]
   ]
 ]
 

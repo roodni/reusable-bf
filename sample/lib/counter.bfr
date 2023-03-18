@@ -36,18 +36,17 @@ let gen_incr counter = [
 
 let gen_print counter = [
   **let i = counter@i in $
-  $dive i [
-    ! i:(1)n [ > i ]
-    ! i:n
-      [ $alloc { x: cell; }
-        + x ('9' + 1)
-        *gen_repeat i:n [ - x ]
-        . x
-        + i:n ('9' + 1)
-        *gen_repeat x [ - i:n ]
-        < i
-      ]
-  ]
+  $dive i
+  ! i:(1)n [ > i ]
+  ! i:n
+    [ $alloc { x: cell; }
+      + x ('9' + 1)
+      *gen_repeat i:n [ - x ]
+      . x
+      + i:n ('9' + 1)
+      *gen_repeat x [ - i:n ]
+      < i
+    ]
 ]
 
 let gen_reset counter = [

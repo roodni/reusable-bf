@@ -25,18 +25,17 @@ let gen_counter_incr counter = [
 
 let gen_counter_print counter = [
   **let i = counter@i in $
-  $dive i [
-    ! i:(1)n [ > i ]
-    ! i:n
-      [ $alloc { x: cell; }
-        + x ('9' + 1)
-        *gen_add_multi i:n x (-1)
-        . x
-        + i:n ('9' + 1)
-        *gen_add_multi x i:n (-1)
-        < i
-      ]
-  ]
+  $dive i
+  ! i:(1)n [ > i ]
+  ! i:n
+    [ $alloc { x: cell; }
+      + x ('9' + 1)
+      *gen_add_multi i:n x (-1)
+      . x
+      + i:n ('9' + 1)
+      *gen_add_multi x i:n (-1)
+      < i
+    ]
 ]
 
 codegen [

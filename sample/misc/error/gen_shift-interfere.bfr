@@ -9,10 +9,9 @@ $build {
   };
 }
 
-$dive a@i [
-  $alloc { x: cell; }
-  $dive a@i:b@i [
-    $alloc { y: cell; }
-    > a@i
-  ]
-]
+$dive a@i
+$alloc { x: cell; }
+
+$dive a@i:b@i
+$alloc { y: cell; }
+> a@i

@@ -18,27 +18,26 @@ let gen_build n st = [
 
 let gen_move_last (n, arr) = [
   **let i = arr@i in $
-  $dive i [
-    $alloc { c }
-    + c (n - 1)
-    ! c [ - c  > i ]
-  ]
+  $dive i
+  $alloc { c }
+  + c (n - 1)
+  ! c [ - c  > i ]
 ]
 
 // 現在のインデックスのある桁からdigitを繰り上げる
 // インデックスはゼロになる
 let gen_carry_from_curr (_, arr) = [
   **let i = arr@i in $
-  $dive i [
-    // i=1 まで繰り上げ
-    <!> i [
-      *gen_const_div
-        base i:digit [ + i:(-1)digit ]
-      < i
-    ]
-    // i=0の桁は繰り上げない
-    *gen_const_div base i:digit []
+  $dive i
+
+  // i=1 まで繰り上げ
+  <!> i [
+    *gen_const_div
+      base i:digit [ + i:(-1)digit ]
+    < i
   ]
+  // i=0の桁は繰り上げない
+  *gen_const_div base i:digit []
 ]
 
 let gen_add_const m fi = [
@@ -52,49 +51,47 @@ let gen_incr fi = gen_add_const 1 fi
 
 let gen_print_unsigned (n, arr) = [
   **let i = arr@i in $
-  $dive i [
-    $alloc { zc; c }
-    + zc (n - 1)
-    // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
-    ! zc [
-      ? i:digit
-        [ *gen_repeat zc [ + c ] ]
-        [ - zc  > i ]
-    ]
-    // 残りの桁を出力する
-    + c
-    ! c [
-      + i:digit '0'
-      . i:digit
-      - i:digit '0'
-      - c
-      ! c [ *gen_repeat c [ + zc ]  > i ]
-      *gen_repeat zc [ + c ]
-    ]
+  $dive i
+  $alloc { zc; c }
+  + zc (n - 1)
+  // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
+  ! zc [
+    ? i:digit
+      [ *gen_repeat zc [ + c ] ]
+      [ - zc  > i ]
+  ]
+  // 残りの桁を出力する
+  + c
+  ! c [
+    + i:digit '0'
+    . i:digit
+    - i:digit '0'
+    - c
+    ! c [ *gen_repeat c [ + zc ]  > i ]
+    *gen_repeat zc [ + c ]
   ]
   *gen_reset_index i
 ]
 
 let gen_print_unsigned_destructive (n, arr) = [
   **let i = arr@i in $
-  $dive i [
-    $alloc { zc; c }
-    + zc (n - 1)
-    // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
-    ! zc [
-      ? i:digit
-        [ *gen_repeat zc [ + c ] ]
-        [ - zc  > i ]
-    ]
-    // 残りの桁を出力する
-    + c
-    ! c [
-      + i:digit '0'
-      . i:digit
-      - c
-      ! c [ *gen_repeat c [ + zc ]  > i ]
-      *gen_repeat zc [ + c ]
-    ]
+  $dive i
+  $alloc { zc; c }
+  + zc (n - 1)
+  // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
+  ! zc [
+    ? i:digit
+      [ *gen_repeat zc [ + c ] ]
+      [ - zc  > i ]
+  ]
+  // 残りの桁を出力する
+  + c
+  ! c [
+    + i:digit '0'
+    . i:digit
+    - c
+    ! c [ *gen_repeat c [ + zc ]  > i ]
+    *gen_repeat zc [ + c ]
   ]
   *gen_reset_index i
 ]
@@ -105,12 +102,11 @@ let gen_flip fi = [
   **let n, arr = fi in $
   *gen_move_last fi
   *gen_foreach arr@i [
-    $dive arr@i [
-      $alloc { nc }
-      + nc (base - 1)
-      *gen_repeat arr@i:digit [ - nc ]
-      *gen_repeat nc [ + arr@i:digit ]
-    ]
+    $dive arr@i
+    $alloc { nc }
+    + nc (base - 1)
+    *gen_repeat arr@i:digit [ - nc ]
+    *gen_repeat nc [ + arr@i:digit ]
   ]
 ]
 
@@ -149,7 +145,7 @@ let gen_print_destructive fi = [
   **let _, arr = fi in $
   ? arr@i:digit
     [
-      $dive arr@i [
+      *dive arr@i [
         $alloc { minus }
         + minus '-'  . minus
       ]
@@ -165,17 +161,16 @@ let gen_print_destructive fi = [
 *)
 let gen_lshift_to_right (n, arr) = [
   **let i = arr@i in $
-  $dive i [
-    $alloc { c }
-    + c (n - 1)
-    // 左端の桁は削除する
-    *gen_del i:digit
-    // それ以降の桁を左にずらす
-    ! c [
-      *gen_repeat i:(1)digit [ + i:digit ]
-      > i
-      - c
-    ]
+  $dive i
+  $alloc { c }
+  + c (n - 1)
+  // 左端の桁は削除する
+  *gen_del i:digit
+  // それ以降の桁を左にずらす
+  ! c [
+    *gen_repeat i:(1)digit [ + i:digit ]
+    > i
+    - c
   ]
 ]
 
@@ -222,7 +217,7 @@ let gen_add src dest = [
   *gen_move_last dest
   *gen_move_last src
   // 足す
-  $dive sarr@i [
+  *dive sarr@i [
     <!> sarr@i [
       *gen_repeat_restore sarr@i:digit
         [ + darr@i:digit ]
@@ -252,66 +247,72 @@ let gen_mul a b dest = [
     let bn, barr = b in
     let dn, darr = dest in $
   *(if an + bn = dn then [] else "error")
+
   *gen_move_last dest
-  $dive darr@i [
-    $alloc { dc }
-    // a * ...
-    *gen_move_last a
-    *gen_foreach aarr@i [
-      // a * b
-      *gen_move_last b
-      *gen_for_index barr@i
-        [ < barr@i  < darr@i ]
-        [
-          $dive barr@i [ *gen_repeat_restore barr@i:digit [
-            $dive aarr@i [ *gen_repeat_restore aarr@i:digit [
-              + darr@i:digit
-            ]]
-          ]]
-        ]
-      // a * (b の符号拡張)
-      ? barr@i:digit
-        [
-          <!> darr@i [
-            < darr@i  + dc
-            $dive aarr@i [ *gen_repeat_restore aarr@i:digit [
-              + darr@i:digit (base - 1)
-            ]]
+
+  $dive darr@i
+  $alloc { dc }
+
+  // a * ...
+  *gen_move_last a
+  *gen_foreach aarr@i [
+    // a * b
+    *gen_move_last b
+    *gen_for_index barr@i
+      [ < barr@i  < darr@i ]
+      [
+        $dive barr@i
+        *gen_repeat_restore barr@i:digit [
+          $dive aarr@i
+          *gen_repeat_restore aarr@i:digit [
+            + darr@i:digit
           ]
         ]
-        [
-          <!> darr@i [ < darr@i  + dc ]
-        ]
-      // 繰り上げ
-      // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
-      *gen_move_last dest
-      *gen_carry_from_curr dest
-      + dc (bn - 2)
-      *gen_repeat dc [ > darr@i ]
-    ]
-    // (a の符号拡張) * b
-    ? aarr@i:digit
+      ]
+    // a * (b の符号拡張)
+    ? barr@i:digit
       [
-        // * b
-        > darr@i
         <!> darr@i [
-          < darr@i
-          *gen_move_last b
-          *gen_for_index darr@i
-            [ < barr@i  < darr@i  + dc ]
-            [
-              $dive barr@i [ *gen_repeat_restore barr@i:digit [
-                + darr@i:digit (base - 1)
-              ]]
-            ]
-          *gen_move_last dest
-          *gen_carry_from_curr dest
-          *gen_repeat dc [ > darr@i ]
-          *gen_reset_index barr@i
+          < darr@i  + dc
+          $dive aarr@i
+          *gen_repeat_restore aarr@i:digit [
+            + darr@i:digit (base - 1)
+          ]
         ]
       ]
-      [ *gen_reset_index darr@i ]
+      [
+        <!> darr@i [ < darr@i  + dc ]
+      ]
+    // 繰り上げ
+    // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
+    *gen_move_last dest
+    *gen_carry_from_curr dest
+    + dc (bn - 2)
+    *gen_repeat dc [ > darr@i ]
   ]
+  // (a の符号拡張) * b
+  ? aarr@i:digit
+    [
+      // * b
+      > darr@i
+      <!> darr@i [
+        < darr@i
+        *gen_move_last b
+        *gen_for_index darr@i
+          [ < barr@i  < darr@i  + dc ]
+          [
+            $dive barr@i
+            *gen_repeat_restore barr@i:digit [
+              + darr@i:digit (base - 1)
+            ]
+          ]
+        *gen_move_last dest
+        *gen_carry_from_curr dest
+        *gen_repeat dc [ > darr@i ]
+        *gen_reset_index barr@i
+      ]
+    ]
+    [ *gen_reset_index darr@i ]
 ]
 
 

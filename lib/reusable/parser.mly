@@ -125,6 +125,8 @@ stmts:
   | s=stmt sl=stmts { lcons s sl }
   | i=ST_ALLOC f=field sl=stmts { llist [ withinfo i @@ StAlloc (f.v, sl) ] }
   | i=ST_BUILD f=field sl=stmts { llist [ withinfo i @@ StBuild (f.v, sl) ] }
+  | i=ST_DIVE e=expr sl=stmts { llist [ withinfo i @@ StDive (Some e, sl) ] }
+  | i=ST_DIVE UNDER sl=stmts { llist [ withinfo i @@ StDive (None, sl) ] }
   | i=ASTER2 e=expr_full { llist [ withinfo i @@ StExpand e ] } %prec prec_stmts
   | { lnil } %prec prec_stmts
 
@@ -142,7 +144,6 @@ stmt:
   | i=INDEX_LOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexLoop (e, sl) }
   | i=INDEX_IF e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexIf (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
-  | i=ST_DIVE e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StDive (e, sl) }
 
 expr:
   | l=uvar_list v=VAR {

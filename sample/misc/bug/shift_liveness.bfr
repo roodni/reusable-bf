@@ -18,16 +18,15 @@ $build {
   デッドコード除去も暴走する可能性 (ゼロ初期化したつもりが初期化できてない)
   があるので (2) が妥当かと思う
 *)
-$dive a@i [
-  $alloc {x}
-  $dive a@j [
-    $alloc {y}
+$dive a@i
+$alloc {x}
 
-    > a@j
-    + y
-    *gen_del x
-    > a@i
-    + x 'A'
-    . x
-  ]
-]
+$dive a@j
+$alloc {y}
+
+> a@j
++ y
+*gen_del x
+> a@i
++ x 'A'
+. x

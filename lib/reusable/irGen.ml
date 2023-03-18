@@ -233,9 +233,15 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
         | StExpand ex_block ->
             let envs, stmts = eval envs ex_block |> Va.to_block ex_block.i in
             gen { ctx with envs } stmts
-        | StDive (index_ex, stmts) ->
-            let index = eval envs index_ex |> Va.to_index index_ex.i in
-            gen { ctx with diving = Some index } stmts
+        | StDive (index_ex_opt, stmts) ->
+            let index =
+              index_ex_opt
+              |> Option.map
+                (fun index_ex ->
+                  eval envs index_ex
+                  |> Va.to_index index_ex.i )
+            in
+            gen { ctx with diving = index } stmts
       ) () stmts
     in
     ((), code_llist |> LList.concat)

@@ -6,11 +6,10 @@ codegen [
     }
   }
 
-  $dive a@i [
-    $alloc {
-      j: index;
-    }
+  $dive a@i
+  $alloc {
+    j: index;
+  }
 
-    + j:x
-  ]
+  + j:x
 ]
