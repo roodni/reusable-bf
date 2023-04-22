@@ -12,6 +12,7 @@ open Syntax
 %token <Support.Info.info> EXCL QUES
 %token <Support.Info.info> LBRACE RBRACE
 %token <Support.Info.info> COLON
+%token <Support.Info.info> COLONCOLON
 %token <Support.Info.info> AT
 %token <Support.Info.info> ATAT // @@
 %token <Support.Info.info> SEMI
@@ -64,7 +65,7 @@ open Syntax
 %right ANDAND
 %left LSHIFT RSHIFT LEQ GEQ EQ NEQ
 %right ATAT
-%right DOT
+%right COLONCOLON
 %left PLUS MINUS
 %left ASTER SLASH MOD
 
@@ -165,8 +166,8 @@ expr:
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
   | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
-  | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
-      withinfo2 i1 i2 @@ ExList (llist (e :: l))
+  | i1=LBRACE l=expr_semi_list i2=RBRACE {
+      withinfo2 i1 i2 @@ ExList (llist l)
     }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
 
@@ -176,7 +177,7 @@ uvar_list:
 
 expr_semi_list:
   | e=expr_full SEMI l=expr_semi_list { e :: l }
-  | e=expr_full { [ e ] }
+  | e=expr_full { [e] }
   | { [] }
 
 expr_appable:
@@ -208,7 +209,7 @@ expr_full:
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Eq, e1, e2) }
   | e1=expr_full NEQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Neq, e1, e2) }
   | e1=expr_full ATAT e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e1, e2) }
-  | e1=expr_full DOT e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
+  | e1=expr_full COLONCOLON e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
   | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
 
 %inline bop_int:
@@ -224,7 +225,7 @@ expr_full:
 
 pat_full:
   | p=pat_simple { p }
-  | p1=pat_full DOT p2=pat_full { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
+  | p1=pat_full COLONCOLON p2=pat_full { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
   | p1=pat_full COMMA p2=pat_full { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
 
 pat_simple:
@@ -234,7 +235,7 @@ pat_simple:
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
   | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
+  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 PatNil }
 
 clauses:
   | p=pat_full ARROW e=expr_full { llist [(p, e)] } %prec prec_match

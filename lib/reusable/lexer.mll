@@ -104,6 +104,7 @@ and main = parse
   | "{" { P.LBRACE (info lexbuf) }
   | "}" { P.RBRACE (info lexbuf) }
   | ":" { P.COLON (info lexbuf) }
+  | "::" { P.COLONCOLON (info lexbuf) }
   | "@" { P.AT (info lexbuf) }
   | "@@" { P.ATAT (info lexbuf) }
   | ";" { P.SEMI (info lexbuf) }

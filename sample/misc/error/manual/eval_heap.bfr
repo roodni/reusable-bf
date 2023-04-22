@@ -4,7 +4,7 @@ let fix f =
 
 let _ =
   fix
-    (fun f l -> f (0 . l))
-    ()
+    (fun f l -> f (0 :: l))
+    {}
 
 codegen []

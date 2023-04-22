@@ -26,7 +26,7 @@ $build {
     , p:inst
     + flag_next
     *gen_switch p:inst
-      ( ('+', [ + p:inst 1 ]);
+      { ('+', [ + p:inst 1 ]);
         ('-', [ + p:inst 2 ]);
         ('>', [ + p:inst 3 ]);
         ('<', [ + p:inst 4 ]);
@@ -44,7 +44,7 @@ $build {
           - flag_next
           - cont
         ]);
-      )
+      }
       [ - flag_next ]
     ! flag_next [
       - flag_next
@@ -69,7 +69,7 @@ $build {
   $alloc { depth_cur }
   ! p:inst [
     *gen_switch_nat p:inst
-      ( [];
+      { [];
         [ + tape@p:v ];
         [ - tape@p:v ];
         [ > tape@p ];
@@ -100,7 +100,7 @@ $build {
           < p
         ];
         [ . tape@p:v ];
-      )
+      }
       [ , tape@p:v ]
     > p
   ]

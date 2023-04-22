@@ -19,8 +19,8 @@ let dump_ilist = fun l ->
   fix
     (fun iter l ->
       match l with
-      | () -> []
-      | hd . tl -> [
+      | {} -> []
+      | hd :: tl -> [
           *puti hd
           *iter tl
         ])

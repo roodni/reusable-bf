@@ -6,12 +6,15 @@ open Support.Info
 let output_test =
   let test_run Testcase.{ path; io_list; cell_type; _ } =
     path >:: (fun _ ->
-      let progarm = Reusable.Program.load_from_source path in
       let field, ir_code =
-        Reusable.Program.gen_ir
-          ~path_limit:NoLimit
-          (Filename.dirname path)
-          progarm
+        try
+          Reusable.Program.load_from_source path
+          |> Reusable.Program.gen_ir
+            ~path_limit:NoLimit
+            (Filename.dirname path)
+        with Reusable.Error.Exn_at msg ->
+          Reusable.Error.print ~ppf:Format.str_formatter msg;
+          assert_failure @@ Format.flush_str_formatter ();
       in
       List.iter
         (fun (ipt, opt_expe) ->

@@ -7,8 +7,8 @@ let fold_left f a l =
   fix
     (fun fold a l ->
       match l with
-      | () -> a
-      | hd . tl -> fold (f a hd) tl
+      | {} -> a
+      | hd :: tl -> fold (f a hd) tl
     ) a l
 
 // 文列の結合
