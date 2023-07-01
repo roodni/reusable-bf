@@ -28,8 +28,8 @@ let gen_puts2 l = [
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
-      | () -> []
-      | curr . rest ->
+      | {} -> []
+      | curr :: rest ->
           let out =
             if abs (curr - prev) <= 3 + curr then [
               *gen_short_incr c (curr - prev)

@@ -20,7 +20,7 @@ let cases =
     case "sample/misc/bf/rev2.bfr"
       [ ("hello\na", "olleh") ];
     case "sample/misc/bf/echo.bfr"
-      [ ("Hello, world!#test", "Hello, world!#") ];
+      [ ("Hello World!#test", "Hello World!#") ];
     case "sample/misc/metalang/hygienic.bfr"
       [ ("", "O") ];
     case "sample/misc/bf/rev3.bfr"
@@ -30,6 +30,8 @@ let cases =
     case "sample/misc/bf/switch_nat.bfr"
       [ ("0", "B"); ("1", "F"); ("2", "R"); ("3", "3"); ("7", "7") ];
     case "sample/hello.bfr"
+      [ ("", "Hello World!\n") ];
+    case "sample/hello2.bfr"
       [ ("", "Hello World!\n") ];
     case "sample/misc/metalang/sort.bfr"
       [ ("", "34567") ];
