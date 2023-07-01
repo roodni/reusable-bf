@@ -86,4 +86,6 @@ let cases =
       [ ("\n", "") ];
     case "sample/misc/bug/shift_liveness.bfr"
       [ ("", "A") ];
+    case "sample/misc/metalang/patlist.bfr"
+      [ ("", "123456") ];
   ]

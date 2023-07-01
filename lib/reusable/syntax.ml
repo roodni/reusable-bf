@@ -34,7 +34,7 @@ and pat' =
   | PatVar of Var.t
   | PatWild
   | PatCons of pat * pat
-  | PatNil
+  | PatList of pat list
   | PatPair of pat * pat
   | PatInt of int
   | PatBool of bool
@@ -107,10 +107,12 @@ let rec validate_pat_depth n (pat: pat) =
   if n > 10000 then failwith "too deep pattern";
   let validate_pat_depth = validate_pat_depth (n + 1) in
   match pat.v with
-  | PatVar _ | PatWild | PatNil | PatInt _ | PatBool _ -> ();
+  | PatVar _ | PatWild | PatInt _ | PatBool _ -> ();
   | PatCons (p1, p2) | PatPair (p1, p2) ->
       validate_pat_depth p1;
       validate_pat_depth p2;
+  | PatList l ->
+      List.iter validate_pat_depth l;
 ;;
 
 let rec validate_expr_depth n (expr: expr) =

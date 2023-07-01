@@ -235,7 +235,15 @@ pat_simple:
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
   | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ PatList [] }
+  | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
+      withinfo2 i1 i2 @@ PatList (p :: l)
+    }
+
+pat_semi_list:
+  | p=pat_full SEMI l=pat_semi_list { p :: l }
+  | p=pat_full { [ p ] }
+  | { [] }
 
 clauses:
   | p=pat_full ARROW e=expr_full { [(p, e)] } %prec prec_match

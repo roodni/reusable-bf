@@ -12,7 +12,16 @@ let matches pat value =
     | PatCons (phd, ptl), VaList (vhd :: vtl) ->
         let* env = matches env phd vhd in
         matches env ptl (VaList vtl)
-    | PatNil, VaList [] -> Some env
+    | PatList pl, VaList vl -> begin
+        try
+          List.fold_left2
+            (fun env p v ->
+              matches env p v |> Option.get
+            ) env pl vl
+          |> Option.some
+        with Invalid_argument _ -> None
+          (* サイズが合わないかマッチしなければ例外で脱出 *)
+      end
     | PatPair (pf, ps), VaPair (vf, vs) ->
         let* env = matches env pf vf in
         matches env ps vs
