@@ -57,7 +57,7 @@ let gen_puts = fun l -> [
   *fix
     (fun loop prev l ->
       match l with
-      | {} -> []
+      | () -> []
       | hd :: tl -> [
           + c (hd - prev)
           . c

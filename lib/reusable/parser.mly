@@ -166,8 +166,8 @@ expr:
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
   | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
-  | i1=LBRACE l=expr_semi_list i2=RBRACE {
-      withinfo2 i1 i2 @@ ExList (llist l)
+  | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
+      withinfo2 i1 i2 @@ ExList (llist (e :: l))
     }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
 
@@ -177,7 +177,7 @@ uvar_list:
 
 expr_semi_list:
   | e=expr_full SEMI l=expr_semi_list { e :: l }
-  | e=expr_full { [e] }
+  | e=expr_full { [ e ] }
   | { [] }
 
 expr_appable:
@@ -235,7 +235,7 @@ pat_simple:
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
   | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
-  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 PatNil }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
 
 clauses:
   | p=pat_full ARROW e=expr_full { llist [(p, e)] } %prec prec_match

@@ -7,7 +7,7 @@ $build { x }
 , x
 
 *gen_switch x
-  { ('+', [ *gen_puts "INC" ]);
+  ( ('+', [ *gen_puts "INC" ]);
     ('-', [ *gen_puts "DEC" ]);
     ('.', [ *gen_puts "PUT" ]);
     (',', [ *gen_puts "GET" ]);
@@ -15,5 +15,5 @@ $build { x }
     (']', [ *gen_puts "WEND" ]);
     ('>', [ *gen_puts "SHR" ]);
     ('<', [ *gen_puts "SHL" ]);
-  }
+  )
   [ *gen_puts "OTHER" ]

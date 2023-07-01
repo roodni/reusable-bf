@@ -1,6 +1,6 @@
 let t, f = true, false
 
-let res = {
+let res = (
   1 < 2; 2 < 2; 3 < 2;
   1 > 2; 2 > 2; 3 > 2;
   1 <= 2; 2 <= 2; 3 <= 2;
@@ -11,9 +11,9 @@ let res = {
   1 <> 1; 1 <> 2;
   1 < 2 && 3 < 2;
   1 < 2 || 3 < 2;
-}
+)
 
-let expe = {
+let expe = (
   t; f; f;
   f; f; t;
   t; t; f;
@@ -24,7 +24,7 @@ let expe = {
   f; t;
   f;
   t;
-}
+)
 
 codegen [
   $build {x}

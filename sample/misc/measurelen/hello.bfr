@@ -7,7 +7,7 @@ let fold_left f a l =
   fix
     (fun fold a l ->
       match l with
-      | {} -> a
+      | () -> a
       | hd :: tl -> fold (f a hd) tl
     ) a l
 

@@ -1,5 +1,5 @@
 let _ =
-  let a :: b = {} in
+  let a :: b = () in
   a
 
 codegen []
