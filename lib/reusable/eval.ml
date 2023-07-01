@@ -72,11 +72,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
   | ExUnit -> VaUnit
   | ExInt i -> VaInt i
   | ExBool b -> VaBool b
-  | ExStr s ->
-      VaList
-        ( String.to_seq s
-          |> Seq.map (fun c -> VaInt (int_of_char c))
-          |> List.of_seq )
+  | ExStr s -> VaString s
   | ExSelMem (parent_ex, offset_ex_opt, var) -> begin
       let offset = match offset_ex_opt with
         | None -> 0
@@ -121,7 +117,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
               let envs = Envs.extend_with_value_env arg_env fn_envs in
               eval_tail envs body_ex
         end
-      (* | VaBuiltin Fst -> to_pair ex_arg.i va_arg |> fst *)
+      | VaBuiltin fn -> fn (withinfo arg_ex.i arg_va)
       | _ -> Error.at fn_ex.i @@ Eval_Wrong_data_type "function"
     end
   | ExBlock st_list -> VaBlock (envs, st_list)

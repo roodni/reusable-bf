@@ -1,12 +1,12 @@
 // Hello World!
 
-// 不動点コンビネータ (型検査は未実装)
+// 不動点コンビネータ
 let fix f =
   let g x = f (fun y -> x x y) in
   g g
 
-// 文字列 (=整数のリスト) を引数に取り、文字列を出力する文列を返す
-let gen_puts l = [
+// 文字列を引数に取り、それを出力する文列を返す
+let gen_puts s = [
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
@@ -16,7 +16,8 @@ let gen_puts l = [
           . c
           *loop hd tl
         ]
-    ) 0 l
+    )
+    0 (string_to_list s)
 ]
 
 codegen [ *gen_puts "Hello World!\n" ]

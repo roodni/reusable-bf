@@ -140,7 +140,7 @@ and eval_mod_expr ctx mod_expr =
       | Some (Loaded envs) -> (ctx, envs)
       | None ->
           let ctx' = {
-            envs = Envs.empty;
+            envs = Envs.initial;
             ex_envs = Envs.empty;
             top_gen_opt = None;
             curr_dirname = Filename.dirname path;
@@ -177,7 +177,7 @@ and eval_mod_expr ctx mod_expr =
 let gen_ir ~path_limit (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
   let ctx = {
-    envs = Envs.empty;
+    envs = Envs.initial;
     ex_envs = Envs.empty;
     top_gen_opt = None;
     curr_dirname = dirname;

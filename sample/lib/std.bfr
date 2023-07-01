@@ -48,7 +48,7 @@ let gen_geti dest ed = [
   ]
 ]
 
-let gen_puts l = [
+let gen_puts s = [
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
@@ -60,7 +60,7 @@ let gen_puts l = [
               else [ *gen_del c  + c curr ]
           in
           [ *out  . c  *loop curr rest ]
-    ) 0 l
+    ) 0 (string_to_list s)
 ]
 
 // リスト l を比較関数 compare でソートする

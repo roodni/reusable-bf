@@ -4,37 +4,35 @@ brainfuckに変換されるプログラミング言語です。
 - 抽象化されたポインタ操作
 - brainfuckに近い命令セット
 - ML風のメタプログラミング機構
-  * 何かの内部DSLとして作るべきだったかもしれない
 
 ## 例
 
 [Playgroundで試せます](https://roodni.github.io/bf-reusable-playground-frontend/)
 
 ```
-// Decimal integer input
+// Hello World!
 
-let gen_repeat c loop = [
-  ! c [ - c  *loop ]
+// 不動点コンビネータ
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
+// 文字列を引数に取り、それを出力する文列を返す
+let gen_puts s = [
+  $alloc { c }
+  *fix
+    (fun loop prev l -> match l with
+      | () -> []
+      | hd :: tl -> [
+          + c (hd - prev)
+          . c
+          *loop hd tl
+        ]
+    )
+    0 (string_to_list s)
 ]
 
-let gen_geti dest ed = [
-  $alloc { x: cell; }
-  , x
-  - x ed
-  ! x [
-    - x ('0' - ed)
-    *gen_repeat dest [ + x 10 ]
-    *gen_repeat x [ + dest ]
-    , x
-    - x ed
-  ]
-]
-
-codegen [
-  $alloc { n: cell; }
-  *gen_geti n '\n'
-  . n
-]
+codegen [ *gen_puts "Hello World!\n" ]
 ```
 
 ## インストール

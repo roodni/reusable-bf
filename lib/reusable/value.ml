@@ -1,3 +1,4 @@
+open Support.Info
 open Syntax
 
 module VE = Env.Make(Var)
@@ -15,8 +16,10 @@ type value =
   | VaInt of int
   | VaBool of bool
   | VaFun of envs * pat * expr
+  | VaBuiltin of (value withinfo -> value)
   | VaBlock of envs * stmts
   | VaList of value list
+  | VaString of string
   | VaPair of value * value
   | VaCellSel of Ir.Sel.t
   | VaArraySel of Ir.Sel.t * irid_env
@@ -45,6 +48,9 @@ module Va = struct
   let to_list info = function
     | VaList l -> l
     | _ -> Error.at info @@ Eval_Wrong_data_type "list"
+  let to_string info = function
+    | VaString s -> s
+    | _ -> Error.at info @@ Eval_Wrong_data_type "string"
   let to_pair info = function
     | VaPair (v1, v2) -> (v1, v2)
     | _ -> Error.at info @@ Eval_Wrong_data_type "pair"
@@ -93,6 +99,25 @@ module Envs = struct
     { va_env = VE.empty;
       module_env = UVE.empty;
     }
+  let initial =
+    let add_builtin name fn env =
+      VE.extend (Var.of_string name) (VaBuiltin fn) env
+    in
+    { va_env = VE.empty
+        |> add_builtin "string_to_list"
+          (fun s ->
+            let l =
+              Va.to_string s.i s.v
+              |> String.to_seq
+              |> Seq.map int_of_char
+              |> Seq.map (fun i -> VaInt i)
+            in
+            VaList (List.of_seq l)
+          )
+      ;
+      module_env = UVE.empty;
+    }
+
   let extend_with_value_env va_env envs =
     { envs with va_env = VE.merge va_env envs.va_env }
   let add_module_binding uv mod_envs envs =

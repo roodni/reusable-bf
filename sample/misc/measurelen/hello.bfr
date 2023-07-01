@@ -25,7 +25,7 @@ let gen_puts str = [
             . cel
           ] in
           (cat stmts out, cha)
-        ) ([], 0) str
+        ) ([], 0) (string_to_list str)
     in
     stmts
 ]

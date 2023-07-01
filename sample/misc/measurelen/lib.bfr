@@ -63,5 +63,5 @@ let gen_puts = fun l -> [
           . c
           *loop hd tl
         ])
-    0 l
+    0 (string_to_list l)
 ]
