@@ -32,10 +32,10 @@ let output ppf msg =
   let pf fs = fprintf ppf fs in
   match msg with
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
-  | Top_Missing_codegen -> pf "There is no codegen declaration"
-  | Top_Duplicated_codegen -> pf "The codegen declaration is duplicated"
-  | Module_Limited_import -> pf "The import path is not allowed"
-  | Module_Recursive_import -> pf "The import is recursive"
+  | Top_Missing_codegen -> pf "There are no codegen declarations"
+  | Top_Duplicated_codegen -> pf "Codegen declarations are duplicated"
+  | Module_Limited_import -> pf "This import path is not allowed"
+  | Module_Recursive_import -> pf "This import is recursive"
   | Module_import_file_not_found path -> pf "The file '%s' is not found" path
   (* | Module_import_failed_to_read path -> pf "The file '%s' cannot be read" path *)
   | Gen_Field_Unlimited_array_cannot_be_array_member ->
@@ -49,7 +49,7 @@ let output ppf msg =
   | Gen_Shift_interfere ->
       pf "This shift is prohibited because an allocated member (under $dive) interferes"
   | Eval_Zero_division -> pf "A zero division is attempted"
-  | Eval_Equal_failed -> pf "The equality cannot be tested"
+  | Eval_Equal_failed -> pf "This equality cannot be tested"
   | Eval_Member_is_not_index v ->
       pf "Member '%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
   | Eval_Member_is_index v ->
@@ -62,10 +62,10 @@ let output ppf msg =
       pf "Member '%s' is not defined" (Var.to_string v)
   | Eval_Match_failed -> pf "Pattern matching failed"
   | Eval_Wrong_data_type correct ->
-      pf "The data type of the expression value is expected to be %s" correct
-  | Parser_Unexpected -> pf "The token is unexpected"
-  | Lexer_Too_large_int -> pf "The integer literal is too large"
-  | Lexer_Unexpected -> pf "The character is unexpected"
+      pf "This value is expected to be %s" correct
+  | Parser_Unexpected -> pf "This token is unexpected"
+  | Lexer_Too_large_int -> pf "This integer literal is too large"
+  | Lexer_Unexpected -> pf "This character is unexpected"
 
 
 exception Exn_at of t withinfo
