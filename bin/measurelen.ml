@@ -1,17 +1,14 @@
 open Printf
 
-let legacy = [
-  "rev3.bfr";
-  "nested_array.bfr";
-  "switch.bfr";
-  "fizzbuzz.bfr";
-  "queens.bfr";
-  "bfi.bfr";
-]
-
-let current = [
-  ("addsubmul", "./sample/misc/bf/addsubmul.bfr");
-  ("ifelse", "./sample/misc/bf/ifelse.bfr")
+let programs = [
+  "./sample/misc/bf/rev3.bfr";
+  "./sample/misc/bf/nested_array.bfr";
+  "./sample/misc/bf/switch.bfr";
+  "./sample/fizzbuzz.bfr";
+  "./sample/misc/bf/queens.bfr";
+  "./sample/bfi.bfr";
+  "./sample/addsubmul.bfr";
+  "./sample/misc/bf/ifelse.bfr";
 ]
 
 let () =
@@ -19,14 +16,9 @@ let () =
     if Array.length Sys.argv = 2 then int_of_string Sys.argv.(1)
     else Ir.Opt.max_level
   in
-  let programs =
-    List.map
-      (fun f -> (f, Filename.concat "./sample/misc/measurelen/" f))
-      legacy
-    @ current
-  in
   List.iter
-    (fun (name, path) ->
+    (fun path ->
+      let name = Filename.basename path |> Filename.chop_extension in
       let bf_code =
         try
           Reusable.Program.gen_bf_from_source ~opt_level path

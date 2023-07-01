@@ -77,7 +77,7 @@ let cases =
         ("3 -4\n", "-1 -12");
         ("-5 -6\n", "-11 30");
       ];
-    case "sample/misc/bf/addsubmul.bfr" ~run_bfi:false
+    case "sample/addsubmul.bfr" ~run_bfi:false
       [ ("3 1\n", "4\n");
         ("4 -2\n", "6\n");
         ("0 0\n", "0\n");
