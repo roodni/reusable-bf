@@ -68,7 +68,7 @@ let cmd_annot_map f cmd =
 let delete_annot code = annot_map (Fun.const ()) code
 
 
-let from_cmd_list ~info cmd_list : unit t =
+let from_cmds ~info cmd_list : unit t =
   List.map
     (fun cmd -> {
       cmd=cmd_annot_map (Fun.const ()) cmd;
@@ -76,7 +76,6 @@ let from_cmd_list ~info cmd_list : unit t =
       info
     })
     cmd_list
-let from_cmds cmd_list = from_cmd_list cmd_list
 
 (** アノテーション込みでコードを出力する *)
 let output ppf output_annot code =
@@ -157,7 +156,7 @@ let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t list) =
           )
       ]
     )
-  |> List.concat |> from_cmd_list ~info
+  |> List.concat |> from_cmds ~info
 
 
 let extend_IndexLoop ~info ((arr_sel, idx_id), loop) =

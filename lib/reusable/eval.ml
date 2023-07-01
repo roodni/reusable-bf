@@ -27,7 +27,10 @@ let matches pat value =
         matches env ps vs
     | PatInt pi, VaInt vi when pi = vi -> Some env
     | PatBool pb, VaBool vb when pb = vb -> Some env
-    | _ -> None
+    | PatUnit, VaUnit -> Some env
+    | ( PatCons _ | PatList _ | PatPair _
+        | PatInt _ | PatBool _ | PatUnit
+      ), _ -> None
   in
   matches VE.empty pat value
 
@@ -66,6 +69,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       | Some va -> va
       | None -> Error.at info @@ Eval_Variable_not_defined v
     end
+  | ExUnit -> VaUnit
   | ExInt i -> VaInt i
   | ExBool b -> VaBool b
   | ExStr s ->

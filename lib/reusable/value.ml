@@ -11,6 +11,7 @@ and mtype =
   | MtyArray of { length: int option; mem: irid_env }
 
 type value =
+  | VaUnit
   | VaInt of int
   | VaBool of bool
   | VaFun of envs * pat * expr
@@ -29,6 +30,9 @@ and envs =
 
 module Va = struct
   type t = value
+  let to_unit info = function
+    | VaUnit -> ()
+    | _ -> Error.at info @@ Eval_Wrong_data_type "unit"
   let to_int info = function
     | VaInt i -> i
     | _ -> Error.at info @@ Eval_Wrong_data_type "int"

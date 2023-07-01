@@ -233,6 +233,9 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
         | StExpand ex_block ->
             let envs, stmts = eval envs ex_block |> Va.to_block ex_block.i in
             gen { ctx with envs } stmts
+        | StUnit expr ->
+            let () = eval envs expr |> Va.to_unit expr.i in
+            ((), Ir.Code.from_cmds ~info [])
         | StDive (index_ex_opt, stmts) ->
             let index =
               index_ex_opt

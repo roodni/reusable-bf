@@ -58,6 +58,7 @@ open Syntax
 
 %nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match
+%right SEMI
 %nonassoc prec_if
 %nonassoc BAR
 %right COMMA
@@ -145,6 +146,7 @@ stmt:
   | i=INDEX_LOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexLoop (e, sl) }
   | i=INDEX_IF e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexIf (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
+  | i=SEMI e=expr_appable { withinfo i @@ StUnit e }
 
 expr:
   | l=uvar_list v=VAR {
@@ -170,6 +172,7 @@ expr:
       withinfo2 i1 i2 @@ ExList (e :: l)
     }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList [] }
+  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 ExUnit }
 
 uvar_list:
   | uv=UVAR COLON l=uvar_list { uv :: l }
@@ -239,6 +242,7 @@ pat_simple:
   | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ PatList (p :: l)
     }
+  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 @@ PatUnit }
 
 pat_semi_list:
   | p=pat_full SEMI l=pat_semi_list { p :: l }

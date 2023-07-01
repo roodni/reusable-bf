@@ -38,6 +38,7 @@ and pat' =
   | PatPair of pat * pat
   | PatInt of int
   | PatBool of bool
+  | PatUnit
 
 type expr = expr' withinfo
 and expr' =
@@ -61,6 +62,7 @@ and expr' =
   | ExList of expr list
   | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
+  | ExUnit
 and let_binding = pat * expr
 
 and stmts = stmt' withinfo list
@@ -76,6 +78,7 @@ and stmt' =
   | StAlloc of field * stmts
   | StBuild of field * stmts
   | StExpand of expr
+  | StUnit of expr
   | StDive of expr option * stmts
 
 and field = (Var.t * mtype_expr) withinfo list
@@ -107,7 +110,7 @@ let rec validate_pat_depth n (pat: pat) =
   if n > 10000 then failwith "too deep pattern";
   let validate_pat_depth = validate_pat_depth (n + 1) in
   match pat.v with
-  | PatVar _ | PatWild | PatInt _ | PatBool _ -> ();
+  | PatVar _ | PatWild | PatInt _ | PatBool _ | PatUnit -> ();
   | PatCons (p1, p2) | PatPair (p1, p2) ->
       validate_pat_depth p1;
       validate_pat_depth p2;
@@ -119,7 +122,7 @@ let rec validate_expr_depth n (expr: expr) =
   if n > 10000 then failwith "too deep expression";
   let validate_expr_depth = validate_expr_depth (n + 1) in
   match expr.v with
-  | ExVar _ | ExInt _ | ExBool _ | ExStr _ -> ();
+  | ExVar _ | ExInt _ | ExBool _ | ExStr _ | ExUnit -> ();
   | ExSelMem (ex, exopt, _) ->
       validate_expr_depth ex;
       Option.iter validate_expr_depth exopt;
@@ -156,7 +159,7 @@ and validate_stmts_depth n (stmts: stmts) =
       | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
           validate_expr_depth ex;
           Option.iter validate_expr_depth exopt;
-      | StPut ex | StGet ex | StExpand ex ->
+      | StPut ex | StGet ex | StExpand ex | StUnit ex ->
           validate_expr_depth ex;
       | StWhile (ex, stmts) | StIndexLoop (ex, stmts)
       | StDive (Some ex, stmts) | StIndexIf (ex, stmts) ->
