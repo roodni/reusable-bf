@@ -21,6 +21,7 @@ let cases =
   let uvar s = Syntax.UVar.of_string s in
   let open Error in
   [ ( "eval_equal.bfr", (=) Eval_Equal_failed );
+    ( "eval_failwith.bfr", (=) @@ Eval_Exception "Failed" );
     ( "eval_match_fun.bfr", (=) Eval_Match_failed );
     ( "eval_match_let-expr.bfr", (=) Eval_Match_failed );
     ( "eval_match_let-top.bfr", (=) Eval_Match_failed );

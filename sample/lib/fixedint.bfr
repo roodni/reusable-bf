@@ -228,15 +228,14 @@ let gen_add src dest = [
       [ + darr@i:digit ]
   ]
   // 桁が違う場合に符号拡張
+  ;verify (sn <= dn)
   *(if sn < dn then $
       ? sarr:(0)digit
         [ <!> darr@i
             [ < darr@i  + darr@i:digit (base - 1) ]
         ]
         [ *gen_reset_index darr@i ]
-    else if sn = dn then []
-    else "error" // TODO: assert文の作成
-  )
+    else $)
   // 繰り上げ
   *gen_move_last dest
   *gen_carry_from_curr dest
@@ -246,7 +245,7 @@ let gen_mul a b dest = [
   **let an, aarr = a in
     let bn, barr = b in
     let dn, darr = dest in $
-  *(if an + bn = dn then [] else "error")
+  ;verify (an + bn = dn)
 
   *gen_move_last dest
 

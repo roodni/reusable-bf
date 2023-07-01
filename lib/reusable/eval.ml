@@ -43,31 +43,30 @@ let rec eval_let_binding ~recn (envs: envs) ((pat, expr) : let_binding) =
   | Some env -> env
 
 and eval ~recn (envs: envs) (expr: expr) : value =
-  let { i=info; v=expr } = expr in
   let eval_tail envs expr =
     eval ~recn envs expr
   in
   let recn () =
     let n = recn + 1 in
     if n > 50000 then
-      Error.at info Memory_Recursion_limit;
+      Error.at expr.i Memory_Recursion_limit;
     n
   in
   let eval_mid envs expr =
     eval ~recn:(recn ()) envs expr
   in
-  match expr with
+  match expr.v with
   | ExVar (uvl, v) -> begin
       let envs =
         List.fold_left
           (fun envs uv -> match UVE.lookup uv envs.module_env with
-            | None -> Error.at info @@ Eval_Module_not_defined uv
+            | None -> Error.at expr.i @@ Eval_Module_not_defined uv
             | Some m -> m
           ) envs uvl
       in
       match VE.lookup v envs.va_env with
       | Some va -> va
-      | None -> Error.at info @@ Eval_Variable_not_defined v
+      | None -> Error.at expr.i @@ Eval_Variable_not_defined v
     end
   | ExUnit -> VaUnit
   | ExInt i -> VaInt i
@@ -82,7 +81,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
         eval_mid envs parent_ex |> Va.to_member_selectable parent_ex.i
       in
       match VE.lookup var irid_env with
-      | None -> Error.at info @@ Eval_Member_not_defined var
+      | None -> Error.at expr.i @@ Eval_Member_not_defined var
       | Some (id, mtype) -> begin
           let sel =
             Ir.Sel.concat_member_to_tail parent_sel idx_id_opt (Ir.Sel.Member id) offset
@@ -90,18 +89,18 @@ and eval ~recn (envs: envs) (expr: expr) : value =
           match mtype with
           | MtyCell -> VaCellSel sel
           | MtyArray { mem; _ } -> VaArraySel (sel, mem)
-          | MtyIndex -> Error.at info @@ Eval_Member_is_index var
+          | MtyIndex -> Error.at expr.i @@ Eval_Member_is_index var
         end
     end
   | ExSelIdx (parent_ex, var) -> begin
       let sel, irid_env = eval_mid envs parent_ex |> Va.to_array parent_ex.i in
       match VE.lookup var irid_env with
-      | None -> Error.at info @@ Eval_Member_not_defined var
+      | None -> Error.at expr.i @@ Eval_Member_not_defined var
       | Some (id, mtype) -> begin
           match mtype with
           | MtyIndex -> VaIndexSel ((sel, id), irid_env)
           | MtyCell | MtyArray _ ->
-              Error.at info @@ Eval_Member_is_not_index var
+              Error.at expr.i @@ Eval_Member_is_not_index var
         end
     end
   | ExFun (var, ex) -> VaFun (envs, var, ex)
@@ -109,15 +108,15 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let fn_va = eval_mid envs fn_ex in
       let arg_va = eval_mid envs arg_ex in
       match fn_va with
+      | VaBuiltin fn -> fn expr.i (withinfo arg_ex.i arg_va)
       | VaFun (fn_envs, arg_pat, body_ex) -> begin
           let arg_env = matches arg_pat arg_va in
           match arg_env with
-          | None -> Error.at info @@ Eval_Match_failed
+          | None -> Error.at expr.i @@ Eval_Match_failed
           | Some arg_env ->
               let envs = Envs.extend_with_value_env arg_env fn_envs in
               eval_tail envs body_ex
         end
-      | VaBuiltin fn -> fn (withinfo arg_ex.i arg_va)
       | _ -> Error.at fn_ex.i @@ Eval_Wrong_data_type "function"
     end
   | ExBlock st_list -> VaBlock (envs, st_list)
@@ -129,10 +128,10 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       | Sub -> VaInt (left - right)
       | Mul -> VaInt (left * right)
       | Div ->
-          if right = 0 then Error.at info Eval_Zero_division
+          if right = 0 then Error.at expr.i Eval_Zero_division
           else VaInt (left / right)
       | Mod ->
-          if right = 0 then Error.at info Eval_Zero_division
+          if right = 0 then Error.at expr.i Eval_Zero_division
           else VaInt (left mod right)
       | Lt -> VaBool (left < right)
       | Leq -> VaBool (left <= right)
@@ -156,15 +155,15 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       match Va.equal left right, neg with
       | Some b, `Eq -> VaBool b
       | Some b, `Neq -> VaBool (not b)
-      | None, _ -> Error.at info Eval_Equal_failed
+      | None, _ -> Error.at expr.i Eval_Equal_failed
     end
   | ExIf (ex_cond, ex_then, ex_else) ->
       let cond = eval_mid envs ex_cond |> Va.to_bool ex_cond.i in
       eval_tail envs (if cond then ex_then else ex_else)
-  | ExLet (binding, expr) ->
+  | ExLet (binding, ex) ->
       let matched_env = eval_let_binding ~recn:(recn ()) envs binding in
       let envs = Envs.extend_with_value_env matched_env envs in
-      eval_tail envs expr
+      eval_tail envs ex
   | ExCons (ex_head, ex_tail) ->
       let head = eval_mid envs ex_head in
       let tail = eval_mid envs ex_tail |> Va.to_list ex_tail.i in
@@ -185,7 +184,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       | Some (env, ex) ->
           let envs = Envs.extend_with_value_env env envs in
           eval_tail envs ex
-      | None -> Error.at info @@ Eval_Match_failed
+      | None -> Error.at expr.i @@ Eval_Match_failed
     end
   | ExPair (ex1, ex2) ->
       let v1 = eval_mid envs ex1 in

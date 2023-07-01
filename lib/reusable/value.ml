@@ -16,7 +16,8 @@ type value =
   | VaInt of int
   | VaBool of bool
   | VaFun of envs * pat * expr
-  | VaBuiltin of (value withinfo -> value)
+  | VaBuiltin of (info -> value withinfo -> value)
+      (* 関数適用の位置 -> 引数とその位置 -> 返値 *)
   | VaBlock of envs * stmts
   | VaList of value list
   | VaString of string
@@ -105,7 +106,7 @@ module Envs = struct
     in
     { va_env = VE.empty
         |> add_builtin "string_to_list"
-          (fun s ->
+          (fun _ s ->
             let l =
               Va.to_string s.i s.v
               |> String.to_seq
@@ -113,6 +114,11 @@ module Envs = struct
               |> Seq.map (fun i -> VaInt i)
             in
             VaList (List.of_seq l)
+          )
+        |> add_builtin "failwith"
+          (fun info msg ->
+            let msg = Va.to_string msg.i msg.v in
+            Error.at info (Eval_Exception msg)
           )
       ;
       module_env = UVE.empty;

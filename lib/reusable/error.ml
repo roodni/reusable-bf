@@ -15,6 +15,7 @@ type t =
   | Eval_Member_is_not_index of Var.t
   | Eval_Equal_failed
   | Eval_Zero_division
+  | Eval_Exception of string
   | Gen_Shift_interfere
   | Gen_Alloc_Array_not_implemented
   | Gen_Alloc_Index_must_be_array_member
@@ -48,6 +49,7 @@ let output ppf msg =
       pf "Allocating temporary arrays is not implemented"
   | Gen_Shift_interfere ->
       pf "This shift is prohibited because an allocated member (under $dive) interferes"
+  | Eval_Exception msg -> pf "Exception \"%s\"" (String.escaped msg)
   | Eval_Zero_division -> pf "A zero division is attempted"
   | Eval_Equal_failed -> pf "This equality cannot be tested"
   | Eval_Member_is_not_index v ->
