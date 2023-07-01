@@ -3,26 +3,26 @@ open Support.Pervasive
 let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
   let code = Code.delete_annot code in
   let rec gen_bf (pos_init: Pos.t) (code: unit Code.t) =
-    let pos, bf_code_llist =
-      LList.fold_left_map
+    let pos, bf_code_list =
+      List.fold_left_map
         (fun pos Code.{ cmd; info; _ }: (Pos.t * Bf.Code.t) ->
           match cmd with
-          | Add (0, _) | Use _ -> (pos, ~~[])
+          | Add (0, _) | Use _ -> (pos, [])
           | Add (n, sel) ->
               let pos_dest = Pos.from_sel_to_cell layout sel in
-              (pos_dest, Pos.gen_bf_move pos pos_dest @+ ~~[ Bf.Code.Add n ])
+              (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Add n ])
           | Put sel ->
               let pos_dest = Pos.from_sel_to_cell layout sel in
-              (pos_dest, Pos.gen_bf_move pos pos_dest @+ ~~[ Bf.Code.Put ])
+              (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Put ])
           | Get sel ->
               let pos_dest = Pos.from_sel_to_cell layout sel in
-              (pos_dest, Pos.gen_bf_move pos pos_dest @+ ~~[ Bf.Code.Get ])
+              (pos_dest, Pos.gen_bf_move pos pos_dest @ [ Bf.Code.Get ])
           | Loop (sel, code) ->
               let pos_cond = Pos.from_sel_to_cell layout sel in
               let bf_move1 = Pos.gen_bf_move pos pos_cond in
               let pos, bf_loop = gen_bf pos_cond code in
               let bf_move2 = Pos.gen_bf_move pos pos_cond in
-              (pos_cond, bf_move1 @+ ~~[ Bf.Code.Loop (bf_loop @+ bf_move2) ])
+              (pos_cond, bf_move1 @ [ Bf.Code.Loop (bf_loop @ bf_move2) ])
           | IndexLoop params ->
               gen_bf pos (Code.extend_IndexLoop ~info params)
           | IndexIf params ->
@@ -40,17 +40,17 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
                 gen_bf pos (Code.shift_followers ~info n index followers)
               in
               match n with
-              | 0 -> (pos, ~~[])
+              | 0 -> (pos, [])
               | 1 ->
                   let bf_move = Pos.gen_bf_move pos pos_ptr in
                   let bf =
-                    bf_shift_followers @+ bf_move @+ ~~[ Bf.Code.Add 1 ]
+                    bf_shift_followers @ bf_move @ [ Bf.Code.Add 1 ]
                   in
                   (pos_ptr_prev, bf)
               | -1 ->
                   let bf_move = Pos.gen_bf_move pos pos_ptr_prev in
                   let bf =
-                    bf_shift_followers @+ bf_move @+ ~~[ Bf.Code.Add (-1) ]
+                    bf_shift_followers @ bf_move @ [ Bf.Code.Add (-1) ]
                   in
                   (pos_ptr, bf)
               | _ -> failwith "not implemented"
@@ -60,20 +60,20 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
               let pos_then_end, bf_then = gen_bf ifable.pos_else code_then in
               let pos_else_end, bf_else = gen_bf ifable.pos_else code_else in
               let bf =
-                Pos.gen_bf_move pos ifable.pos_else @+
-                ~~[ Bf.Code.Add 1;
+                Pos.gen_bf_move pos ifable.pos_else @
+                [ Bf.Code.Add 1;
                   Bf.Code.Shift (-ifable.cond_to_else);
                   Bf.Code.Loop (
-                    ~~[ Bf.Code.Shift ifable.cond_to_else;
+                    [ Bf.Code.Shift ifable.cond_to_else;
                       Bf.Code.Add (-1);
-                    ] @+
-                    bf_then @+
+                    ] @
+                    bf_then @
                     Pos.gen_bf_move pos_then_end ifable.pos_prev_endif
                   );
                   Bf.Code.Shift ifable.cond_to_else;
                   Bf.Code.Loop (
-                    ~~[ Bf.Code.Add (-1) ] @+
-                    bf_else @+
+                    [ Bf.Code.Add (-1) ] @
+                    bf_else @
                     Pos.gen_bf_move pos_else_end ifable.pos_endif
                   );
                 ]
@@ -89,7 +89,7 @@ let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
         code
     in
     (pos,
-    bf_code_llist |> LList.concat)
+    bf_code_list |> List.concat)
   in
   let _, bf = gen_bf Pos.init code in
   bf

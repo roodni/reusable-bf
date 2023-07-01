@@ -21,7 +21,7 @@ let from_code (code: Code.t) =
     let tbl : (int, int) Hashtbl.t = Hashtbl.create 3 in
     let pos = ref 0 in
     try
-      LList.iter
+      List.iter
         (function
           | Code.Add n ->
               let a = Hashtbl.find_opt tbl !pos |> Option.value ~default:0 in
@@ -47,7 +47,7 @@ let from_code (code: Code.t) =
           | Code.Shift n when n = 0 -> exe_rev
           | Code.Shift n -> Shift n :: exe_rev
           | Code.Loop l -> begin
-              match LList.to_list_danger l with
+              match l with
               | [ Shift n ] -> ShiftLoop n :: exe_rev
               | _ -> begin
                   match move_loop_body l with
@@ -55,13 +55,13 @@ let from_code (code: Code.t) =
                   | Some mlb -> MoveLoop mlb :: exe_rev
                   | None ->
                       let er = While (ref exe_rev) :: exe_rev in (* refはダミー *)
-                      (Wend (ref exe_rev)) :: rev_convert er (LList.to_list_danger l)
+                      (Wend (ref exe_rev)) :: rev_convert er l
                 end
             end
         in
         rev_convert exe_rev cmds
   in
-  let exe_rev = rev_convert [] (LList.to_list_danger code) in
+  let exe_rev = rev_convert [] code in
   let rec rev_construct exe wend_stack = function
     | [] -> assert (wend_stack = []); exe
     | cmd :: exe_rev -> begin

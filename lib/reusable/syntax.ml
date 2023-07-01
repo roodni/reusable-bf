@@ -41,7 +41,7 @@ and pat' =
 
 type expr = expr' withinfo
 and expr' =
-  | ExVar of UVar.t llist * Var.t
+  | ExVar of UVar.t list * Var.t
   | ExInt of int
   | ExBool of bool
   | ExStr of string
@@ -58,12 +58,12 @@ and expr' =
   | ExIf of expr * expr * expr
   | ExLet of let_binding * expr
   | ExCons of expr * expr
-  | ExList of expr llist
-  | ExMatch of expr * (pat * expr) llist
+  | ExList of expr list
+  | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
 and let_binding = pat * expr
 
-and stmts = stmt' withinfo llist
+and stmts = stmt' withinfo list
 and stmt' =
   | StAdd of int * expr * expr option  (* sign, cell, int *)
   | StPut of expr
@@ -78,7 +78,7 @@ and stmt' =
   | StExpand of expr
   | StDive of expr option * stmts
 
-and field = (Var.t * mtype_expr) withinfo llist
+and field = (Var.t * mtype_expr) withinfo list
 and mtype_expr =
   | MtyExCell
   | MtyExIndex
@@ -89,7 +89,7 @@ and mtype_expr =
 
 type top_gen = stmts
 
-type program = toplevel llist
+type program = toplevel list
 and toplevel = toplevel' withinfo
 and toplevel' =
   | TopLet of let_binding
@@ -101,7 +101,7 @@ and mod_expr = mod_expr' withinfo
 and mod_expr' =
   | ModImport of string
   | ModStruct of program
-  | ModVar of UVar.t llist
+  | ModVar of UVar.t list
 
 let rec validate_pat_depth n (pat: pat) =
   if n > 10000 then failwith "too deep pattern";
@@ -137,10 +137,10 @@ let rec validate_expr_depth n (expr: expr) =
   | ExLet ((pat, ex1), ex2) ->
       validate_pat_depth 0 pat;
       List.iter validate_expr_depth [ex1; ex2];
-  | ExList el -> LList.iter validate_expr_depth el;
+  | ExList el -> List.iter validate_expr_depth el;
   | ExMatch (e0, bindings) ->
       validate_expr_depth e0;
-      LList.iter
+      List.iter
         (fun (pat, ex) ->
           validate_pat_depth 0 pat;
           validate_expr_depth ex; )
@@ -149,7 +149,7 @@ and validate_stmts_depth n (stmts: stmts) =
   if n > 10000 then failwith "too deep statements";
   let validate_stmts_depth = validate_stmts_depth (n + 1) in
   let validate_expr_depth = validate_expr_depth (n + 1) in
-  LList.iter
+  List.iter
     (fun st -> match st.v with
       | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
           validate_expr_depth ex;
@@ -173,7 +173,7 @@ and validate_stmts_depth n (stmts: stmts) =
     stmts
 and validate_field_depth n (field: field) =
   if n > 10000 then failwith "too deep field";
-  LList.iter
+  List.iter
     (fun { v=(_, mtype); _ } ->
       match mtype with
       | MtyExCell | MtyExIndex -> ()
@@ -195,7 +195,7 @@ let rec validate_mod_expr_depth n mod_expr =
   | ModStruct prog ->
       validate_program_depth (n + 1) prog
 and validate_program_depth n (prog: program) =
-  LList.iter
+  List.iter
     (fun top -> match top.v with
       | TopLet (pat, expr) ->
           validate_pat_depth 0 pat;

@@ -7,7 +7,7 @@ let test = "parse" >::: [
       let s = "+++ +-+>>>*><>" in
       let bf = Code.parse (String.to_seq s) in
       assert_equal
-        (llist [ Code.Add 4; Shift 4 ])
+        [ Code.Add 4; Shift 4 ]
         bf
     );
   "lbracket" >:: (fun _ ->

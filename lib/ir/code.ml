@@ -4,7 +4,7 @@ open Support.Info
 (** 中間言語のコード
     解析のため追加情報を付与できる
 *)
-type 'a t = 'a annotated llist
+type 'a t = 'a annotated list
 and 'a annotated =
   { cmd: 'a cmd;
     annot: 'a;
@@ -14,7 +14,7 @@ and 'a cmd =
   | Add of int * Sel.t
   | Put of Sel.t
   | Get of Sel.t
-  | Shift of { n:int; index:Sel.index; followers:Id.t llist }
+  | Shift of { n:int; index:Sel.index; followers:Id.t list }
   | Loop of Sel.t * 'a t
   | If of Sel.t * 'a t * 'a t
   | IndexLoop of (Sel.index * 'a t)
@@ -30,7 +30,7 @@ and 'a cmd =
 let rec concat_map
     (f: 'a annotated -> [`Insert of 'b cmd * 'b | `Keep of 'b] list)
     (code: 'a t) : 'b t =
-  LList.concat_map
+  List.concat_map
     (fun annotated ->
       (* match f annotated with
       | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot; info=annotated.info } *)
@@ -40,7 +40,6 @@ let rec concat_map
           | `Keep annot ->
               { cmd=cmd_concat_map f annotated.cmd; annot; info=annotated.info } )
         (f annotated)
-      |> llist
     )
     code
 and cmd_concat_map f = function
@@ -69,15 +68,15 @@ let cmd_annot_map f cmd =
 let delete_annot code = annot_map (Fun.const ()) code
 
 
-let from_cmd_llist ~info cmd_llist : unit t =
-  LList.map
+let from_cmd_list ~info cmd_list : unit t =
+  List.map
     (fun cmd -> {
       cmd=cmd_annot_map (Fun.const ()) cmd;
       annot=();
       info
     })
-    cmd_llist
-let from_cmds cmd_list = from_cmd_llist (llist cmd_list)
+    cmd_list
+let from_cmds cmd_list = from_cmd_list cmd_list
 
 (** アノテーション込みでコードを出力する *)
 let output ppf output_annot code =
@@ -88,7 +87,7 @@ let output ppf output_annot code =
       print_code code;
       fprintf ppf " ]@]";
     in
-    LList.iteri
+    List.iteri
       (fun i { cmd; annot; _ } ->
         if i > 0 then fprintf ppf "@,";
         (match cmd with
@@ -145,21 +144,20 @@ let output ppf output_annot code =
 ;;
 
 
-let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t llist) =
+let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t list) =
   followers
-  |> LList.map
+  |> List.map
     (fun follower_id ->
       let src_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) follower_id 0 in
       let dest_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) follower_id n in
-      llist [
-        Loop
+      [ Loop
           ( src_sel,
             from_cmds ~info
               [ Add (-1, src_sel); Add (1, dest_sel); ]
           )
       ]
     )
-  |> LList.concat |> from_cmd_llist ~info
+  |> List.concat |> from_cmd_list ~info
 
 
 let extend_IndexLoop ~info ((arr_sel, idx_id), loop) =
@@ -182,7 +180,7 @@ let extend_IndexIf ~info (index, code) =
         Add (-1, idx_sel);
         Add (1, prev_idx_sel);
       ]
-      @+ delete_annot code
+      @ delete_annot code
     )
   ]
 
@@ -193,13 +191,13 @@ let convert_idioms code =
     (fun { cmd; _ } ->
       match cmd with
       | Loop (sel1, child) -> begin
-          match LList.to_list_danger child with
+          match child with
           | [ {cmd=Add (-1, sel2); _} ] when sel1 = sel2 ->
               [`Insert (Reset sel1, ())]
           | _ -> [`Keep ()]
         end
       | Add _ | Put _ | Get _ | Shift _ | Reset _
-      | IndexLoop _ | If _ | IndexIf _ 
+      | IndexLoop _ | If _ | IndexIf _
       | Use _ ->
           [`Keep ()]
     )

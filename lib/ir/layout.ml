@@ -1,7 +1,7 @@
 open Support.Pervasive
 
 (** メンバ名と確保されたテープ位置の対応 *)
-type t = (Id.t * loc) llist
+type t = (Id.t * loc) list
 and loc =
   | Cell of { offset: int; is_index: bool; }
   | Ifable of { offset_of_cond: int; cond_to_else: int; else_to_endif: int; }
@@ -12,7 +12,7 @@ and loc =
       length: int option;
     }
 
-let lookup (layout: t) id = LList.assoc id layout
+let lookup (layout: t) id = List.assoc id layout
 
 (** メンバを並べる *)
 let create (mcounter: MovementCounter.t) (field: Field.main): t =
@@ -91,12 +91,12 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
                 (* メンバのインデックスで最も左にあるものの位置 *)
                 let ofs_first_index =
                   layout_members
-                  |> LList.filter_map
+                  |> List.filter_map
                     (fun (_, loc) ->
                       match loc with
                       | Cell { is_index=true; offset } -> Some offset
                       | _ -> None )
-                  |> LList.fold_left min size_of_members
+                  |> List.fold_left min size_of_members
                 in
                 let offset_of_body = ofs_available + size_of_members - ofs_first_index in
                 ( Array {
@@ -111,9 +111,9 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
             not ifable_space_allocated &&
             match top_mtype with Field.Cell { ifable=true; _ } -> true | _ -> false
           in
-          pickup_loop ~ifable_space_allocated (lcons (top_id, top_loc) layout) ofs_available
+          pickup_loop ~ifable_space_allocated ((top_id, top_loc) :: layout) ofs_available
     in
-    pickup_loop ~ifable_space_allocated:false lnil ofs_available
+    pickup_loop ~ifable_space_allocated:false [] ofs_available
   in
   (* 有限の構造と無限配列に分けて配置する *)
   let Field.{ finite; unlimited } = field in
@@ -123,7 +123,7 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
     |> Seq.return |> Hashtbl.of_seq
   in
   let layout_uarray, _ = allocate uarray ofs_uarray_start in
-  layout_finite @+ layout_uarray
+  layout_finite @ layout_uarray
 
 let output ppf layout =
   let loc_to_offset = function
@@ -135,18 +135,18 @@ let output ppf layout =
   let rec show (layout: t) =
     let ordered_members =
       layout |>
-        LList.filter
+        List.filter
           (fun (_, loc) ->
             match loc with
             | Array { size_of_members=0; _ } -> false
             | _ -> true )
           |>
-        LList.map (fun (id, loc) -> (loc_to_offset loc, (id, loc))) |>
-        LList.sort
+        List.map (fun (id, loc) -> (loc_to_offset loc, (id, loc))) |>
+        List.sort
           (fun (ofs1, _) (ofs2, _) -> Int.compare ofs1 ofs2)
     in
     fprintf ppf "{@;<1 2>@[<hv>";
-    LList.iteri
+    List.iteri
       (fun i (ofs, (id, loc)) ->
         if i > 0 then pp_print_space ppf ();
         fprintf ppf "%d -> @[<hv>%s: " ofs (Id.detailed_name id);

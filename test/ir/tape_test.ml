@@ -8,12 +8,12 @@ open Support.Info
 let a = Id.gen_named "a"
 let p = Id.gen_named "p"
 let layout : Layout.t =
-  let open Layout in llist [
+  let open Layout in [
     ( a,
       Array {
         offset_of_body = 1;
         size_of_members = 2;
-        members = llist [
+        members = [
           (a, Cell { offset=0; is_index=false });
           (p, Cell { offset=1; is_index=false });
         ];
@@ -24,11 +24,11 @@ let program =
   let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
   let a = Sel.Member a in
   [ Code.Add (3, ap_a);
-    Shift { n=1; index=(a, p); followers=lnil };
+    Shift { n=1; index=(a, p); followers=[] };
     Add (5, ap_a);
-    Shift { n=1; index=(a, p); followers=lnil };
+    Shift { n=1; index=(a, p); followers=[] };
     Add (7, ap_a);
-    Shift { n=(-1); index=(a, p); followers=lnil };
+    Shift { n=(-1); index=(a, p); followers=[] };
     Add (-1, ap_a);
   ] |> Code.from_cmds ~info:unknown_info
 

@@ -206,7 +206,7 @@ let analyze (fmain: Field.main) (code: 'a Code.t): analysis_result =
       code
   in
   let rec update_tables (initial_state: State.t) (code: code_with_possibles) : State.t =
-    LList.fold_left
+    List.fold_left
       (fun (state: State.t) Code.{ cmd; annot=tbl; _ } : State.t ->
         tbl.state_in <- State.union tbl.state_in state;
         (match cmd with
@@ -309,18 +309,17 @@ let insert_reset_before_zero_use code get_const get_liveness =
           then sel :: zero_cells else zero_cells
       )
       [] state_in
-    |> llist
   in
   let rec iter code =
     Code.concat_map
       (fun Code.{ cmd; annot; info } ->
         let reset_cells cells =
-          LList.map
+          List.map
             (fun sel -> Code.{cmd=Reset sel; annot; info})
             cells
         in
         let reset_cells_insertion cells before =
-          LList.fold_left
+          List.fold_left
             (fun accu sel ->
               `Insert (Code.Reset sel, annot) :: accu)
             before cells
@@ -338,8 +337,8 @@ let insert_reset_before_zero_use code get_const get_liveness =
             let cmd =
               Code.If
                 ( cond,
-                  iter code_then @+ reset_cells zero_cells_then,
-                  iter code_else @+ reset_cells zero_cells_else )
+                  iter code_then @ reset_cells zero_cells_then,
+                  iter code_else @ reset_cells zero_cells_else )
             in
             let res = `Insert (cmd, annot) in
             if Possible.is_zero (State.find cond state_in) then
@@ -349,14 +348,14 @@ let insert_reset_before_zero_use code get_const get_liveness =
             let zero_cells_then = zero_cells live_out state_block_end in
             let cmd =
               Code.IndexIf
-                ( cond, iter code_then @+ reset_cells zero_cells_then)
+                ( cond, iter code_then @ reset_cells zero_cells_then)
             in
             [`Insert (cmd, annot)]
         | Loop (cond, child) ->
             (* ループ終わりのゼロ初期化挿入 *)
             let zero_cells_loop_end = zero_cells live_in state_block_end in
             let child =
-              iter child @+ reset_cells zero_cells_loop_end
+              iter child @ reset_cells zero_cells_loop_end
             in
             (* ループ前のゼロ初期化挿入 *)
             let zero_cells_init = zero_cells live_in state_in in
@@ -365,13 +364,13 @@ let insert_reset_before_zero_use code get_const get_liveness =
         | IndexLoop (cond, child) ->
             let zero_cells_loop_end = zero_cells live_in state_block_end in
             let child =
-              iter child @+ reset_cells zero_cells_loop_end
+              iter child @ reset_cells zero_cells_loop_end
             in
             let zero_cells_init = zero_cells live_in state_in in
             reset_cells_insertion zero_cells_init
               [`Insert (Code.IndexLoop (cond, child), annot)]
         | Shift { index; followers; _ } ->
-            LList.fold_left
+            List.fold_left
               (fun code id ->
                 let sel = Sel.concat_member_to_index_tail index id 0 in
                 if Possible.is_zero (State.find sel state_in) then
@@ -399,7 +398,7 @@ let eliminate_never_entered_loop (code, _: analysis_result) =
             else [`Keep annot]
       | Shift { n; index; followers } ->
           let followers =
-            LList.filter
+            List.filter
               (fun id ->
                 let sel = Sel.concat_member_to_index_tail index id 0 in
                 not @@ Possible.is_zero (State.find sel state_in)

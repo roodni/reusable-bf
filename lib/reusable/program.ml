@@ -127,8 +127,8 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
         envs = Envs.add_module_binding uv mod_envs ctx.envs;
         ex_envs = Envs.add_module_binding uv mod_envs ctx.ex_envs;
       }
-and eval_toplevels ctx (toplevels: toplevel llist) : ctx =
-  LList.fold_left eval_toplevel ctx toplevels
+and eval_toplevels ctx (toplevels: toplevel list) : ctx =
+  List.fold_left eval_toplevel ctx toplevels
 and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
@@ -162,9 +162,9 @@ and eval_mod_expr ctx mod_expr =
       let ctx' = eval_toplevels ctx' prog in
       ({ ctx with filemap = ctx'.filemap }, ctx'.ex_envs)
   | ModVar l -> begin
-      assert (l <> lnil);
+      assert (l <> []);
       let envs =
-        LList.fold_left
+        List.fold_left
           (fun envs u ->
             match UVE.lookup u envs.module_env with
             | None -> Error.at mod_expr.i (Eval_Module_not_defined u)

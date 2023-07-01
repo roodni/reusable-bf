@@ -49,8 +49,8 @@ let analyze (fmain: Field.main) (code: 'a Code.t) (set: table -> 'a -> 'b) (get:
   let rec update_tables_and_compute_live_in
       (succ_live_in: CellSet.t) (code: 'b Code.t) : CellSet.t =
     code
-    |> LList.rev
-    |> LList.fold_left
+    |> List.rev
+    |> List.fold_left
       (fun (succ_live_in: CellSet.t) Code.{ cmd; annot; _ } : CellSet.t ->
         (* 各コマンドに対して
            - live_out のテーブルを更新する
@@ -262,7 +262,7 @@ end = struct
       live_in;
     (* 各ノードの干渉を追加する *)
     let rec scan_code (code: table Code.t) =
-      LList.iter
+      List.iter
         (fun Code.{ cmd; annot; _ } ->
           let {live_out; _} = annot in
           match cmd with
@@ -458,7 +458,7 @@ end = struct
     (* コードのId書き換え *)
     let rec convert_code (code: 'a Code.t): unit Code.t =
       let open Code in
-      LList.map
+      List.map
         (fun { cmd; info; _ } ->
           let cmd =
             match cmd with
@@ -471,9 +471,9 @@ end = struct
                   n;
                   index = (convert_sel sel, id_to_mc id);
                   followers =
-                    LList.to_seq followers
+                    List.to_seq followers
                     |> Seq.map id_to_mc
-                    |> CellSet.of_seq |> CellSet.elements |> llist
+                    |> CellSet.of_seq |> CellSet.elements
                 }
             | Loop (sel, code) -> Loop (convert_sel sel, convert_code code)
             | IndexLoop (index, code) ->  IndexLoop (convert_index index, convert_code code)

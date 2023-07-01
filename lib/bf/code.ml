@@ -1,6 +1,4 @@
-open Support.Pervasive
-
-type t = cmd llist
+type t = cmd list
 and cmd =
   | Add of int
   | Put
@@ -13,7 +11,7 @@ let rec length code =
     let z = x + y in
     if z < 0 then max_int else z
   in
-  LList.fold_left
+  List.fold_left
     (fun total cmd ->
       match cmd with
       | Add n | Shift n -> safeadd total (abs n)
@@ -27,7 +25,7 @@ let rec length code =
 let to_buffer code =
   let buf = Buffer.create 10000 in
   let rec loop code =
-    LList.iter
+    List.iter
       (function
         | Add n ->
             let c = if n < 0 then '-' else '+' in
@@ -78,9 +76,9 @@ let parse stream =
     consume ()
   in
   let rec parse ~nested =
-    let code_rev = ref lnil in
+    let code_rev = ref [] in
     let append cmd =
-      code_rev := lcons cmd !code_rev
+      code_rev := cmd :: !code_rev
     in
     let is_cmd = function
       | '+' | '-' | '>' | '<' | '.' | ',' | '[' | ']' -> true
@@ -115,6 +113,6 @@ let parse stream =
       | _ -> append (Shift n); loop ()
     in
     loop ();
-    LList.rev !code_rev
+    List.rev !code_rev
   in
   parse ~nested:false

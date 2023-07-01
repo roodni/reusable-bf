@@ -131,7 +131,7 @@ module Tape = struct
     validate_actual_index ap i';
     let elm = get_array_elm ap i in
     let elm' = get_array_elm ap i' in
-    LList.iter
+    List.iter
       (fun follower_id ->
         let s = Sel.Member follower_id in
         match select elm s, select elm' s with
@@ -148,7 +148,7 @@ end
 let run ~printer ~input ~cell_type field ir_code =
   let tape = Tape.from_field_main field in
   let rec loop ir_code =
-    LList.iter
+    List.iter
       (fun Code.{ cmd; info; _ } ->
         try
           match cmd with

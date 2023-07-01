@@ -75,7 +75,7 @@ open Syntax
 %%
 
 program:
-  | ts=toplevel_list EOF { llist ts }
+  | ts=toplevel_list EOF { ts }
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
@@ -91,17 +91,17 @@ toplevel:
 
 mod_expr:
   | i=IMPORT s=STRING { withinfo2 i s.i @@ ModImport s.v }
-  | i1=STRUCT ts=toplevel_list i2=END { withinfo2 i1 i2 @@ ModStruct (llist ts) }
+  | i1=STRUCT ts=toplevel_list i2=END { withinfo2 i1 i2 @@ ModStruct ts }
   | l=separated_nonempty_list(COLON, UVAR) {
       match l with
       | [] -> assert false
       | hd :: _ ->
           let last = List.rev l |> List.hd in
-          withinfo2 hd.i last.i @@ ModVar (llist l |> LList.map clearinfo)
+          withinfo2 hd.i last.i @@ ModVar (List.map clearinfo l)
     }
 
 field:
-  | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 @@ llist el }
+  | i1=LBRACE el=field_elm_list i2=RBRACE { withinfo2 i1 i2 el }
 
 field_elm_list:
   | e=field_elm SEMI el=field_elm_list { e :: el }
@@ -123,13 +123,13 @@ mtype_expr:
     }
 
 stmts:
-  | s=stmt sl=stmts { lcons s sl }
-  | i=ST_ALLOC f=field sl=stmts { llist [ withinfo i @@ StAlloc (f.v, sl) ] }
-  | i=ST_BUILD f=field sl=stmts { llist [ withinfo i @@ StBuild (f.v, sl) ] }
-  | i=ST_DIVE e=expr sl=stmts { llist [ withinfo i @@ StDive (Some e, sl) ] }
-  | i=ST_DIVE UNDER sl=stmts { llist [ withinfo i @@ StDive (None, sl) ] }
-  | i=ASTER2 e=expr_full { llist [ withinfo i @@ StExpand e ] } %prec prec_stmts
-  | { lnil } %prec prec_stmts
+  | s=stmt sl=stmts { s :: sl }
+  | i=ST_ALLOC f=field sl=stmts { [ withinfo i @@ StAlloc (f.v, sl) ] }
+  | i=ST_BUILD f=field sl=stmts { [ withinfo i @@ StBuild (f.v, sl) ] }
+  | i=ST_DIVE e=expr sl=stmts { [ withinfo i @@ StDive (Some e, sl) ] }
+  | i=ST_DIVE UNDER sl=stmts { [ withinfo i @@ StDive (None, sl) ] }
+  | i=ASTER2 e=expr_full { [ withinfo i @@ StExpand e ] } %prec prec_stmts
+  | { [] } %prec prec_stmts
 
 stmt:
   | i=PLUS es=expr ei=expr? { withinfo i @@ StAdd (1, es, ei) }
@@ -149,10 +149,10 @@ stmt:
 expr:
   | l=uvar_list v=VAR {
       match l with
-      | [] -> withinfo v.i @@ ExVar (lnil, v.v)
+      | [] -> withinfo v.i @@ ExVar ([], v.v)
       | hd :: _ ->
           withinfo2 hd.i v.i @@
-            ExVar (llist l |> LList.map clearinfo, v.v)
+            ExVar (List.map clearinfo l, v.v)
     }
   | i=INT { withinfo i.i @@ ExInt i.v }
   | c=CHAR { withinfo c.i @@ ExInt (int_of_char c.v) }
@@ -167,9 +167,9 @@ expr:
   | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
   | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
-      withinfo2 i1 i2 @@ ExList (llist (e :: l))
+      withinfo2 i1 i2 @@ ExList (e :: l)
     }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList lnil }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList [] }
 
 uvar_list:
   | uv=UVAR COLON l=uvar_list { uv :: l }
@@ -238,8 +238,8 @@ pat_simple:
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 PatNil }
 
 clauses:
-  | p=pat_full ARROW e=expr_full { llist [(p, e)] } %prec prec_match
-  | p=pat_full ARROW e=expr_full BAR c=clauses { lcons (p, e) c }
+  | p=pat_full ARROW e=expr_full { [(p, e)] } %prec prec_match
+  | p=pat_full ARROW e=expr_full BAR c=clauses { (p, e) :: c }
 
 
 let_binding:

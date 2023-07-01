@@ -9,7 +9,7 @@ type ctx =
   { envs: envs;
     diving: Ir.Sel.index option;
       (* alloc文がフィールドを確保する位置 *)
-    diving_fields: (Ir.Sel.index * irid_env) llist;
+    diving_fields: (Ir.Sel.index * irid_env) list;
       (* インデックスとその下に確保されたフィールドの対応 *)
     recn: int;
   }
@@ -32,7 +32,7 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
   let diving_index = if alloc then ctx.diving else None in
   let rec gen ?parent_name ~sticky (nfield: Ir.Field.t) (field: field): irid_env =
     field
-    |> LList.fold_left
+    |> List.fold_left
       (fun (env: irid_env) { i=info; v=(var, mtype) } : irid_env ->
         let irvar =
           Ir.Id.gen_named
@@ -76,11 +76,11 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
 
 let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let nmain = Ir.Field.empty_main () in
-  let ctx = { envs; diving=None; diving_fields=lnil; recn=0 } in
+  let ctx = { envs; diving=None; diving_fields=[]; recn=0 } in
   let rec gen (ctx: ctx) (stmts: stmts): unit * unit Ir.Code.t =
     let { envs; diving; diving_fields; _ } = ctx in
-    let (), code_llist =
-      LList.fold_left_map (fun () stmt : (unit * unit Ir.Code.t) ->
+    let (), code_list =
+      List.fold_left_map (fun () stmt : (unit * unit Ir.Code.t) ->
         let info = stmt.i in
         let gen ctx stmts =
           let ctx = { ctx with recn = ctx.recn + 1 } in
@@ -160,7 +160,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             (* シフト時に移動させられるdiving下の一時セルのid *)
             let followers =
               diving_fields
-              |> LList.filter_map
+              |> List.filter_map
                 (fun (diving, irid_env) ->
                   if index = diving then (* セルの中身をコピーする *)
                     VE.to_seq irid_env
@@ -171,12 +171,12 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
                         | MtyArray _ | MtyIndex -> assert false
                             (* allocを試みた時点で弾かれるので到達できない *)
                       )
-                    |> LList.of_seq |> Option.some
+                    |> List.of_seq |> Option.some
                   else if Ir.Sel.is_via_index index (fst diving) then
                     Error.at info Gen_Shift_interfere
                   else None
                 )
-              |> LList.concat
+              |> List.concat
             in
             let code_shift =
               Ir.Code.from_cmds ~info [ Shift { n=i; index; followers } ]
@@ -210,8 +210,8 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
                       (* field評価時にallocフラグが真であれば弾かれる *)
                       assert false
                 )
-              |> LList.of_seq
-              |> LList.concat
+              |> List.of_seq
+              |> List.concat
             in
             let code_init = gen_for_allocated_cells (fun sel -> [Reset sel]) in
             let code_end = gen_for_allocated_cells (fun sel -> [Reset sel; Use sel]) in
@@ -223,13 +223,13 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let envs = { envs with va_env } in
             let diving_fields = match diving with
               | None -> diving_fields
-              | Some sel -> lcons (sel, irid_env) diving_fields
+              | Some sel -> (sel, irid_env) :: diving_fields
             in
             let ctx = { ctx with envs; diving_fields; } in
             let (), code_child = gen ctx stmts in
             (* ゼロ初期化は開始時と終了時に行う
                IRの最適化である程度消える *)
-            ((), code_init @+ code_child @+ code_end)
+            ((), code_init @ code_child @ code_end)
         | StExpand ex_block ->
             let envs, stmts = eval envs ex_block |> Va.to_block ex_block.i in
             gen { ctx with envs } stmts
@@ -244,7 +244,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             gen { ctx with diving = index } stmts
       ) () stmts
     in
-    ((), code_llist |> LList.concat)
+    ((), code_list |> List.concat)
   in
   let (), code = gen ctx stmts in
   (nmain, code)

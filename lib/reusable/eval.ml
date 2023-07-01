@@ -47,7 +47,7 @@ and eval ~recn (envs: envs) (expr: expr) : value =
   match expr with
   | ExVar (uvl, v) -> begin
       let envs =
-        LList.fold_left
+        List.fold_left
           (fun envs uv -> match UVE.lookup uv envs.module_env with
             | None -> Error.at info @@ Eval_Module_not_defined uv
             | Some m -> m
@@ -161,12 +161,12 @@ and eval ~recn (envs: envs) (expr: expr) : value =
       let tail = eval_mid envs ex_tail |> Va.to_list ex_tail.i in
       VaList (head :: tail)
   | ExList el ->
-      let vll = LList.map (eval_mid envs) el in
-      VaList (LList.to_list_danger vll)
+      let vll = List.map (eval_mid envs) el in
+      VaList vll
   | ExMatch (matched_ex, clauses) -> begin
       let matched_va = eval_mid envs matched_ex in
       let env_ex_opt =
-        LList.find_map
+        List.find_map
           (fun (pat, ex) ->
             matches pat matched_va
             |> Option.map (fun env -> (env, ex)))
