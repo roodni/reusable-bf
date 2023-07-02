@@ -87,13 +87,22 @@ let output_trace ppf (Trace t) =
   assert (t.tailcalln = 0);
   fprintf ppf "@[<v>Traceback:@,";
   fprintf ppf "  @[<v>";
-  List.rev t.stack
-  |> List.iter
-    (fun (info, ommited) ->
-      (* TODO: repeat *)
-      if ommited > 0 then
-        fprintf ppf "[Omitted (%d)]@," ommited;
-      output_info ppf info;
-    );
+  let rec dump = function
+    | [] -> ()
+    | (info, ommited) :: tl ->
+        if ommited > 0 then
+          fprintf ppf "[Omitted tail calls (%d)]@," ommited;
+        output_info ppf info;
+        let rec repeat n = function
+          | (info', 0) :: tl when info == info' ->
+              repeat (n + 1) tl
+          | l -> (n, l)
+        in
+        let repeatn, tl = repeat 0 tl in
+        if repeatn > 0 then
+          fprintf ppf "  [Repeated (%d)]@," (repeatn + 1);
+        dump tl
+  in
+  dump (List.rev t.stack);
   fprintf ppf "@]@]@,";
 ;;
