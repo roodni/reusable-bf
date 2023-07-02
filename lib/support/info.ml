@@ -65,3 +65,35 @@ let output_info ppf = function
 let lines_of_info = function
   | Loc { l_start; l_end; _ } -> Some (l_start, l_end)
   | Unknown -> None
+
+
+type trace = Trace of {
+    tailcalln : int;
+    stack : (info * int) list;
+  }
+
+let empty_trace = Trace {tailcalln=0; stack=[]}
+
+let push_tailcall (Trace t) =
+  Trace { t with tailcalln=t.tailcalln + 1 }
+
+let push_info info (Trace t) =
+  Trace {
+    tailcalln = 0;
+    stack = (info, t.tailcalln) :: t.stack;
+  }
+
+let output_trace ppf (Trace t) =
+  assert (t.tailcalln = 0);
+  fprintf ppf "@[<v>Traceback:@,";
+  fprintf ppf "  @[<v>";
+  List.rev t.stack
+  |> List.iter
+    (fun (info, ommited) ->
+      (* TODO: repeat *)
+      if ommited > 0 then
+        fprintf ppf "[Omitted (%d)]@," ommited;
+      output_info ppf info;
+    );
+  fprintf ppf "@]@]@,";
+;;

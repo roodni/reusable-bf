@@ -9,7 +9,7 @@ let load filename channel =
     try Parser.program Lexer.main lexbuf with
     | Parser.Error -> begin
         let info = !Lexer.curr_info in
-        Error.at info Parser_Unexpected
+        Error.top info Parser_Unexpected
       end
   in
   validate_program_depth 0 program;
@@ -33,7 +33,7 @@ let find_source info path_limit curr_dir path =
     | NoLimit -> ()
     | Limited l ->
         if not (List.mem path l) then
-          Error.at info (Module_Limited_import)
+          Error.top info (Module_Limited_import)
   );
   if not (Filename.is_relative path) then path
   else begin
@@ -50,7 +50,7 @@ let find_source info path_limit curr_dir path =
     in
     match found_path with
     | Some p -> p
-    | None -> Error.at info (Module_import_file_not_found path)
+    | None -> Error.top info (Module_import_file_not_found path)
   end
 
 let load_from_source path =
@@ -108,7 +108,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
       }
   | TopCodegen top_gen ->
       if Option.is_some ctx.top_gen_opt then
-        Error.at toplevel.i Top_Duplicated_codegen
+        Error.top toplevel.i Top_Duplicated_codegen
       else
         { ctx with top_gen_opt=Some top_gen }
   | TopOpen mod_ex ->
@@ -136,7 +136,7 @@ and eval_mod_expr ctx mod_expr =
         find_source mod_expr.i ctx.path_limit ctx.curr_dirname p
       in
       match FileMap.find path ctx.filemap with
-      | Some Loading -> Error.at mod_expr.i Module_Recursive_import
+      | Some Loading -> Error.top mod_expr.i Module_Recursive_import
       | Some (Loaded envs) -> (ctx, envs)
       | None ->
           let ctx' = {
@@ -167,7 +167,7 @@ and eval_mod_expr ctx mod_expr =
         List.fold_left
           (fun envs u ->
             match UVE.lookup u envs.module_env with
-            | None -> Error.at mod_expr.i (Eval_Module_not_defined u)
+            | None -> Error.top mod_expr.i (Eval_Module_not_defined u)
             | Some envs -> envs
           ) ctx.envs l
       in
@@ -186,7 +186,7 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   } in
   let ctx = eval_toplevels ctx program in
   match ctx.top_gen_opt with
-  | None -> Error.at unknown_info Top_Missing_codegen
+  | None -> Error.at empty_trace Top_Missing_codegen
   | Some top_gen -> IrGen.generate ctx.envs top_gen
 
 let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =

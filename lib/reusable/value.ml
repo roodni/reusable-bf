@@ -16,8 +16,8 @@ type value =
   | VaInt of int
   | VaBool of bool
   | VaFun of envs * pat * expr
-  | VaBuiltin of (info -> value withinfo -> value)
-      (* 関数適用の位置 -> 引数とその位置 -> 返値 *)
+  | VaBuiltin of (trace -> value withinfo -> value)
+      (* 関数適用のトレース -> 引数とその位置 -> 返値 *)
   | VaBlock of envs * stmts
   | VaList of value list
   | VaString of string
@@ -30,44 +30,48 @@ and module_env = envs UVE.t
 and envs =
   { va_env : va_env;
     module_env : module_env;
+    trace : trace;
   }
 
 module Va = struct
   type t = value
-  let to_unit info = function
+
+  let raise_wdt trace info tname =
+    Error.at (push_info info trace) @@ Eval_Wrong_data_type tname
+  let to_unit tr i = function
     | VaUnit -> ()
-    | _ -> Error.at info @@ Eval_Wrong_data_type "unit"
-  let to_int info = function
+    | _ -> raise_wdt tr i "unit"
+  let to_int tr i = function
     | VaInt i -> i
-    | _ -> Error.at info @@ Eval_Wrong_data_type "int"
-  let to_bool info = function
+    | _ -> raise_wdt tr i "int"
+  let to_bool tr i = function
     | VaBool b -> b
-    | _ -> Error.at info @@ Eval_Wrong_data_type "bool"
-  let to_block info = function
+    | _ -> raise_wdt tr i "bool"
+  let to_block tr i = function
     | VaBlock (env, block) -> (env, block)
-    | _ -> Error.at info @@ Eval_Wrong_data_type "statements"
-  let to_list info = function
+    | _ -> raise_wdt tr i "statements"
+  let to_list tr i = function
     | VaList l -> l
-    | _ -> Error.at info @@ Eval_Wrong_data_type "list"
-  let to_string info = function
+    | _ -> raise_wdt tr i "list"
+  let to_string tr i = function
     | VaString s -> s
-    | _ -> Error.at info @@ Eval_Wrong_data_type "string"
-  let to_pair info = function
+    | _ -> raise_wdt tr i "string"
+  let to_pair tr i = function
     | VaPair (v1, v2) -> (v1, v2)
-    | _ -> Error.at info @@ Eval_Wrong_data_type "pair"
-  let to_cell info = function
+    | _ -> raise_wdt tr i "pair"
+  let to_cell tr i = function
     | VaCellSel sel -> sel
-    | _ -> Error.at info @@ Eval_Wrong_data_type "cell selector"
-  let to_index info = function
+    | _ -> raise_wdt tr i "cell selector"
+  let to_index tr i = function
     | VaIndexSel (idx, _) -> idx
-    | _ -> Error.at info @@ Eval_Wrong_data_type "index selector"
-  let to_array info = function
+    | _ -> raise_wdt tr i "index selector"
+  let to_array tr i = function
     | VaArraySel (sel, irid_env) -> (sel, irid_env)
-    | _ -> Error.at info @@ Eval_Wrong_data_type "array selector"
-  let to_member_selectable info = function
+    | _ -> raise_wdt tr i "array selector"
+  let to_member_selectable tr i = function
     | VaArraySel (sel, irid_env) -> (sel, None, irid_env)
     | VaIndexSel ((sel, id), irid_env) -> (sel, Some id, irid_env)
-    | _ -> Error.at info @@ Eval_Wrong_data_type "array or index selector"
+    | _ -> raise_wdt tr i "array or index selector"
 
   let equal x y =
     let rec loop = function
@@ -99,16 +103,18 @@ module Envs = struct
   let empty =
     { va_env = VE.empty;
       module_env = UVE.empty;
+      trace = empty_trace;
     }
   let initial =
     let add_builtin name fn env =
       VE.extend (Var.of_string name) (VaBuiltin fn) env
     in
-    { va_env = VE.empty
+    { empty with
+      va_env = empty.va_env
         |> add_builtin "string_to_list"
-          (fun _ s ->
+          (fun trace s ->
             let l =
-              Va.to_string s.i s.v
+              Va.to_string trace s.i s.v
               |> String.to_seq
               |> Seq.map int_of_char
               |> Seq.map (fun i -> VaInt i)
@@ -116,12 +122,11 @@ module Envs = struct
             VaList (List.of_seq l)
           )
         |> add_builtin "failwith"
-          (fun info msg ->
-            let msg = Va.to_string msg.i msg.v in
-            Error.at info (Eval_Exception msg)
+          (fun trace msg ->
+            let msg = Va.to_string trace msg.i msg.v in
+            Error.at trace (Eval_Exception msg)
           )
       ;
-      module_env = UVE.empty;
     }
 
   let extend_with_value_env va_env envs =
@@ -153,5 +158,6 @@ module Envs = struct
   let import src dest =
     { va_env = VE.merge src.va_env dest.va_env;
       module_env = UVE.merge src.module_env dest.module_env;
+      trace = dest.trace;
     }
 end

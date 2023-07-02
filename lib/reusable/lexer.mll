@@ -67,7 +67,7 @@ rule comment = parse
   | "(*" { comment (comment lexbuf) }
   | "*)" { lexbuf }
   | "\n" { Lexing.new_line lexbuf; comment lexbuf }
-  | eof { Error.at (info lexbuf) Lexer_Unexpected }
+  | eof { Error.top (info lexbuf) Lexer_Unexpected }
   | _ { comment lexbuf }
 
 and str p1 l = parse
@@ -83,7 +83,7 @@ and str p1 l = parse
       let s = List.rev l |> List.to_seq |> String.of_seq in
       P.STRING (withinfo i s)
     }
-  | eof | _ { Error.at (info lexbuf) Lexer_Unexpected }
+  | eof | _ { Error.top (info lexbuf) Lexer_Unexpected }
 
 and main = parse
   | [' ' '\t' '\r']+ { main lexbuf }
@@ -130,7 +130,7 @@ and main = parse
   | "0" | ['1'-'9'] ['0'-'9']* {
       match int_of_string_opt (Lexing.lexeme lexbuf) with
       | Some i -> P.INT (withinfo (info lexbuf) i)
-      | None -> Error.at (info lexbuf) Lexer_Too_large_int
+      | None -> Error.top (info lexbuf) Lexer_Too_large_int
     }
   | "\'" (character | "\"") "\'" {
       let s = Lexing.lexeme lexbuf in
@@ -150,4 +150,4 @@ and main = parse
       let id = Lexing.lexeme lexbuf in
       P.UVAR (withinfo (info lexbuf) (Syntax.UVar.of_string id))
     }
-  | _ { Error.at (info lexbuf) Lexer_Unexpected }
+  | _ { Error.top (info lexbuf) Lexer_Unexpected }

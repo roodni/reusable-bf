@@ -1,0 +1,11 @@
+let f {} = failwith "f"
+
+let g {} = f {}
+
+let h {} = g {}
+
+let i {} = h {}
+
+let _ = i {}
+
+codegen $

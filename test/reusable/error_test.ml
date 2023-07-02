@@ -1,5 +1,4 @@
 open OUnit2
-open Support.Info
 open Reusable
 
 let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "sample/misc/error"
@@ -9,9 +8,9 @@ let test_error ?(path_limit=Program.NoLimit) (filename, f) =
     let path = Filename.concat error_dir filename in
     match Program.gen_bf_from_source ~path_limit path with
     | _ -> assert_failure "No error"
-    | exception Error.Exn_at msg_wi ->
-        if not (f msg_wi.v) then begin
-          Error.print ~ppf:Format.str_formatter msg_wi;
+    | exception Error.Exn_at msg ->
+        if not (f @@ snd msg) then begin
+          Error.print ~ppf:Format.str_formatter msg;
           assert_failure @@ Format.flush_str_formatter ();
         end
 ;;
