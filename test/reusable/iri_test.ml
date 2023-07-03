@@ -55,11 +55,8 @@ let error_test =
       | Error (trace, msg_act) ->
           assert_equal ~printer:Fun.id msg_expe msg_act;
           assert_equal
-            ~printer:(function
-              | None -> "Unknown"
-              | Some (a, b) -> sprintf "%d-%d" a b
-            )
-            (Some (line_expe, line_expe))
+            ~printer:(fun (a, b) -> sprintf "%d-%d" a b)
+            (line_expe, line_expe)
             (top_of_trace trace |> lines_of_info)
     )
   in

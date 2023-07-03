@@ -8,8 +8,9 @@ let load filename channel =
   let program =
     try Parser.program Lexer.main lexbuf with
     | Parser.Error -> begin
-        let info = !Lexer.curr_info in
-        Error.top info Parser_Unexpected
+        match !Lexer.curr_info with
+        | Some info ->  Error.top info Parser_Unexpected
+        | None -> assert false
       end
   in
   validate_program_depth 0 program;

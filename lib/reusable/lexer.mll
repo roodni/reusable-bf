@@ -37,13 +37,13 @@ let string_to_char = function
   | _ -> assert false
 
 
-let curr_info = ref unknown_info
+let curr_info = ref None
 
 (** [Support.Info]の[create_info]を隠蔽
     info作成と同時にcurr_infoを書きかえる *)
 let create_info p1 p2 =
   let i = Support.Info.create_info p1 p2 in
-  curr_info := i;
+  curr_info := Some i;
   i
 
 let info lexbuf =

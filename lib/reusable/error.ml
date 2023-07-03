@@ -78,7 +78,8 @@ let top info msg =
 
 let print ?(ppf=err_formatter) (trace, msg) =
   fprintf ppf "@[<v>";
-  output_trace ppf trace;
+  if lengths_of_trace trace <> [] then
+    output_trace ppf trace;
   fprintf ppf "Error: @[";
   output ppf msg;
   pp_print_newline ppf ();
