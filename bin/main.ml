@@ -26,7 +26,7 @@ let parse_args () =
       sprintf " Set optimization level (0-%d)" Ir.Opt.max_level);
     ("--opt", Set_int arg_optimize_level, " ");
     ("--print-opt", Set flag_print_opt, " ");
-    ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " ");
+    (* ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " "); *)
     ("--sandbox", Set flag_sandbox, " ");
     ("--limit-import-paths",
       String (fun s ->
@@ -49,7 +49,8 @@ let parse_args () =
 
 let get_source () =
   if !flag_stdin then
-    (Sys.getcwd (), stdin)
+    if !filename = "" then (Sys.getcwd (), stdin)
+    else failwith "File is given but stdin flag is set"
   else
     (Filename.dirname !filename, open_in !filename)
 
