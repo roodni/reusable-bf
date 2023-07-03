@@ -112,3 +112,9 @@ let top_of_trace (Trace t) =
   match t.stack with
   | (info, _) :: _ -> info
   | _ -> assert false
+
+let lengths_of_trace (Trace t) =
+  assert (t.tailcalln = 0);
+  List.map
+    (fun (_, o) -> o + 1)
+    t.stack

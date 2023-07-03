@@ -27,3 +27,4 @@ val push_info : info -> trace -> trace
 val output_trace : Format.formatter -> trace -> unit
 
 val top_of_trace : trace -> info
+val lengths_of_trace : trace -> int list
