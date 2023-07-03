@@ -1,6 +1,6 @@
 open OUnit2
-open Reusable
 open Support.Info
+open Reusable
 
 let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "sample/misc/error"
 
@@ -16,10 +16,17 @@ let test_error ?(path_limit=Program.NoLimit) (filename, f) =
         end
 ;;
 
-let expe err (_trace, msg) = (err = msg)
-let expe_len lens (trace, _msg) = (lens = lengths_of_trace trace)
+let expe err : Error.exn_arg -> bool = function
+  | `Trace _, msg -> err = msg
+  | `Info _, _ -> false
+let expe_len lens : Error.exn_arg -> bool = function
+  | `Trace trace, _ -> lens = lengths_of_trace trace
+  | `Info _, _ -> false
 let expe_full lens err e =
   expe err e && expe_len lens e
+let expe_notrace err : Error.exn_arg -> bool = function
+  | `Trace _, _ -> false
+  | `Info _, msg -> err = msg
 
 let cases =
   let var s = Syntax.Var.of_string s in
@@ -61,15 +68,15 @@ let cases =
     ( "gen_alloc-tmp-array.bfr", expe Gen_Alloc_Array_not_implemented );
     ( "gen_uarray-in-array.bfr", expe Gen_Field_Unlimited_array_cannot_be_array_member );
     ( "gen_negative-length-array.bfr", expe Gen_Field_Array_length_cannot_be_negative );
-    ( "lexer_string.bfr", expe Lexer_Unexpected );
-    ( "lexer_unexpected.bfr", expe Lexer_Unexpected );
-    ( "lexer_large-int.bfr", expe Lexer_Too_large_int );
-    ( "parser_1.bfr", expe Parser_Unexpected );
-    ( "parser_2.bfr", expe Parser_Unexpected );
-    ( "top_codegen-dup.bfr", expe Top_Duplicated_codegen );
-    ( "top_codegen-missing.bfr", expe Top_Missing_codegen );
-    ( "module_import-rec_1.bfr", expe Module_Recursive_import );
-    ( "module_import-not-found.bfr", expe @@ Module_import_file_not_found "./file" );
+    ( "lexer_string.bfr", expe_notrace Lexer_Unexpected );
+    ( "lexer_unexpected.bfr", expe_notrace Lexer_Unexpected );
+    ( "lexer_large-int.bfr", expe_notrace Lexer_Too_large_int );
+    ( "parser_1.bfr", expe_notrace Parser_Unexpected );
+    ( "parser_2.bfr", expe_notrace Parser_Unexpected );
+    ( "top_codegen-dup.bfr", expe_notrace Top_Duplicated_codegen );
+    ( "top_codegen-missing.bfr", expe_notrace Top_Missing_codegen );
+    ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
+    ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
     ( "memory_stack_eval.bfr", expe Memory_Recursion_limit );
     ( "memory_stack_gen.bfr", expe Memory_Recursion_limit );
     ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );
@@ -84,8 +91,8 @@ let sandbox_tests =
   "sandbox" >:::
     List.map
       (test_error ~path_limit:(Program.Limited ["std.bfr"]))
-      [ ( "module_prohibited-import.bfr", expe Module_Limited_import );
-        ( "module_prohibited-import-submodule.bfr", expe Module_Limited_import );
+      [ ( "module_prohibited-import.bfr", expe_notrace Module_Limited_import );
+        ( "module_prohibited-import-submodule.bfr", expe_notrace Module_Limited_import );
       ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->

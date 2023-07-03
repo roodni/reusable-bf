@@ -70,16 +70,26 @@ let output ppf msg =
   | Lexer_Unexpected -> pf "This character is unexpected"
 
 
-exception Exn_at of (trace * t)
+type exn_arg = [`Trace of trace | `Info of info option] * t
+exception Exn_at of exn_arg
 let at trace msg =
-  raise @@ Exn_at (trace, msg)
+  raise @@ Exn_at (`Trace trace, msg)
 let top info msg =
-  at (push_info info empty_trace) msg
+  raise @@ Exn_at (`Info (Some info), msg)
+let unknown msg =
+  raise @@ Exn_at (`Info None, msg)
 
-let print ?(ppf=err_formatter) (trace, msg) =
+let print ?(ppf=err_formatter) (trace, msg: exn_arg) =
   fprintf ppf "@[<v>";
-  if lengths_of_trace trace <> [] then
-    output_trace ppf trace;
+  (* if lengths_of_trace trace <> [] then
+    output_trace ppf trace; *)
+  (match trace with
+    | `Trace trace -> output_trace ppf trace;
+    | `Info None -> ()
+    | `Info (Some info) ->
+        output_info ppf info;
+        fprintf ppf "@,";
+  );
   fprintf ppf "Error: @[";
   output ppf msg;
   pp_print_newline ppf ();

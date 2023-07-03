@@ -187,7 +187,7 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   } in
   let ctx = eval_toplevels ctx program in
   match ctx.top_gen_opt with
-  | None -> Error.at empty_trace Top_Missing_codegen
+  | None -> Error.unknown Top_Missing_codegen
   | Some top_gen -> IrGen.generate ctx.envs top_gen
 
 let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
