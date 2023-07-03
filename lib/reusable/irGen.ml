@@ -232,14 +232,13 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             (* ゼロ初期化は開始時と終了時に行う
                IRの最適化である程度消える *)
             ((), code_init @ code_child @ code_end)
-        | StExpand ex_block ->
-            let envs, stmts = eval envs ex_block |> Va.to_block trace ex_block.i in
-            gen
-              { ctx with
-                envs;
-                trace = push_info stmt.i trace;
-              }
-              stmts
+        | StExpand { ex_stmts; req_trace } ->
+            let envs, stmts = eval envs ex_stmts |> Va.to_block trace ex_stmts.i in
+            let trace =
+              if req_trace then push_info stmt.i trace
+              else trace
+            in
+            gen { ctx with envs; trace; } stmts
         | StUnit expr ->
             let () = eval envs expr |> Va.to_unit trace expr.i in
             ((), Ir.Code.from_cmds trace' [])

@@ -74,7 +74,7 @@ let cases =
     ( "memory_stack_gen.bfr", expe Memory_Recursion_limit );
     ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );
     ( "trace_tail.bfr", expe_full [4; 1] @@ Eval_Exception "f" );
-    (* ( "trace_gen.bfr", expe_len [1; 1] ); *)
+    ( "trace_gen.bfr", expe_len [1; 1] );
   ]
 
 let normal_tests = "normal" >::: List.map test_error cases

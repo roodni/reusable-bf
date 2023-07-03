@@ -77,7 +77,7 @@ and stmt' =
   | StShift of int * expr * expr option  (* sign, index, int *)
   | StAlloc of field * stmts
   | StBuild of field * stmts
-  | StExpand of expr
+  | StExpand of { ex_stmts : expr; mutable req_trace : bool; }
   | StUnit of expr
   | StDive of expr option * stmts
 
@@ -118,57 +118,82 @@ let rec validate_pat_depth n (pat: pat) =
       List.iter validate_pat_depth l;
 ;;
 
-let rec validate_expr_depth n (expr: expr) =
+(** 式の末尾の形 *)
+type tail_expr_kind = [`Stmts | `NonStmts ]
+
+(* 関数 scan_*** には3つの役割がある
+*)
+
+let rec scan_expr n (expr: expr) : tail_expr_kind =
   if n > 10000 then failwith "too deep expression";
-  let validate_expr_depth = validate_expr_depth (n + 1) in
+  let scan_expr = scan_expr (n + 1) in
+  let scan_expr_u ex = ignore @@ scan_expr ex in
   match expr.v with
-  | ExVar _ | ExInt _ | ExBool _ | ExStr _ | ExUnit -> ();
+  | ExVar _ | ExInt _ | ExBool _ | ExStr _ | ExUnit -> `NonStmts;
   | ExSelMem (ex, exopt, _) ->
-      validate_expr_depth ex;
-      Option.iter validate_expr_depth exopt;
-  | ExSelIdx (ex, _) -> validate_expr_depth ex;
+      scan_expr_u ex;
+      Option.iter scan_expr_u exopt;
+      `NonStmts
+  | ExSelIdx (ex, _) -> scan_expr_u ex; `NonStmts
   | ExFun (pat, ex) ->
       validate_pat_depth 0 pat;
-      validate_expr_depth ex;
+      scan_expr_u ex;
+      `NonStmts
   | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
   | ExBOpInt (e1, _, e2) | ExEqual (_, e1, e2)
   | ExCons (e1, e2) | ExPair (e1, e2) ->
-      List.iter validate_expr_depth [e1; e2];
-  | ExMinus ex -> validate_expr_depth ex;
+      List.iter scan_expr_u [e1; e2];
+      `NonStmts
+  | ExMinus ex -> scan_expr_u ex; `NonStmts
   | ExIf (e1, e2, e3) ->
-      List.iter validate_expr_depth [e1; e2; e3];
+      scan_expr_u e1;
+      let r1 = scan_expr e2 in
+      let r2 = scan_expr e3 in
+      if r1 = `Stmts && r2 = `Stmts then `Stmts
+      else `NonStmts
   | ExBlock stmts ->
       validate_stmts_depth (n + 1) stmts;
+      `Stmts
   | ExLet ((pat, ex1), ex2) ->
       validate_pat_depth 0 pat;
-      List.iter validate_expr_depth [ex1; ex2];
-  | ExList el -> List.iter validate_expr_depth el;
+      scan_expr_u ex1;
+      scan_expr ex2
+  | ExList el ->
+      List.iter scan_expr_u el; `NonStmts
   | ExMatch (e0, bindings) ->
-      validate_expr_depth e0;
-      List.iter
-        (fun (pat, ex) ->
-          validate_pat_depth 0 pat;
-          validate_expr_depth ex; )
-        bindings;
+      scan_expr_u e0;
+      let tails =
+        List.rev_map
+          (fun (pat, ex) ->
+            validate_pat_depth 0 pat;
+            scan_expr ex )
+          bindings
+      in
+      if List.for_all ((=) `Stmts) tails
+        then `Stmts else `NonStmts
 and validate_stmts_depth n (stmts: stmts) =
   if n > 10000 then failwith "too deep statements";
   let validate_stmts_depth = validate_stmts_depth (n + 1) in
-  let validate_expr_depth = validate_expr_depth (n + 1) in
+  let scan_expr = scan_expr (n + 1) in
+  let scan_expr_u ex = ignore @@ scan_expr ex in
   List.iter
     (fun st -> match st.v with
       | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
-          validate_expr_depth ex;
-          Option.iter validate_expr_depth exopt;
-      | StPut ex | StGet ex | StExpand ex | StUnit ex ->
-          validate_expr_depth ex;
+          ignore @@ scan_expr ex;
+          Option.iter scan_expr_u exopt;
+      | StPut ex | StGet ex | StUnit ex ->
+          scan_expr_u ex;
+      | StExpand stex ->
+          let tail = scan_expr stex.ex_stmts in
+          if tail = `Stmts then stex.req_trace <- false;
       | StWhile (ex, stmts) | StIndexLoop (ex, stmts)
       | StDive (Some ex, stmts) | StIndexIf (ex, stmts) ->
-          validate_expr_depth ex;
+          scan_expr_u ex;
           validate_stmts_depth stmts;
       | StDive (None, stmts) ->
           validate_stmts_depth stmts;
       | StIf (ex, ss, ssopt) ->
-          validate_expr_depth ex;
+          scan_expr_u ex;
           validate_stmts_depth ss;
           Option.iter validate_stmts_depth ssopt;
       | StAlloc (field, stmts) | StBuild (field, stmts) ->
@@ -185,7 +210,8 @@ and validate_field_depth n (field: field) =
       | MtyExArray { mem; length; } -> begin
           (match length with
             | None -> ()
-            | Some expr -> validate_expr_depth (n + 1) expr;
+            | Some expr ->
+                ignore @@ scan_expr (n + 1) expr;
           );
           validate_field_depth (n + 1) mem;
         end
@@ -204,7 +230,7 @@ and validate_program_depth n (prog: program) =
     (fun top -> match top.v with
       | TopLet (pat, expr) ->
           validate_pat_depth 0 pat;
-          validate_expr_depth 0 expr;
+          ignore @@ scan_expr 0 expr;
       | TopCodegen stmts ->
           validate_stmts_depth 0 stmts;
       | TopOpen modex | TopInclude modex | TopModule (_, modex) ->

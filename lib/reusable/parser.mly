@@ -129,7 +129,9 @@ stmts:
   | i=ST_BUILD f=field sl=stmts { [ withinfo i @@ StBuild (f.v, sl) ] }
   | i=ST_DIVE e=expr sl=stmts { [ withinfo i @@ StDive (Some e, sl) ] }
   | i=ST_DIVE UNDER sl=stmts { [ withinfo i @@ StDive (None, sl) ] }
-  | i=ASTER2 e=expr_full { [ withinfo i @@ StExpand e ] } %prec prec_stmts
+  | i=ASTER2 e=expr_full {
+      [ withinfo i @@ StExpand {ex_stmts=e; req_trace=true;} ]
+    } %prec prec_stmts
   | { [] } %prec prec_stmts
 
 stmt:
@@ -145,7 +147,7 @@ stmt:
     }
   | i=INDEX_LOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexLoop (e, sl) }
   | i=INDEX_IF e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexIf (e, sl) }
-  | i=ASTER e=expr_appable { withinfo i @@ StExpand e }
+  | i=ASTER e=expr_appable { withinfo i @@ StExpand {ex_stmts=e; req_trace=true} }
   | i=SEMI e=expr_appable { withinfo i @@ StUnit e }
 
 expr:
