@@ -312,10 +312,10 @@ let insert_reset_before_zero_use code get_const get_liveness =
   in
   let rec iter code =
     Code.concat_map
-      (fun Code.{ cmd; annot; info } ->
+      (fun Code.{ cmd; annot; trace } ->
         let reset_cells cells =
           List.map
-            (fun sel -> Code.{cmd=Reset sel; annot; info})
+            (fun sel -> Code.{cmd=Reset sel; annot; trace})
             cells
         in
         let reset_cells_insertion cells before =

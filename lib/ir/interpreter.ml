@@ -2,7 +2,7 @@ open Support.Pervasive
 open Support.Info
 
 exception ExecutionError of string
-exception ExecutionExit of info * string
+exception ExecutionExit of trace * string
 
 module IdMap = Map.Make(Id)
 module IntHash = struct
@@ -149,7 +149,7 @@ let run ~printer ~input ~cell_type field ir_code =
   let tape = Tape.from_field_main field in
   let rec loop ir_code =
     List.iter
-      (fun Code.{ cmd; info; _ } ->
+      (fun Code.{ cmd; trace; _ } ->
         try
           match cmd with
           | Add (n, s) ->
@@ -183,13 +183,21 @@ let run ~printer ~input ~cell_type field ir_code =
           | Reset s ->
               Tape.set_cell ~cell_type tape s 0
           | Use _ -> ()
-        with ExecutionError msg -> raise @@ ExecutionExit (info, msg)
+        with ExecutionError msg -> raise @@ ExecutionExit (trace, msg)
       )
       ir_code
   in
   match loop ir_code with
   | () -> Ok ()
-  | exception ExecutionExit (info, msg) -> Error (info, msg)
+  | exception ExecutionExit (trace, msg) -> Error (trace, msg)
+
+let print_error ?(ppf=Format.err_formatter) (trace, msg) =
+  let open Format in
+  fprintf ppf "@[<v>";
+  output_trace ppf trace;
+  fprintf ppf "Execution error: %s" msg;
+  pp_print_newline ppf ();
+;;
 
 let run_stdio ~cell_type field code =
   run

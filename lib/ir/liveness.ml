@@ -459,7 +459,7 @@ end = struct
     let rec convert_code (code: 'a Code.t): unit Code.t =
       let open Code in
       List.map
-        (fun { cmd; info; _ } ->
+        (fun { cmd; trace; _ } ->
           let cmd =
             match cmd with
             | Add (n, sel) -> Add (n, convert_sel sel)
@@ -481,7 +481,7 @@ end = struct
             | IndexIf (index, thn) -> IndexIf (convert_index index, convert_code thn)
             | Use sel -> Use (convert_sel sel)
           in
-          { cmd; annot=(); info }
+          { cmd; annot=(); trace }
         )
         code
     in

@@ -8,7 +8,7 @@ type 'a t = 'a annotated list
 and 'a annotated =
   { cmd: 'a cmd;
     annot: 'a;
-    info: info;
+    trace: trace;
   }
 and 'a cmd =
   | Add of int * Sel.t
@@ -36,9 +36,9 @@ let rec concat_map
       | `Keep annot -> Some { cmd=cmd_filter_map f annotated.cmd; annot; info=annotated.info } *)
       List.map
         (function
-          | `Insert (cmd, annot) -> { cmd; annot; info=annotated.info }
+          | `Insert (cmd, annot) -> { cmd; annot; trace=annotated.trace }
           | `Keep annot ->
-              { cmd=cmd_concat_map f annotated.cmd; annot; info=annotated.info } )
+              { cmd=cmd_concat_map f annotated.cmd; annot; trace=annotated.trace } )
         (f annotated)
     )
     code
@@ -68,12 +68,12 @@ let cmd_annot_map f cmd =
 let delete_annot code = annot_map (Fun.const ()) code
 
 
-let from_cmds ~info cmd_list : unit t =
+let from_cmds trace cmd_list : unit t =
   List.map
     (fun cmd -> {
       cmd=cmd_annot_map (Fun.const ()) cmd;
       annot=();
-      info
+      trace;
     })
     cmd_list
 
@@ -143,7 +143,7 @@ let output ppf output_annot code =
 ;;
 
 
-let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t list) =
+let shift_followers trace n (arr_sel, idx_id) (followers: Id.t list) =
   followers
   |> List.map
     (fun follower_id ->
@@ -151,31 +151,31 @@ let shift_followers ~info n (arr_sel, idx_id) (followers: Id.t list) =
       let dest_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) follower_id n in
       [ Loop
           ( src_sel,
-            from_cmds ~info
+            from_cmds trace
               [ Add (-1, src_sel); Add (1, dest_sel); ]
           )
       ]
     )
-  |> List.concat |> from_cmds ~info
+  |> List.concat |> from_cmds trace
 
 
-let extend_IndexLoop ~info ((arr_sel, idx_id), loop) =
+let extend_IndexLoop trace ((arr_sel, idx_id), loop) =
   let cond_sel = Sel.concat_member_to_index_tail (arr_sel, idx_id) idx_id (-1) in
-  from_cmds ~info [ Loop (cond_sel, loop) ]
+  from_cmds trace [ Loop (cond_sel, loop) ]
 
-let extend_IndexIf ~info (index, code) =
+let extend_IndexIf trace (index, code) =
   let _, idx_id = index in
   let idx_sel = Sel.concat_member_to_index_tail index idx_id 0 in
   let prev_idx_sel = Sel.concat_member_to_index_tail index idx_id (-1) in
-  from_cmds ~info [
+  from_cmds trace [
     Loop (prev_idx_sel,
-      from_cmds ~info [
+      from_cmds trace [
         Add (-1, prev_idx_sel);
         Add (1, idx_sel);
       ]
     );
     Loop (idx_sel,
-      from_cmds ~info [
+      from_cmds trace [
         Add (-1, idx_sel);
         Add (1, prev_idx_sel);
       ]

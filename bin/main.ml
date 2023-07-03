@@ -1,5 +1,4 @@
 open Printf
-open Support.Info
 
 (* コマンドライン引数 *)
 let flag_bf = ref false
@@ -78,10 +77,8 @@ let run_ir field ir_code =
   let res = Ir.Interpreter.run_stdio ~cell_type:WrapAround256 field ir_code in
   match res with
   | Ok () -> ()
-  | Error (info, msg) ->
-      Format.eprintf "@[<v>";
-      output_info Format.err_formatter info;
-      Format.eprintf "  Execution error: %s@." msg;
+  | Error e ->
+      Ir.Interpreter.print_error e;
       exit 1
 ;;
 
@@ -116,8 +113,8 @@ let use_as_bfr_compiler () =
       let program = Reusable.Program.load !filename channel in
       close_in channel;
       Reusable.Program.gen_ir ~path_limit dirname program
-    with Reusable.Error.Exn_at msg_wi ->
-      Reusable.Error.print msg_wi;
+    with Reusable.Error.Exn_at e ->
+      Reusable.Error.print e;
       exit 1
   in
 

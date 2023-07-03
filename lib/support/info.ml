@@ -106,3 +106,9 @@ let output_trace ppf (Trace t) =
   dump (List.rev t.stack);
   fprintf ppf "@]@]@,";
 ;;
+
+let top_of_trace (Trace t) =
+  assert (t.tailcalln = 0);
+  match t.stack with
+  | (info, _) :: _ -> info
+  | _ -> assert false

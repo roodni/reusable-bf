@@ -30,7 +30,7 @@ let program =
     Add (7, ap_a);
     Shift { n=(-1); index=(a, p); followers=[] };
     Add (-1, ap_a);
-  ] |> Code.from_cmds ~info:unknown_info
+  ] |> Code.from_cmds empty_trace
 
 let expected = [0; 3; 1; 4; 0; 7]
 

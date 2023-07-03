@@ -83,11 +83,11 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
     let { envs; trace; _ } = ctx in
     let (), code_list =
       List.fold_left_map (fun () stmt : (unit * unit Ir.Code.t) ->
-        let info = stmt.i in
+        let trace' = push_info stmt.i trace in
         let gen ctx stmts =
           let ctx = { ctx with recn = ctx.recn + 1 } in
           if ctx.recn > 10000 then
-            Error.at (push_info stmt.i trace) Memory_Recursion_limit;
+            Error.at trace' Memory_Recursion_limit;
           gen ctx stmts
         in
         let eval = Eval.eval ~recn:0 in
@@ -100,22 +100,22 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               | None -> 1
               | Some ex_i -> eval envs ex_i |>  Va.to_int trace ex_i.i
             in
-            let code = Ir.Code.from_cmds ~info [ Add (i * sign, nsel) ] in
+            let code = Ir.Code.from_cmds trace' [ Add (i * sign, nsel) ] in
             ((), code)
           end
         | StPut ex_sel ->
             let nsel = eval envs ex_sel |> Va.to_cell trace ex_sel.i in
-            let code = Ir.Code.from_cmds ~info [ Ir.Code.Put nsel ] in
+            let code = Ir.Code.from_cmds trace' [ Ir.Code.Put nsel ] in
             ((), code)
         | StGet ex_sel ->
             let nsel = eval envs ex_sel |> Va.to_cell trace ex_sel.i in
-            let code = Ir.Code.from_cmds ~info [ Get nsel ] in
+            let code = Ir.Code.from_cmds trace' [ Get nsel ] in
             ((), code)
         | StWhile (sel_ex, stmts) -> begin
             let sel = eval envs sel_ex |> Va.to_cell trace sel_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds ~info [ Loop (sel, child_code) ]
+              Ir.Code.from_cmds trace' [ Loop (sel, child_code) ]
             in
             ((), code)
           end
@@ -123,14 +123,14 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let index = eval envs index_ex |> Va.to_index trace index_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds ~info [ IndexLoop (index, child_code) ]
+              Ir.Code.from_cmds trace' [ IndexLoop (index, child_code) ]
             in
             ((), code)
         | StIndexIf (index_ex, stmts) ->
             let index = eval envs index_ex |> Va.to_index trace index_ex.i in
             let (), child_code = gen ctx stmts in
             let code =
-              Ir.Code.from_cmds ~info [ IndexIf (index, child_code) ]
+              Ir.Code.from_cmds trace' [ IndexIf (index, child_code) ]
             in
             ((), code)
         | StIf (ex_sel, stmts_then, stmts_else) ->
@@ -143,11 +143,11 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             );
             let (), code_then = gen ctx stmts_then in
             let (), code_else = match stmts_else with
-              | None -> ((), Ir.Code.from_cmds ~info [])
+              | None -> ((), Ir.Code.from_cmds trace' [])
               | Some stmts_else -> gen ctx stmts_else
             in
             let code =
-              Ir.Code.from_cmds ~info [ If (nsel, code_then, code_else) ] in
+              Ir.Code.from_cmds trace' [ If (nsel, code_then, code_else) ] in
             ((), code)
         | StShift (sign, ex_idx, ex_i_opt) ->
             let index = eval envs ex_idx |> Va.to_index trace ex_idx.i in
@@ -181,7 +181,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               |> List.concat
             in
             let code_shift =
-              Ir.Code.from_cmds ~info [ Shift { n=i; index; followers } ]
+              Ir.Code.from_cmds trace' [ Shift { n=i; index; followers } ]
             in
             ((), code_shift)
         | StBuild (field, stmts) ->
@@ -207,7 +207,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
                   match mtype with
                   | MtyCell ->
                       let sel = Ir.Sel.concat_member_to_index_opt_tail ctx.diving id 0 in
-                      Ir.Code.from_cmds ~info (f sel)
+                      Ir.Code.from_cmds trace' (f sel)
                   | MtyArray _ | MtyIndex ->
                       (* field評価時にallocフラグが真であれば弾かれる *)
                       assert false
@@ -242,7 +242,7 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
               stmts
         | StUnit expr ->
             let () = eval envs expr |> Va.to_unit trace expr.i in
-            ((), Ir.Code.from_cmds ~info [])
+            ((), Ir.Code.from_cmds trace' [])
         | StDive (index_ex_opt, stmts) ->
             let index =
               index_ex_opt

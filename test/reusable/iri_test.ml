@@ -52,7 +52,7 @@ let error_test =
       in
       match res with
       | Ok () -> assert_failure "Did not raise error"
-      | Error (info, msg_act) ->
+      | Error (trace, msg_act) ->
           assert_equal ~printer:Fun.id msg_expe msg_act;
           assert_equal
             ~printer:(function
@@ -60,7 +60,7 @@ let error_test =
               | Some (a, b) -> sprintf "%d-%d" a b
             )
             (Some (line_expe, line_expe))
-            (lines_of_info info)
+            (top_of_trace trace |> lines_of_info)
     )
   in
   "error" >:::
