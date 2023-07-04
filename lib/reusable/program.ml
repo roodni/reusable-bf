@@ -13,7 +13,7 @@ let load filename channel =
         | None -> assert false
       end
   in
-  validate_program_depth 0 program;
+  scan_program ~pname:None 0 program;
   program
 
 let lib_path =

@@ -6,6 +6,8 @@ type info = Loc of {
   l_end : int;
   c_start : int;
   c_end : int;
+  mutable parent_name : string option;
+    (* 自分が属する関数などの名前 *)
 }
 
 type 'a withinfo = { i : info; v : 'a }
@@ -24,7 +26,11 @@ let create_info pos1 pos2 =
     c_start = c1;
     c_end =
       if (l1, c1) = (l2, c2) then c1 else c2 - 1;
+    parent_name = None;
   }
+
+let set_pname_of_info (Loc i) pname =
+  i.parent_name <- pname
 
 let withinfo i v = { i; v; }
 let clearinfo { v; _ } = v
@@ -32,25 +38,29 @@ let clearinfo { v; _ } = v
 let merge_info (Loc l1) (Loc l2) =
   Loc {
     fname = l1.fname;
+    parent_name = l1.parent_name;
     l_start = l1.l_start; l_end = l2.l_end;
     c_start = l1.c_start; c_end = l2.c_end
   }
 
 let withinfo2 i1 i2 v = withinfo (merge_info i1 i2) v
 
-let output_info ppf info =
-  let Loc { fname; l_start=l1; l_end=l2; c_start=c1; c_end=c2 } = info in
+let output_info ppf (Loc info) =
+  (* let Loc { fname; l_start=l1; l_end=l2; c_start=c1; c_end=c2 } = info in *)
   let print_range text a b =
     if a = b
       then fprintf ppf "%s %d" text a
       else fprintf ppf "%ss %d-%d" text a b
   in
-  if fname <> "" then
-    fprintf ppf "File \"%s\", " fname;
-  print_range "line" l1 l2;
+  if info.fname <> "" then
+    fprintf ppf "File \"%s\", " info.fname;
+  print_range "line" info.l_start info.l_end;
   fprintf ppf ", ";
-  print_range "col" c1 c2;
-  fprintf ppf ":@ ";
+  print_range "col" info.c_start info.c_end;
+  Option.iter
+    (fprintf ppf ", in %s")
+    info.parent_name;
+  fprintf ppf "@ ";
 ;;
 
 let lines_of_info (Loc { l_start; l_end; _ }) = (l_start, l_end)

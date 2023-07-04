@@ -3,6 +3,7 @@ type info
 type 'a withinfo = { i : info; v : 'a }
 
 val create_info : Lexing.position -> Lexing.position -> info
+val set_pname_of_info : info -> string option -> unit
 
 val withinfo : info -> 'a -> 'a withinfo
 val clearinfo : 'a withinfo -> 'a
@@ -13,7 +14,6 @@ val merge_info : info -> info -> info
 val withinfo2 : info -> info -> 'a -> 'a withinfo
 
 val output_info : Format.formatter -> info -> unit
-
 val lines_of_info : info -> int * int
 
 

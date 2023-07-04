@@ -106,27 +106,33 @@ and mod_expr' =
   | ModStruct of program
   | ModVar of UVar.t list
 
-let rec validate_pat_depth n (pat: pat) =
+
+(* 関数 scan_*** には3つの役割がある
+  1. 深すぎる構造を弾く
+  2. 式の末尾が文列リテラルである展開文にフラグを立てる
+  3. 位置情報に関数名・モジュール名を与える
+*)
+
+let rec scan_pat ~pname n (pat: pat) =
   if n > 10000 then failwith "too deep pattern";
-  let validate_pat_depth = validate_pat_depth (n + 1) in
+  set_pname_of_info pat.i pname;
+  let scan_pat = scan_pat ~pname (n + 1) in
   match pat.v with
   | PatVar _ | PatWild | PatInt _ | PatBool _ | PatUnit -> ();
   | PatCons (p1, p2) | PatPair (p1, p2) ->
-      validate_pat_depth p1;
-      validate_pat_depth p2;
+      scan_pat p1;
+      scan_pat p2;
   | PatList l ->
-      List.iter validate_pat_depth l;
+      List.iter scan_pat l;
 ;;
 
 (** 式の末尾の形 *)
 type tail_expr_kind = [`Stmts | `NonStmts ]
 
-(* 関数 scan_*** には3つの役割がある
-*)
-
-let rec scan_expr n (expr: expr) : tail_expr_kind =
+let rec scan_expr ~pname n (expr: expr) : tail_expr_kind =
   if n > 10000 then failwith "too deep expression";
-  let scan_expr = scan_expr (n + 1) in
+  set_pname_of_info expr.i pname;
+  let scan_expr = scan_expr ~pname (n + 1) in
   let scan_expr_u ex = ignore @@ scan_expr ex in
   match expr.v with
   | ExVar _ | ExInt _ | ExBool _ | ExStr _ | ExUnit -> `NonStmts;
@@ -136,7 +142,7 @@ let rec scan_expr n (expr: expr) : tail_expr_kind =
       `NonStmts
   | ExSelIdx (ex, _) -> scan_expr_u ex; `NonStmts
   | ExFun (pat, ex) ->
-      validate_pat_depth 0 pat;
+      scan_pat ~pname 0 pat;
       scan_expr_u ex;
       `NonStmts
   | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
@@ -152,10 +158,10 @@ let rec scan_expr n (expr: expr) : tail_expr_kind =
       if r1 = `Stmts && r2 = `Stmts then `Stmts
       else `NonStmts
   | ExBlock stmts ->
-      validate_stmts_depth (n + 1) stmts;
+      scan_stmts ~pname (n + 1) stmts;
       `Stmts
   | ExLet ((pat, ex1), ex2) ->
-      validate_pat_depth 0 pat;
+      scan_pat ~pname 0 pat;
       scan_expr_u ex1;
       scan_expr ex2
   | ExList el ->
@@ -165,19 +171,21 @@ let rec scan_expr n (expr: expr) : tail_expr_kind =
       let tails =
         List.rev_map
           (fun (pat, ex) ->
-            validate_pat_depth 0 pat;
+            scan_pat ~pname 0 pat;
             scan_expr ex )
           bindings
       in
       if List.for_all ((=) `Stmts) tails
         then `Stmts else `NonStmts
-and validate_stmts_depth n (stmts: stmts) =
+and scan_stmts ~pname n (stmts: stmts) =
   if n > 10000 then failwith "too deep statements";
-  let validate_stmts_depth = validate_stmts_depth (n + 1) in
-  let scan_expr = scan_expr (n + 1) in
+  let scan_stmts = scan_stmts ~pname (n + 1) in
+  let scan_expr = scan_expr ~pname (n + 1) in
   let scan_expr_u ex = ignore @@ scan_expr ex in
   List.iter
-    (fun st -> match st.v with
+    (fun st ->
+      set_pname_of_info st.i pname;
+      match st.v with
       | StAdd (_, ex, exopt) | StShift (_, ex, exopt) ->
           ignore @@ scan_expr ex;
           Option.iter scan_expr_u exopt;
@@ -189,52 +197,71 @@ and validate_stmts_depth n (stmts: stmts) =
       | StWhile (ex, stmts) | StIndexLoop (ex, stmts)
       | StDive (Some ex, stmts) | StIndexIf (ex, stmts) ->
           scan_expr_u ex;
-          validate_stmts_depth stmts;
+          scan_stmts stmts;
       | StDive (None, stmts) ->
-          validate_stmts_depth stmts;
+          scan_stmts stmts;
       | StIf (ex, ss, ssopt) ->
           scan_expr_u ex;
-          validate_stmts_depth ss;
-          Option.iter validate_stmts_depth ssopt;
+          scan_stmts ss;
+          Option.iter scan_stmts ssopt;
       | StAlloc (field, stmts) | StBuild (field, stmts) ->
-          validate_field_depth (n + 1) field;
-          validate_stmts_depth stmts;
+          scan_field ~pname (n + 1) field;
+          scan_stmts stmts;
     )
     stmts
-and validate_field_depth n (field: field) =
+and scan_field ~pname n (field: field) =
   if n > 10000 then failwith "too deep field";
   List.iter
-    (fun { v=(_, mtype); _ } ->
+    (fun { v=(_, mtype); i=info } ->
+      set_pname_of_info info pname;
       match mtype with
       | MtyExCell | MtyExIndex -> ()
       | MtyExArray { mem; length; } -> begin
           (match length with
             | None -> ()
             | Some expr ->
-                ignore @@ scan_expr (n + 1) expr;
+                ignore @@ scan_expr ~pname (n + 1) expr;
           );
-          validate_field_depth (n + 1) mem;
+          scan_field ~pname (n + 1) mem;
         end
     )
     field
 ;;
 
-let rec validate_mod_expr_depth n mod_expr =
+let rec scan_module_expr ~pname n mod_expr =
   if n > 10000 then failwith "too deep modules";
+  set_pname_of_info mod_expr.i pname;
   match mod_expr.v with
   | ModImport _ | ModVar _ -> ()
   | ModStruct prog ->
-      validate_program_depth (n + 1) prog
-and validate_program_depth n (prog: program) =
+      scan_program ~pname (n + 1) prog
+and scan_program ~pname n (prog: program) =
   List.iter
-    (fun top -> match top.v with
+    (fun top ->
+      set_pname_of_info top.i pname;
+      match top.v with
       | TopLet (pat, expr) ->
-          validate_pat_depth 0 pat;
-          ignore @@ scan_expr 0 expr;
+          let pname = match pat.v, pname with
+            | PatVar v, None -> Var.to_string v |> Option.some
+            | PatVar v, Some base ->
+                Printf.sprintf "%s:%s" base (Var.to_string v)
+                |> Option.some
+            | _ -> pname
+          in
+          scan_pat ~pname 0 pat;
+          ignore @@ scan_expr ~pname 0 expr;
       | TopCodegen stmts ->
-          validate_stmts_depth 0 stmts;
-      | TopOpen modex | TopInclude modex | TopModule (_, modex) ->
-          validate_mod_expr_depth n modex
+          scan_stmts ~pname:(Some "codegen") 0 stmts;
+      | TopOpen modex | TopInclude modex ->
+          scan_module_expr ~pname n modex
+      | TopModule (uvar, modex) ->
+          let pname =
+            Option.some @@
+            match pname with
+            | None -> UVar.to_string uvar
+            | Some base -> Printf.sprintf "%s:%s" base (UVar.to_string uvar)
+          in
+          scan_module_expr ~pname n modex
     )
     prog
 ;;
