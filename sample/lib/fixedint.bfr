@@ -314,6 +314,44 @@ let gen_mul a b dest = [
     [ *gen_reset_index darr@i ]
 ]
 
+let gen_mul_unsigned a b dest = [
+  **let an, aarr = a in
+    let bn, barr = b in
+    let dn, darr = dest in $
+  ;verify (an + bn = dn)
+
+  *gen_move_last dest
+
+  $dive darr@i
+  $alloc { dc }
+
+  *gen_move_last a
+  *gen_foreach aarr@i [
+    // a * b
+    *gen_move_last b
+    *gen_for_index barr@i
+      [ < barr@i  < darr@i ]
+      [
+        $dive barr@i
+        *gen_repeat_restore barr@i:digit [
+          $dive aarr@i
+          *gen_repeat_restore aarr@i:digit [
+            + darr@i:digit
+          ]
+        ]
+      ]
+    <!> darr@i [ < darr@i  + dc ]
+
+    // 繰り上げ
+    // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
+    *gen_move_last dest
+    *gen_carry_from_curr dest
+    + dc (bn - 2)
+    *gen_repeat dc [ > darr@i ]
+  ]
+  *gen_reset_index darr@i
+]
+
 
 // input: a b
 // output: (a + b) (a * b)
@@ -325,7 +363,7 @@ codegen [
   *gen_input ' ' a
   *gen_input '\n' b
 
-  *gen_mul a b c
+  *gen_mul2 a b c
   *gen_add a b
 
   *gen_print b
