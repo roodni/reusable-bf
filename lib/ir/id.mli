@@ -1,7 +1,7 @@
 type t
 
 val gen_special: string -> t
-val gen_named: string -> t
+val gen_named: string -> string option -> t
 val gen_merged: t list -> t
 
 val number_only_name: t -> string

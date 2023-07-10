@@ -5,8 +5,8 @@ open Support.Info
 
 (* テープの状態を比較するテスト *)
 
-let a = Id.gen_named "a"
-let p = Id.gen_named "p"
+let a = Id.gen_named "a" None
+let p = Id.gen_named "p" None
 let layout : Layout.t =
   let open Layout in [
     ( a,

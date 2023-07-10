@@ -3,7 +3,7 @@ open Support.Info
 open Syntax
 open Value
 
-open Printf
+(* open Printf *)
 
 type ctx =
   { envs: envs;
@@ -31,18 +31,18 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
     else ir_main.finite
   in
   let diving_index = if alloc then ctx.diving else None in
-  let rec gen ?parent_name ~sticky (nfield: Ir.Field.t) (field: field): irid_env =
+  let rec gen ~outermost ~sticky (nfield: Ir.Field.t) (field: field): irid_env =
+    (* outermost: 構文的に最も外側のメンバかどうか *)
     field
     |> List.fold_left
       (fun (env: irid_env) { i=info; v=(var, mtype) } : irid_env ->
         let trace = push_info info ctx.trace in
-        let irvar =
-          Ir.Id.gen_named
-            ( match parent_name with
-              | None -> Var.to_string var
-              | Some parent_name ->
-                  sprintf "%s/%s" parent_name (Var.to_string var) )
+        let pname = match get_pname_of_info info with
+          | _ when not outermost -> None
+          | Some "codegen" -> None
+          | p -> p
         in
+        let irvar = Ir.Id.gen_named (Var.to_string var) pname in
         match mtype with
         | MtyExCell ->
             Ir.Field.extend nfield irvar
@@ -62,19 +62,19 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
             let nmembers = Ir.Field.empty () in
             let narray = Ir.Field.Array { length; members=nmembers } in
             Ir.Field.extend nfield irvar narray;
-            let env_members = gen ~sticky:false nmembers mem in
+            let env_members = gen ~outermost:false ~sticky:false nmembers mem in
             VE.extend var (irvar, MtyArray { length=Some length; mem=env_members }) env
         | MtyExArray { length=None; mem } ->
             if nfield != ir_main.finite then
               Error.at trace Gen_Field_Unlimited_array_cannot_be_array_member;
-            let env_members = gen ~parent_name:(Var.to_string var) ~sticky:false ir_main.unlimited mem in
+            let env_members = gen ~outermost:false ~sticky:false ir_main.unlimited mem in
             VE.extend
               var
               (Ir.Field.uarray_id, MtyArray { length=None; mem=env_members })
               env
       ) VE.empty
   in
-  gen ~sticky:true ir_field field
+  gen ~outermost:true ~sticky:true ir_field field
 
 let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
   let nmain = Ir.Field.empty_main () in

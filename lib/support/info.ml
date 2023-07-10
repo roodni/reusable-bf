@@ -31,6 +31,7 @@ let create_info pos1 pos2 =
 
 let set_pname_of_info (Loc i) pname =
   i.parent_name <- pname
+let get_pname_of_info (Loc i) = i.parent_name
 
 let withinfo i v = { i; v; }
 let clearinfo { v; _ } = v

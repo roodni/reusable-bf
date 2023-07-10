@@ -4,6 +4,7 @@ type 'a withinfo = { i : info; v : 'a }
 
 val create_info : Lexing.position -> Lexing.position -> info
 val set_pname_of_info : info -> string option -> unit
+val get_pname_of_info : info -> string option
 
 val withinfo : info -> 'a -> 'a withinfo
 val clearinfo : 'a withinfo -> 'a
