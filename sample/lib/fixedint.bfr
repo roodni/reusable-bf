@@ -26,7 +26,8 @@ let gen_move_last (n, arr) = [
 
 // 現在のインデックスのある桁からdigitを繰り上げる
 // インデックスはゼロになる
-let gen_carry_from_curr (_, arr) = [
+// オーバーフロー時、溢れた数だけoverflowを実行する
+let gen_carry_from_curr (_, arr) overflow = [
   **let i = arr@i in $
   $dive i
 
@@ -37,14 +38,14 @@ let gen_carry_from_curr (_, arr) = [
     < i
   ]
   // i=0の桁は繰り上げない
-  *gen_const_div base i:digit []
+  *gen_const_div base i:digit [ *overflow ]
 ]
 
 let gen_add_const m fi = [
   **let _, arr = fi in $
   *gen_move_last fi
   + arr@i:digit m
-  *gen_carry_from_curr fi
+  *gen_carry_from_curr fi []
 ]
 
 let gen_incr fi = gen_add_const 1 fi
@@ -211,35 +212,84 @@ let gen_input ed fi = [
   ]
 ]
 
+// dest <- dest + src
 let gen_add src dest = [
   **let sn, sarr = src in
     let dn, darr = dest in $
+  ;verify (sn <= dn)
+
   *gen_move_last dest
   *gen_move_last src
+
   // 足す
-  *dive sarr@i [
-    <!> sarr@i [
+  *gen_for_index sarr@i
+    [ < sarr@i  < darr@i ]
+    [
       *gen_repeat_restore sarr@i:digit
         [ + darr@i:digit ]
-      < sarr@i
-      < darr@i
     ]
-    *gen_repeat_restore sarr@i:digit
-      [ + darr@i:digit ]
-  ]
   // 桁が違う場合に符号拡張
-  ;verify (sn <= dn)
-  *(if sn < dn then $
+  *if_gen (sn < dn)
+    [
       ? sarr:(0)digit
         [ <!> darr@i
             [ < darr@i  + darr@i:digit (base - 1) ]
         ]
         [ *gen_reset_index darr@i ]
-    else $)
+    ]
   // 繰り上げ
   *gen_move_last dest
-  *gen_carry_from_curr dest
+  *gen_carry_from_curr dest []
 ]
+
+let gen_add_unsigned src dest = [
+  **let sn, sarr = src in
+    let dn, darr = dest in $
+  ;verify (sn <= dn)
+  *gen_move_last dest
+  *gen_move_last src
+  *gen_for_index sarr@i
+    [ < sarr@i  < darr@i ]
+    [
+      *gen_repeat_restore sarr@i:digit
+        [ + darr@i:digit ]
+    ]
+  *if_gen (sn < dn)
+    [ *gen_reset_index darr@i ]
+  *gen_move_last dest
+  *gen_carry_from_curr dest []
+]
+
+
+// dest <- dest - src
+// overflow はキャリー演算のもの
+// 減算がオーバーフロー "しないとき" に限り1回実行される
+let gen_sub_unsigned src dest overflow = [
+  **let sn, sarr = src in
+    let dn, darr = dest in $
+  ;verify (sn <= dn)
+
+  *gen_move_last dest
+  *gen_move_last src
+
+  *gen_for_index sarr@i
+    [ < sarr@i  < darr@i ]
+    [
+      + darr@i:digit 9
+      *gen_repeat_restore sarr@i:digit
+        [ - darr@i:digit ]
+    ]
+
+  *if_gen (sn < dn)
+    [
+      <!> darr@i [ < darr@i  + darr@i:digit 9 ]
+    ]
+
+  *gen_move_last dest
+  + darr@i:digit
+  *gen_carry_from_curr dest [ *overflow ]
+]
+
 
 let gen_mul a b dest = [
   **let an, aarr = a in
@@ -285,7 +335,7 @@ let gen_mul a b dest = [
     // 繰り上げ
     // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
     *gen_move_last dest
-    *gen_carry_from_curr dest
+    *gen_carry_from_curr dest []
     + dc (bn - 2)
     *gen_repeat dc [ > darr@i ]
   ]
@@ -306,7 +356,7 @@ let gen_mul a b dest = [
             ]
           ]
         *gen_move_last dest
-        *gen_carry_from_curr dest
+        *gen_carry_from_curr dest []
         *gen_repeat dc [ > darr@i ]
         *gen_reset_index barr@i
       ]
@@ -345,7 +395,7 @@ let gen_mul_unsigned a b dest = [
     // 繰り上げ
     // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
     *gen_move_last dest
-    *gen_carry_from_curr dest
+    *gen_carry_from_curr dest []
     + dc (bn - 2)
     *gen_repeat dc [ > darr@i ]
   ]
@@ -353,20 +403,45 @@ let gen_mul_unsigned a b dest = [
 ]
 
 
-// input: a b
-// output: (a + b) (a * b)
+// (dest, rem) <- (dest / src, dest % rem)
+let gen_div_unsigned src dest rem = [
+  **let sn, sarr = src in
+    let dn, darr = dest in
+    let rn, rarr = rem in $
+  ;verify ((sn = dn && rn >= sn) || (sn < dn && rn >= sn + 1))
+
+  $dive darr@i
+  $alloc { dloop }
+  + dloop dn
+  ! dloop [
+    - dloop
+    *gen_lshift_to_right rem
+    *gen_reset_index rarr@i
+    *gen_repeat darr@i:digit [ + rarr:(rn - 1)digit ]
+
+    $alloc { cont }
+    + cont
+    ! cont [
+      - cont
+      *gen_sub_unsigned src rem
+        [ + darr@i:digit  + cont ]
+    ]
+    *gen_add_unsigned src rem
+
+    *gen_if_restore dloop [ > darr@i ]
+  ]
+  *gen_reset_index darr@i
+]
+
+
 codegen [
-  **gen_build 5 @@ fun a -> $
-  **gen_build 5 @@ fun b -> $
-  **gen_build 10 @@ fun c -> $
+  **gen_build 4 @@ fun n -> $
+  **gen_build 1 @@ fun three -> $
+  **gen_build 2 @@ fun rem -> $
 
-  *gen_input ' ' a
-  *gen_input '\n' b
+  *gen_input_unsigned '\n' n
+  *gen_add_const 3 three
 
-  *gen_mul2 a b c
-  *gen_add a b
-
-  *gen_print b
-  *gen_puts " "
-  *gen_print c
+  *gen_div_unsigned three n rem
+  *gen_print_unsigned_destructive n
 ]

@@ -1,0 +1,19 @@
+// https://atcoder.jp/contests/abc087/tasks/abc087_a
+
+open import "std.bfr"
+module I = import "fixedint.bfr"
+
+codegen $
+**I:gen_build 5 @@ fun x -> $
+**I:gen_build 4 @@ fun a -> $
+**I:gen_build 4 @@ fun b -> $
+**I:gen_build 5 @@ fun res -> $
+
+*I:gen_input_unsigned '\n' x
+*I:gen_input_unsigned '\n' a
+*I:gen_input_unsigned '\n' b
+
+*I:gen_sub_unsigned a x []
+*I:gen_div_unsigned b x res
+
+*I:gen_print_unsigned_destructive res

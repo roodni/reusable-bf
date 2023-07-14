@@ -70,7 +70,7 @@ let cases =
       [ ("A", "65"); ("0", "48"); ("{", "123") ];
     case "sample/misc/bf/counter_test.bfr"
       [ ("", "0\n123\n0\n4") ];
-    case "sample/lib/fixedint.bfr"  ~run_bfi:false
+    case "sample/misc/bf/fixedint_addmul.bfr"  ~run_bfi:false
       [ ("0 0\n", "0 0");
         ("12 34\n", "46 408");
         ("-1 2\n", "1 -2");

@@ -17,6 +17,10 @@ let dive i st = [
   *st
 ]
 
+let if_gen cond st =
+  if cond then st else []
+
+
 let gen_del x = [
   ! x [ - x ]
 ]
@@ -32,6 +36,15 @@ let gen_repeat_restore src block = [
     *block
   ]
   *gen_repeat backup [ + src ]
+]
+
+let gen_if_restore c st = [
+  $alloc { bu }
+  ! c [
+    *gen_repeat c [ + bu ]
+    *st
+  ]
+  *gen_repeat bu [ + c ]
 ]
 
 

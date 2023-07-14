@@ -1,0 +1,21 @@
+open import "std.bfr"
+open import "fixedint.bfr"
+
+// input: a b
+// output: (a + b) (a * b)
+
+codegen [
+  **gen_build 5 @@ fun a -> $
+  **gen_build 5 @@ fun b -> $
+  **gen_build 10 @@ fun c -> $
+
+  *gen_input ' ' a
+  *gen_input '\n' b
+
+  *gen_mul a b c
+  *gen_add a b
+
+  *gen_print b
+  *gen_puts " "
+  *gen_print c
+]
