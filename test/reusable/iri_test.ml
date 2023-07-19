@@ -35,7 +35,7 @@ let output_test =
 let error_test =
   let test_run (name, line_expe, msg_expe) =
     name >:: (fun _ ->
-      let dir = Filename.concat Testcase.source_root "sample/misc/error/execution" in
+      let dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
       let path = Filename.concat dir name in
       let program = Reusable.Program.load_from_source path in
       let field, ir_code =

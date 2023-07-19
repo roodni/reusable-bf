@@ -2,7 +2,7 @@ open OUnit2
 open Support.Info
 open Reusable
 
-let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "sample/misc/error"
+let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "examples/misc/error"
 
 let test_error ?(path_limit=Program.NoLimit) (filename, f) =
   filename >:: fun _ ->

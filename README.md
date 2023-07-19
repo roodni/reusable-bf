@@ -56,17 +56,17 @@ opam install .
 
 ### サンプルプログラムの実行例
 
-* `sample/hello.bfr`: Hello World!
+* `examples/hello.bfr`: Hello World!
   ```sh
-  bfre -r sample/hello.bfr
+  bfre -r examples/hello.bfr
   ```
 
-* `sample/bfi.bfr`: brainfuckインタプリタ
+* `examples/bfi.bfr`: brainfuckインタプリタ
   ```sh
   mkdir _sandbox
   cd _sandbox
-  bfre ../sample/bfi.bfr > bfi.b
-  bfre ../sample/hello.bfr > hello.b
+  bfre ../examples/bfi.bfr > bfi.b
+  bfre ../examples/hello.bfr > hello.b
 
   # hello.b を実行する
   echo '\' >> hello.b

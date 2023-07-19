@@ -2,7 +2,7 @@ open OUnit2
 
 
 module BfI = struct
-  let filename = Filename.concat Testcase.source_root "sample/bfi.bfr"
+  let filename = Filename.concat Testcase.source_root "examples/bfi.bfr"
   let bf_exe =
     Reusable.Program.gen_bf_from_source filename
     |> Bf.Exe.from_code
