@@ -95,10 +95,10 @@ let output ppf output_annot code =
             fprintf ppf "%c %s %d" cmdc (Sel.to_string sel) (abs n);
             output_annot ppf annot;
         | Put sel ->
-            fprintf ppf ". %s" (Sel.to_string sel);
+            fprintf ppf "$put %s" (Sel.to_string sel);
             output_annot ppf annot;
         | Get sel ->
-            fprintf ppf ", %s" (Sel.to_string sel);
+            fprintf ppf "$get %s" (Sel.to_string sel);
             output_annot ppf annot;
         | Reset sel ->
             fprintf ppf "$reset %s" (Sel.to_string sel);

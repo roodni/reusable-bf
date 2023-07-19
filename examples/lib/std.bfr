@@ -77,7 +77,7 @@ let gen_puts s = [
               then [ + c (curr - prev) ]
               else [ *gen_del c  + c curr ]
           in
-          [ *out  . c  *loop curr rest ]
+          [ *out  $put c  *loop curr rest ]
     ) 0 (string_to_list s)
 ]
 

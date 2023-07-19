@@ -38,7 +38,7 @@ let gen_puts2 s = [
               *gen_short_incr c curr
             ]
           in
-          [ *out  . c  *loop curr rest ]
+          [ *out  $put c  *loop curr rest ]
     ) 0 (string_to_list s)
 ]
 

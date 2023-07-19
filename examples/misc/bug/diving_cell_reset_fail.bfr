@@ -16,7 +16,7 @@ $build {
     $alloc { x: cell; }
     < a@i
     + x '!'
-    . x
+    $put x
   ]
 
   > a@i

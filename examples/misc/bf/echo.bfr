@@ -29,7 +29,7 @@ $build { cont }
   - cont
   $alloc { input; diff; }
   , input
-  . input
+  $put input
   + diff '#'
   *if_eq input diff [ + cont ]
 ]

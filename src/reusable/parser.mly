@@ -34,6 +34,7 @@ open Syntax
 %token <Support.Info.info> ST  // $
 %token <Support.Info.info> ST_ALLOC ST_BUILD
 %token <Support.Info.info> ST_DIVE
+%token <Support.Info.info> ST_PUT ST_GET
 
 %token <Support.Info.info> CELL INDEX ARRAY
 %token <Support.Info.info> FUN
@@ -137,7 +138,8 @@ stmts:
 stmt:
   | i=PLUS es=expr ei=expr? { withinfo i @@ StAdd (1, es, ei) }
   | i=MINUS es=expr ei=expr? { withinfo i @@ StAdd (-1, es, ei) }
-  | i=DOT e=expr { withinfo i @@ StPut e }
+  | i=ST_PUT e=expr { withinfo i @@ StPut e }
+  | i=ST_GET e=expr { withinfo i @@ StGet e }
   | i=COMMA e=expr { withinfo i @@ StGet e }
   | i=RSHIFT ep=expr { withinfo i @@ StShift (1, ep, None) }
   | i=LSHIFT ep=expr { withinfo i @@ StShift (-1, ep, None) }
