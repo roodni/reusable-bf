@@ -4,34 +4,34 @@ module I = import "fixedint.bfr"
 
 codegen $
 
-**I:gen_build 5 @@ fun a -> $
-**I:gen_build 5 @@ fun b -> $
-**I:gen_build 10 @@ fun x -> $
+**I.gen_build 5 @@ fun a -> $
+**I.gen_build 5 @@ fun b -> $
+**I.gen_build 10 @@ fun x -> $
 
 
-*I:gen_input ' ' a
-*I:gen_input '\n' b
+*I.gen_input ' ' a
+*I.gen_input '\n' b
 
 // x <- a * b
-*I:gen_mul a b x
+*I.gen_mul a b x
 
 // b <- max(a + b, a - b)
-*I:gen_abs b
-*I:gen_add a b
+*I.gen_abs b
+*I.gen_add a b
 
-*I:gen_neg b
-*I:gen_add b x
-*I:gen_neg b
+*I.gen_neg b
+*I.gen_add b x
+*I.gen_neg b
 
-*I:gen_if_neg x
+*I.gen_if_neg x
   [
     // x < b
-    *I:gen_print_destructive b
+    *I.gen_print_destructive b
   ]
   [
     // x >= b
-    *I:gen_add b x
-    *I:gen_print_destructive x
+    *I.gen_add b x
+    *I.gen_print_destructive x
   ]
 
 *gen_puts "\n"

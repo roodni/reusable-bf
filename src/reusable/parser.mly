@@ -179,7 +179,7 @@ expr:
   | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 ExUnit }
 
 uvar_list:
-  | uv=UVAR COLON l=uvar_list { uv :: l }
+  | uv=UVAR DOT l=uvar_list { uv :: l }
   | { [] }
 
 expr_semi_list:

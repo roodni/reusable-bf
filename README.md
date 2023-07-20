@@ -25,7 +25,7 @@ let gen_puts s = [
       | () -> []
       | hd :: tl -> [
           + c (hd - prev)
-          . c
+          $put c
           *loop hd tl
         ]
     )

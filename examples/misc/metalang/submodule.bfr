@@ -22,7 +22,7 @@ let gen_put n = [
 ]
 
 codegen $
-*gen_put Alpha:a
-*gen_put Alpha:Beta:b
-*gen_put Alpha:Beta:Gamma:c
-*gen_put Alpha:X:c
+*gen_put Alpha.a
+*gen_put Alpha.Beta.b
+*gen_put Alpha.Beta.Gamma.c
+*gen_put Alpha.X.c

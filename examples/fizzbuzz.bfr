@@ -3,7 +3,7 @@ module Counter = import "counter.bfr"
   (* sample/lib 以下のライブラリはimportの検索対象 *)
 
 codegen [
-  **Counter:gen_build @@ fun counter -> $
+  **Counter.gen_build @@ fun counter -> $
 
   $build {
     n: cell;
@@ -16,14 +16,14 @@ codegen [
   + buzz 5
   ! n [
     - n
-    *Counter:gen_incr counter
+    *Counter.gen_incr counter
     $alloc { fb: cell; }
     + fb 2
     - fizz
     ? fizz [ - fb ] [ + fizz 3  *gen_puts "Fizz" ]
     - buzz
     ? buzz [ - fb ] [ + buzz 5  *gen_puts "Buzz" ]
-    ? fb [] [ *Counter:gen_print counter ]
+    ? fb [] [ *Counter.gen_print counter ]
     *gen_puts " "
   ]
 ]

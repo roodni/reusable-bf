@@ -15,8 +15,8 @@ let p2 = gen_putc x
 
 codegen [
   *gen_putc b
-  *gen_putc C:c
+  *gen_putc C.c
   *p1
   *p2
-  *gen_putc C:x
+  *gen_putc C.x
 ]
