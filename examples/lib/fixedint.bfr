@@ -16,6 +16,13 @@ let gen_build n st = [
 ]
 
 
+// 指定した桁にアクセスする。0-indexed
+let get_digit_cell i src =
+  let n, arr = src in
+  let {} = verify (0 <= i && i < n) in
+  arr:(n - i - 1)digit
+
+
 let gen_move_last (n, arr) = [
   **let i = arr@i in $
   $dive i
@@ -23,6 +30,15 @@ let gen_move_last (n, arr) = [
   + c (n - 1)
   ! c [ - c  > i ]
 ]
+
+// 数値をゼロにする
+let gen_zero dest =
+  let (n, arr) = dest in [
+    *gen_move_last dest
+    *gen_foreach arr@i [
+      *gen_del arr@i:digit
+    ]
+  ]
 
 // 現在のインデックスのある桁からdigitを繰り上げる
 // インデックスはゼロになる
@@ -41,14 +57,52 @@ let gen_carry_from_curr (_, arr) overflow = [
   *gen_const_div base i:digit [ *overflow ]
 ]
 
-let gen_add_const m fi = [
-  **let _, arr = fi in $
-  *gen_move_last fi
-  + arr@i:digit m
-  *gen_carry_from_curr fi []
-]
+let gen_add_const m fi =
+  let n, arr = fi in
+  let m =
+    if m < 0 then power base n + m
+    else m
+  in
+  let digits =
+    // example: 4321 -> (0; 4; 3; 2; 1)
+    fix
+      (fun get_digits m n li ->
+        if n = 0 then li
+        else get_digits (m / base) (n - 1) (m mod base :: li)
+      ) m n ()
+  in
+  [
+    *fix
+      (fun loop li -> match li with
+        | () -> failwith "never"
+        | d :: () -> [ + arr@i:digit d ]
+        | d :: l -> [
+            + arr@i:digit d  > arr@i
+            *loop l
+          ]
+      ) digits
+    *gen_carry_from_curr fi []
+  ]
 
 let gen_incr fi = gen_add_const 1 fi
+
+// 定数倍
+// 定数が大きすぎるとオーバーフローすることがある
+let gen_mul_const a dest =
+  let {} = verify (a >= 0) in
+  let _, arr = dest in
+  [
+    *gen_move_last dest
+    *gen_foreach arr@i [
+      $dive arr@i
+      $alloc { bu }
+      *gen_repeat arr@i:digit [ + bu a ]
+      *gen_repeat bu [ + arr@i:digit ]
+    ]
+    *gen_move_last dest
+    *gen_carry_from_curr dest []
+  ]
+
 
 let gen_print_unsigned (n, arr) = [
   **let i = arr@i in $
@@ -405,7 +459,7 @@ let gen_mul_unsigned a b dest = [
 ]
 
 
-// (dest, rem) <- (dest / src, dest % rem)
+// (dest, rem) <- (dest / src, dest % src)
 let gen_div_unsigned src dest rem = [
   **let sn, sarr = src in
     let dn, darr = dest in
@@ -433,6 +487,30 @@ let gen_div_unsigned src dest rem = [
     *gen_if_restore dloop [ > darr@i ]
   ]
   *gen_reset_index darr@i
+]
+
+
+// dest <- src
+//   destの桁数よりsrcの桁数が大きい場合、切り捨て
+(*
+let gen_copy src dest =
+  let (sn, sarr) = src in
+  let (dn, darr) = dest in [
+    // TODO: 複数行シフトを実装したらまともな実装にする
+    *gen_zero dest
+    *gen_add_unsigned src dest
+  ]
+*)
+
+// dest <- min(src, dest)
+//   dest's digits must be bigger than src's digits
+let gen_min_unsigned src dest = [
+  *gen_sub_unsigned src dest
+    [
+      // dest is bigger
+      *gen_zero dest
+    ]
+  *gen_add_unsigned src dest
 ]
 
 

@@ -1,3 +1,7 @@
+let fix f =
+  let g x = f (fun y -> x x y) in
+  g g
+
 // falseのとき落ちる
 let verify cond =
   if cond then {}
@@ -5,9 +9,15 @@ let verify cond =
 
 let abs i = if i < 0 then -i else i
 
-let fix f =
-  let g x = f (fun y -> x x y) in
-  g g
+let max a b = if a < b then b else a
+let min a b = if a < b then a else b
+
+let power x a =
+  fix (fun loop a accu ->
+    if a < 0 then failwith "Expotent must be non-negative"
+    else if a = 0 then accu
+    else loop (a - 1) (x * accu)
+  ) a 1
 
 (* $dive のラップ
    有効範囲を限りたいときに使う
