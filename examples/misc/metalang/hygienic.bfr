@@ -8,5 +8,5 @@ let f = fun block -> [
 codegen [
   $build { hoge }
   + hoge 'O'
-  *f [ $put hoge ]
+  *f [ . hoge ]
 ]

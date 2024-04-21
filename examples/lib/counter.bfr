@@ -42,7 +42,7 @@ let gen_print counter = [
     [ $alloc { x: cell; }
       + x ('9' + 1)
       *gen_repeat i:n [ - x ]
-      $put x
+      . x
       + i:n ('9' + 1)
       *gen_repeat x [ - i:n ]
       < i

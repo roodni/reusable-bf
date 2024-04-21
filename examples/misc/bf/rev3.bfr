@@ -25,5 +25,5 @@ $alloc { f }
 < p
 <!> p [
   < p
-  $put c
+  . c
 ]

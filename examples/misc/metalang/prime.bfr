@@ -21,7 +21,7 @@ codegen [
       if i < 100 then [
         *(if is_prime i then [
             *puti i
-            $put sp
+            . sp
           ] else [] )
         *loop (i + 1)
       ] else [])

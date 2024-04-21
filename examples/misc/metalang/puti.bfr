@@ -10,7 +10,7 @@ let puti = fun n -> [
       [ *(if rest = 0 then []
          else loop rest )
         + x (digit - rest mod 10)
-        $put x
+        . x
       ]
     ) n
 ]

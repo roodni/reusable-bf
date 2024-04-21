@@ -17,6 +17,6 @@ $build {
 < buf@p
 ! buf@p:c [
   + buf@p:c '\n'
-  $put buf@p:c
+  . buf@p:c
   < buf@p
 ]

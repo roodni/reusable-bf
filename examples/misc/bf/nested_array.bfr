@@ -59,23 +59,23 @@ $build {
 > a@i:b@i
 + a@i:b@i:r
 
-$put x
-$put y
-$put p
+. x
+. y
+. p
 
-$put a:(0)q
-$put a:(1)q
+. a:(0)q
+. a:(1)q
 
-$put a:(0)b:(0)r
-$put a:(0)b:(1)r
-$put a:(1)b:(0)r
-$put a:(1)b:(1)r
+. a:(0)b:(0)r
+. a:(0)b:(1)r
+. a:(1)b:(0)r
+. a:(1)b:(1)r
 
-$put a2:(0)m
-$put a2:(1)m
-$put a2:(2)m
+. a2:(0)m
+. a2:(1)m
+. a2:(2)m
 
-$put ua:(0)c:(0)m
-$put ua:(0)c:(1)m
-$put ua:(1)c:(0)m
-$put ua:(1)c:(1)m
+. ua:(0)c:(0)m
+. ua:(0)c:(1)m
+. ua:(1)c:(0)m
+. ua:(1)c:(1)m

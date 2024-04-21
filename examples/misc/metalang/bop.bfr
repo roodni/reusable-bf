@@ -33,5 +33,5 @@ codegen [
     else $
      + x 'X'
    )
-  $put x
+  . x
 ]

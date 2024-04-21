@@ -99,7 +99,7 @@ $build {
           *gen_repeat depth_cur [ + p:depth ]
           < p
         ];
-        [ $put tape@p:v ];
+        [ . tape@p:v ];
       )
       [ , tape@p:v ]
     > p

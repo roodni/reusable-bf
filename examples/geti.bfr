@@ -20,5 +20,5 @@ let gen_geti dest ed = [
 codegen [
   $alloc { n: cell; }
   *gen_geti n '\n'
-  $put n
+  . n
 ]

@@ -17,11 +17,11 @@ $build {
 - x '0'
 
 *gen_switch_nat x
-  ( [ $put b ];  // case 0
-    [ $put f ];  // case 1
-    [ $put r ];  // case 2
+  ( [ . b ];  // case 0
+    [ . f ];  // case 1
+    [ . r ];  // case 2
   )
   [ // default
     + x '0'
-    $put x
+    . x
   ]

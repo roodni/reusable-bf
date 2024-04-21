@@ -14,6 +14,6 @@ $alloc {a; b}
 *)
 ! a [
   + a ('A' - 1)
-  $put a
+  . a
   *gen_del a
 ]

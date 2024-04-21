@@ -1,7 +1,7 @@
 let gen_putc c = [
   $alloc { x: cell; }
   + x c
-  $put x
+  . x
 ]
 
 let x = '1'

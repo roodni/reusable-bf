@@ -18,7 +18,7 @@ end
 let gen_put n = [
   $alloc { c }
   + c ('A' + n)
-  $put c
+  . c
 ]
 
 codegen $

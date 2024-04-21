@@ -26,12 +26,12 @@ $build { x; a }
 *gen_ifelse x
   [ - x
     *gen_ifelse x
-      [ $put a ]
-      [ + a 1  $put a ]
+      [ . a ]
+      [ + a 1  . a ]
   ]
   [
     *gen_geti x '\n'
     *gen_ifelse x
-      [ + a 2  $put a ]
-      [ + a 3  $put a ]
+      [ + a 2  . a ]
+      [ + a 3  . a ]
   ]

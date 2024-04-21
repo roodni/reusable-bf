@@ -3,5 +3,5 @@ let f (a, b) c = a * b * 10 + c
 codegen [
   $build {x}
   + x (f (2, 3) 5)
-  $put x
+  . x
 ]

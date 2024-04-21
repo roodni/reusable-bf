@@ -127,8 +127,6 @@ and main = parse
   | "$alloc" { P.ST_ALLOC (info lexbuf) }
   | "$build" { P.ST_BUILD (info lexbuf) }
   | "$dive" { P.ST_DIVE (info lexbuf) }
-  | "$put" { P.ST_PUT (info lexbuf) }
-  | "$get" { P.ST_GET (info lexbuf) }
   | "0" | ['1'-'9'] ['0'-'9']* {
       match int_of_string_opt (Lexing.lexeme lexbuf) with
       | Some i -> P.INT (withinfo (info lexbuf) i)

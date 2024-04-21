@@ -2,5 +2,5 @@ codegen [
   $build {
     a: array(3) { i: index }
   }
-  $put a:i
+  . a:i
 ]

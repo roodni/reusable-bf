@@ -119,7 +119,7 @@ let gen_print_unsigned (n, arr) = [
   + c
   ! c [
     + i:digit '0'
-    $put i:digit
+    . i:digit
     - i:digit '0'
     - c
     ! c [ *gen_repeat c [ + zc ]  > i ]
@@ -143,7 +143,7 @@ let gen_print_unsigned_destructive (n, arr) = [
   + c
   ! c [
     + i:digit '0'
-    $put i:digit
+    . i:digit
     - c
     ! c [ *gen_repeat c [ + zc ]  > i ]
     *gen_repeat zc [ + c ]
@@ -185,8 +185,7 @@ let gen_print fi = [
   **let _, arr = fi in $
   $alloc { is_neg }
   ? arr:(0)digit
-    [ + is_neg '-'
-      $put is_neg
+    [ + is_neg '-'  . is_neg
       *gen_neg fi
     ]
     []
@@ -203,8 +202,7 @@ let gen_print_destructive fi = [
     [
       *dive arr@i [
         $alloc { minus }
-        + minus '-'
-        $put minus
+        + minus '-'  . minus
       ]
       *gen_neg fi
     ]

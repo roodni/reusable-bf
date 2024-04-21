@@ -29,4 +29,4 @@ $alloc {y}
 *gen_del x
 > a@i
 + x 'A'
-$put x
+. x
