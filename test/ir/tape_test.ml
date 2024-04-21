@@ -20,9 +20,12 @@ let layout : Layout.t =
         length = None;
       } );
   ]
-let program =
-  let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a } in
-  let a = Sel.Member a in
+
+let ap_a0 = Sel.Array { name=a; index_opt=None; offset=0; member=Sel.Member a }
+let ap_a = Sel.Array { name=a; index_opt=Some p; offset=0; member=Sel.Member a }
+let a = Sel.Member a
+
+let program1 =
   [ Code.Add (3, ap_a);
     Shift { n=1; index=(a, p); followers=[] };
     Add (5, ap_a);
@@ -31,10 +34,25 @@ let program =
     Shift { n=(-1); index=(a, p); followers=[] };
     Add (-1, ap_a);
   ] |> Code.from_cmds empty_trace
+let expected1 = [0; 3; 1; 4; 0; 7]
 
-let expected = [0; 3; 1; 4; 0; 7]
+let program2 =
+  [ Code.Shift { n=4; index=(a, p); followers=[] };
+    Add (10, ap_a);
+  ] |> Code.from_cmds empty_trace
+let expected2 = [0; 0;1; 0;1; 0;1; 0;1; 10]
 
-let test = "shift" >:: (fun _ ->
+let program3 =
+  [ Code.Shift { n=4; index=(a, p); followers=[] };
+    Add (10, ap_a);
+    Add (100, ap_a0);
+    Shift { n=(-2); index=(a, p); followers=[] };
+    Add (20, ap_a)
+  ] |> Code.from_cmds empty_trace
+let expected3 = [0; 100;1; 0;1; 20;0; 0;0; 10; 0]
+
+let test_run (name, program, expected) =
+  name >:: (fun _ ->
     let bf = BfGen.gen_bf layout program in
     let _, dump, _ =
       Bf.Exe.run_string
@@ -52,4 +70,11 @@ let test = "shift" >:: (fun _ ->
     assert_equal ~printer:string_of_int ptr_max dump.p_max
   )
 
-let () = run_test_tt_main test
+let tests = "tape" >:::
+  List.map test_run
+    [ ("shift1", program1, expected1);
+      ("shift2", program2, expected2);
+      ("shift3", program3, expected3);
+    ]
+
+let () = run_test_tt_main tests

@@ -24,11 +24,7 @@ let get_digit_cell i src =
 
 
 let gen_move_last (n, arr) = [
-  **let i = arr@i in $
-  $dive i
-  $alloc { c }
-  + c (n - 1)
-  ! c [ - c  > i ]
+  > arr@i (n - 1)
 ]
 
 // 数値をゼロにする

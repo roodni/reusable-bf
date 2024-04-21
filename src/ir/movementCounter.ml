@@ -144,10 +144,11 @@ let from_code (code: 'a Code.t): t =
             in
             match n with
             | 0 -> curr_sel
-            | 1 ->
+            | _ when n > 0 ->
+                (* 絶対値が2以上の場合は正確じゃないが、もう知らん *)
                 add_sel_to_sel tbl curr_sel index_sel;
                 prev_index_sel
-            | -1 ->
+            | _ when n < 0 ->
                 add_sel_to_sel tbl curr_sel prev_index_sel;
                 index_sel
             | _ -> assert false

@@ -139,8 +139,8 @@ stmt:
   | i=MINUS es=expr ei=expr? { withinfo i @@ StAdd (-1, es, ei) }
   | i=DOT e=expr { withinfo i @@ StPut e }
   | i=COMMA e=expr { withinfo i @@ StGet e }
-  | i=RSHIFT ep=expr { withinfo i @@ StShift (1, ep, None) }
-  | i=LSHIFT ep=expr { withinfo i @@ StShift (-1, ep, None) }
+  | i=RSHIFT ep=expr ei=expr? { withinfo i @@ StShift (1, ep, ei) }
+  | i=LSHIFT ep=expr ei=expr? { withinfo i @@ StShift (-1, ep, ei) }
   | i=EXCL e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StWhile (e, sl) }
   | i=QUES e=expr LBRACKET sl_t=stmts RBRACKET LBRACKET sl_e=stmts RBRACKET {
       withinfo i @@ StIf (e, sl_t, Some sl_e)

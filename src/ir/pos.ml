@@ -81,13 +81,13 @@ let rec from_sel layout = function
               )
     end
 
-let from_sel_to_cell layout sel =
+let from_sel_of_cell layout sel =
   let selected = from_sel layout sel in
   match selected with
   | SCell p -> p
   | SIfable { pos_cond; _ } -> pos_cond
 
-let from_sel_to_ifable layout sel =
+let from_sel_of_ifable layout sel =
   let selected = from_sel layout sel in
   match selected with
   | SCell _ -> assert false

@@ -154,9 +154,6 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             let i = sign * match ex_i_opt with
               | None -> 1
               | Some ex_i ->
-                  (* XXX: いまのところ2以上のシフトは未実装
-                     Parserで無効にしている
-                  *)
                   eval envs ex_i |> Va.to_int trace ex_i.i
             in
             (* シフト時に移動させられるdiving下の一時セルのid *)
@@ -229,7 +226,9 @@ let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
             in
             let ctx = { ctx with envs; diving_fields; } in
             let (), code_child = gen ctx stmts in
-            (* ゼロ初期化は開始時と終了時に行う
+            (* ゼロ初期化は開始時と終了時に行う。
+               開始時の初期化は最適化のため。
+               終了時の初期化は何のためにやってるのか忘れた。なんだっけ？
                IRの最適化である程度消える *)
             ((), code_init @ code_child @ code_end)
         | StExpand { ex_stmts; req_trace } ->
