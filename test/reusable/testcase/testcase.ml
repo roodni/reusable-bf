@@ -68,14 +68,20 @@ let cases =
       [ ("A", "A"); ("B", "") ];
     case "examples/lib/counter.bfr"
       [ ("A", "65"); ("0", "48"); ("{", "123") ];
-    case "examples/misc/bf/counter_test.bfr"
+    case "examples/misc/libtest/counter/counter_test.bfr"
       [ ("", "0\n123\n0\n4") ];
-    case "examples/misc/bf/fixedint_addmul.bfr"  ~run_bfi:false
+    case "examples/misc/libtest/fixedint/fixedint_addmul.bfr" ~run_bfi:false
       [ ("0 0\n", "0 0");
         ("12 34\n", "46 408");
         ("-1 2\n", "1 -2");
         ("3 -4\n", "-1 -12");
         ("-5 -6\n", "-11 30");
+      ];
+    case "examples/misc/libtest/fixedint/abc087a.bfr" ~run_bfi:false
+      [ ("1234\n150\n100\n", "84");
+        ("1000\n108\n108\n", "28");
+        ("579\n123\n456\n", "0");
+        ("7477\n549\n593\n", "405");
       ];
     case "examples/addsubmul.bfr" ~run_bfi:false
       [ ("3 1\n", "4\n");
