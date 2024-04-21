@@ -93,7 +93,6 @@ end
 type ctx =
   { envs: envs;
     ex_envs: envs; (* エクスポートされる環境 *)
-    top_gen_opt: top_gen option;
     curr_dirname: string;
     filemap: FileMap.t;
     path_limit: path_limit;
@@ -107,11 +106,6 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
         envs = Envs.extend_with_value_env env ctx.envs;
         ex_envs = Envs.extend_with_value_env env ctx.ex_envs;
       }
-  | TopCodegen top_gen ->
-      if Option.is_some ctx.top_gen_opt then
-        Error.top toplevel.i Top_Duplicated_codegen
-      else
-        { ctx with top_gen_opt=Some top_gen }
   | TopOpen mod_ex ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with envs = Envs.import mod_envs ctx.envs }
@@ -143,7 +137,6 @@ and eval_mod_expr ctx mod_expr =
           let ctx' = {
             envs = Envs.initial;
             ex_envs = Envs.empty;
-            top_gen_opt = None;
             curr_dirname = Filename.dirname path;
             filemap = FileMap.add path Loading ctx.filemap;
             path_limit = NoLimit; (* import先でのimportは信用する *)
@@ -158,7 +151,6 @@ and eval_mod_expr ctx mod_expr =
       let ctx' = {
         ctx with
         ex_envs = Envs.empty;
-        top_gen_opt = None;
       } in
       let ctx' = eval_toplevels ctx' prog in
       ({ ctx with filemap = ctx'.filemap }, ctx'.ex_envs)
@@ -180,15 +172,16 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   let ctx = {
     envs = Envs.initial;
     ex_envs = Envs.empty;
-    top_gen_opt = None;
     curr_dirname = dirname;
     filemap = FileMap.empty;
     path_limit;
   } in
   let ctx = eval_toplevels ctx program in
-  match ctx.top_gen_opt with
-  | None -> Error.unknown Top_Missing_codegen
-  | Some top_gen -> IrGen.generate ctx.envs top_gen
+  match VE.lookup (Var.of_string "main") ctx.ex_envs.va_env with
+  | None -> Error.unknown Top_Missing_main
+  | Some (VaBlock (envs, stmts)) -> IrGen.generate envs stmts
+  | Some _ -> Error.unknown Top_main_is_not_stmts
+;;
 
 let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
   let dirname = Filename.dirname path in

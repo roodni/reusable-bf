@@ -32,7 +32,7 @@ let gen_puts s = [
     0 (string_to_list s)
 ]
 
-codegen [ *gen_puts "Hello World!\n" ]
+let main = [ *gen_puts "Hello World!\n" ]
 ```
 
 ## インストール

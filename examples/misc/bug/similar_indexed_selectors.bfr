@@ -2,7 +2,7 @@
    インデックスのoffset_of_index_in_arrayが同じとき
    配列が異なっても同一インデックスとして扱われた
 *)
-codegen $
+let main = $
 
 $build {
   reset: cell;

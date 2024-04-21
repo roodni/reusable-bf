@@ -508,7 +508,7 @@ let gen_min_unsigned src dest = [
 ]
 
 
-codegen [
+let main = [
   **gen_build 4 @@ fun n -> $
   **gen_build 1 @@ fun three -> $
   **gen_build 2 @@ fun rem -> $

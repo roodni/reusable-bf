@@ -7,4 +7,4 @@ let _ =
     (fun loop _ -> 1 + loop 0)
     0
 
-codegen []
+let main = []

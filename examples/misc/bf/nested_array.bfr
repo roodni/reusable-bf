@@ -1,4 +1,4 @@
-codegen $
+let main = $
 
 $build {
   p: cell;

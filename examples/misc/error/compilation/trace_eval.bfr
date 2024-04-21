@@ -5,7 +5,7 @@ let f l = match l with
   | (a; b) -> [*gen_puts a  *gen_puts b]
   | (a; b; c;) -> [*gen_puts a  *gen_puts b  *gen_puts c]
 
-codegen [
+let main = [
   *f ("1")  // 型が違う
   *f ("2"; "3")
   *f ("4"; "5"; "6")

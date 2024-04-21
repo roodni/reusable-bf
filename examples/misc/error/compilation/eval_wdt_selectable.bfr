@@ -1,4 +1,4 @@
-codegen [
+let main = [
   $build { x }
   + x:(1)hoge
 ]

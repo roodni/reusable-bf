@@ -5,7 +5,7 @@ let f = fun block -> [
   *block
 ]
 
-codegen [
+let main = [
   $build { hoge }
   + hoge 'O'
   *f [ . hoge ]

@@ -25,16 +25,16 @@ type t =
   | Module_Limited_import
   | Module_import_file_not_found of string
   (* | Module_import_failed_to_read of string *)
-  | Top_Duplicated_codegen
-  | Top_Missing_codegen
+  | Top_Missing_main
+  | Top_main_is_not_stmts
   | Memory_Recursion_limit
 
 let output ppf msg =
   let pf fs = fprintf ppf fs in
   match msg with
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
-  | Top_Missing_codegen -> pf "There are no codegen declarations"
-  | Top_Duplicated_codegen -> pf "Codegen declarations are duplicated"
+  | Top_Missing_main -> pf "Variable 'main' is not defined at the top level"
+  | Top_main_is_not_stmts -> pf "The 'main' defined at the top level must be statements"
   | Module_Limited_import -> pf "This import path is not allowed"
   | Module_Recursive_import -> pf "This import is recursive"
   | Module_import_file_not_found path -> pf "The file '%s' is not found" path

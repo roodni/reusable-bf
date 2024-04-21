@@ -1,3 +1,3 @@
 let _ = 123 / 0
 
-codegen []
+let main = []

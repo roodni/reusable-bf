@@ -76,7 +76,7 @@ let generate_field ~alloc ctx (ir_main: Ir.Field.main) field =
   in
   gen ~outermost:true ~sticky:true ir_field field
 
-let generate (envs : envs) (stmts: top_gen) : Ir.Field.main * unit Ir.Code.t =
+let generate (envs : envs) (stmts: stmts) : Ir.Field.main * unit Ir.Code.t =
   let nmain = Ir.Field.empty_main () in
   let ctx = { envs; diving=None; diving_fields=[]; recn=0; trace=empty_trace } in
   let rec gen (ctx: ctx) (stmts: stmts): unit * unit Ir.Code.t =

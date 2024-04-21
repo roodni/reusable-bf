@@ -73,8 +73,8 @@ let cases =
     ( "lexer_large-int.bfr", expe_notrace Lexer_Too_large_int );
     ( "parser_1.bfr", expe_notrace Parser_Unexpected );
     ( "parser_2.bfr", expe_notrace Parser_Unexpected );
-    ( "top_codegen-dup.bfr", expe_notrace Top_Duplicated_codegen );
-    ( "top_codegen-missing.bfr", expe_notrace Top_Missing_codegen );
+    ( "top_codegen-wrongtype.bfr", expe_notrace Top_main_is_not_stmts );
+    ( "top_codegen-missing.bfr", expe_notrace Top_Missing_main );
     ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
     ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
     ( "memory_stack_eval.bfr", expe Memory_Recursion_limit );

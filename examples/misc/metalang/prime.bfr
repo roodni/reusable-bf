@@ -12,7 +12,7 @@ let is_prime = fun n ->
       else true)
     2
 
-codegen [
+let main = [
   $build {sp}
   + sp ' '
 

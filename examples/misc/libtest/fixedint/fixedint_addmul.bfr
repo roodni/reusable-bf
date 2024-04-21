@@ -4,7 +4,7 @@ open import "fixedint.bfr"
 // input: a b
 // output: (a + b) (a * b)
 
-codegen [
+let main = [
   **gen_build 5 @@ fun a -> $
   **gen_build 5 @@ fun b -> $
   **gen_build 10 @@ fun c -> $

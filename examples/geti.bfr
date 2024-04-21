@@ -17,7 +17,7 @@ let gen_geti dest ed = [
   ]
 ]
 
-codegen [
+let main = [
   $alloc { n: cell; }
   *gen_geti n '\n'
   . n

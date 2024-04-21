@@ -21,7 +21,7 @@ let if_eq = fun a -> fun b -> fun thn -> [
 ]
 
 
-codegen $
+let main = $
 
 $build { cont }
 + cont

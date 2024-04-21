@@ -1,6 +1,6 @@
 open import "std.bfr"
 
-codegen $
+let main = $
 
 $build {
   queens: array(_) { col; i:index; };

@@ -2,7 +2,7 @@ let b = [
   + 0
 ]
 
-codegen $
+let main = $
 
 **let {} = {} in
   let {} = {} in $  // これはトレースしたくない

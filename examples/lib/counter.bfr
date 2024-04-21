@@ -68,7 +68,7 @@ let gen_print_cell c counter = [
 ]
 
 // 例: 入力された文字のASCIIコードを10進数で出力
-codegen [
+let main = [
   **gen_build @@ fun cnt -> $
 
   $build { x }

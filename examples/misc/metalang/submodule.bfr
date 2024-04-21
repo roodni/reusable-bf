@@ -21,7 +21,7 @@ let gen_put n = [
   . c
 ]
 
-codegen $
+let main = $
 *gen_put Alpha:a
 *gen_put Alpha:Beta:b
 *gen_put Alpha:Beta:Gamma:c

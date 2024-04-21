@@ -7,4 +7,4 @@ let _ =
     (fun f l -> f (0 :: l))
     ()
 
-codegen []
+let main = []

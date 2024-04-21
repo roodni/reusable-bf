@@ -2,4 +2,4 @@
    昔はビルトイン関数 fst と snd で使っていた
 *)
 
-codegen []
+let main = []

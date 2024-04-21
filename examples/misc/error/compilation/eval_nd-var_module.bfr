@@ -3,4 +3,4 @@ module B = import "../../metalang/import_b.bfr"
 
 let _ = B:c
 
-codegen []
+let main = []

@@ -1,4 +1,4 @@
-codegen [
+let main = [
   $alloc {
     a: array(3) { x }
   }

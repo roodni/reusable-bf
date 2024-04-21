@@ -2,7 +2,7 @@ open import "std.bfr"
 module Counter = import "counter.bfr"
   (* sample/lib 以下のライブラリはimportの検索対象 *)
 
-codegen [
+let main = [
   **Counter:gen_build @@ fun counter -> $
 
   $build {

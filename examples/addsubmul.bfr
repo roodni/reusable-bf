@@ -2,7 +2,7 @@
 open import "std.bfr"
 module I = import "fixedint.bfr"
 
-codegen $
+let main = $
 
 **I:gen_build 5 @@ fun a -> $
 **I:gen_build 5 @@ fun b -> $

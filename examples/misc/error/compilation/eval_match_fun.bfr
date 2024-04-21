@@ -1,7 +1,7 @@
 let f (a, b) =
   a + b
 
-codegen [
+let main = [
   $build { x }
   + x (f 1 2)
 ]

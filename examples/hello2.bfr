@@ -42,4 +42,4 @@ let gen_puts2 s = [
     ) 0 (string_to_list s)
 ]
 
-codegen [ *gen_puts2 "Hello World!\n" ]
+let main = [ *gen_puts2 "Hello World!\n" ]

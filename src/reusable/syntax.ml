@@ -90,13 +90,10 @@ and mtype_expr =
       mem: field;
     }
 
-type top_gen = stmts
-
 type program = toplevel list
 and toplevel = toplevel' withinfo
 and toplevel' =
   | TopLet of let_binding
-  | TopCodegen of top_gen
   | TopOpen of mod_expr
   | TopInclude of mod_expr
   | TopModule of UVar.t * mod_expr
@@ -250,8 +247,6 @@ and scan_program ~pname n (prog: program) =
           in
           scan_pat ~pname 0 pat;
           ignore @@ scan_expr ~pname 0 expr;
-      | TopCodegen stmts ->
-          scan_stmts ~pname:(Some "codegen") 0 stmts;
       | TopOpen modex | TopInclude modex ->
           scan_module_expr ~pname n modex
       | TopModule (uvar, modex) ->

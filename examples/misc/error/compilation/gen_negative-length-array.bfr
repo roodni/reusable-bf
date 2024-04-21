@@ -1,4 +1,4 @@
-codegen $
+let main = $
   **let len = -1 in $
   $build {
     a: array(len) { x };

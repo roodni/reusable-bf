@@ -1,4 +1,4 @@
-codegen [
+let main = [
   $build {
     arr: array(3) { x }
   }

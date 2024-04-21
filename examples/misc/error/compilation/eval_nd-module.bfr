@@ -1,3 +1,3 @@
 let _ = M:x
 
-codegen []
+let main = []

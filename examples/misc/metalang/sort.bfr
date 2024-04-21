@@ -1,7 +1,7 @@
 open import "std.bfr"
 open import "./puti.bfr"
 
-codegen [
+let main = [
   **let compare = fun x y -> x - y in
     let l = sort compare (3; 7; 5; 6; 4) in $
   *dump_ilist l

@@ -1,4 +1,4 @@
-codegen $
+let main = $
 
 $build {a; b; c; d}
 

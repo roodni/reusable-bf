@@ -8,4 +8,4 @@ let i {} = h {}
 
 let _ = i {}
 
-codegen $
+let main = $

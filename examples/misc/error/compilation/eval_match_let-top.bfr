@@ -2,4 +2,4 @@ let a :: b =
   let _ = 12345 in
   ()
 
-codegen []
+let main = []

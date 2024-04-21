@@ -80,12 +80,10 @@ program:
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
-  | i=CODEGEN ST sl=stmts { [withinfo i @@ TopCodegen sl] }
   | { [] }
 
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
-  | i=CODEGEN LBRACKET sl=stmts RBRACKET { withinfo i @@ TopCodegen sl }
   | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
   | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
   | i=MODULE v=UVAR EQ m=mod_expr { withinfo i @@ TopModule (v.v, m) }

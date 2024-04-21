@@ -1,6 +1,6 @@
 let a, b = 6, 5
 
-codegen [
+let main = [
   $build {x}
   + x (a * 10 + 5)
   . x

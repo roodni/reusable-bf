@@ -1,6 +1,6 @@
 open import "std.bfr"
 
-codegen $
+let main = $
 
 $build {
   a: array(_) {

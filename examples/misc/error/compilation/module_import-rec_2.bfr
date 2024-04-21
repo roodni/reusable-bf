@@ -1,4 +1,4 @@
 open import
   "module_import-rec_1.bfr"
 
-codegen []
+let main = []

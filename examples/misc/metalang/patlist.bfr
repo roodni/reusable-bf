@@ -6,7 +6,7 @@ let f l = match l with
   | (a; b; c;) -> [*gen_puts a  *gen_puts b  *gen_puts c]
   | _ -> []
 
-codegen [
+let main = [
   *f ("1";)
   *f ("2"; "3")
   *f ("4"; "5"; "6")

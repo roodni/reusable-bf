@@ -26,7 +26,7 @@ let expe = (
   t;
 )
 
-codegen [
+let main = [
   $build {x}
   *(if res = expe then $
      + x 'O'
