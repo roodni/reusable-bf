@@ -6,7 +6,6 @@ let reserved = [
   ("_", fun i -> P.UNDER i);
   ("array", fun i -> P.ARRAY i);
   ("cell", fun i -> P.CELL i);
-  ("codegen", fun i -> P.CODEGEN i);
   ("else", fun i -> P.ELSE i);
   ("end", fun i -> P.END i);
   ("false", fun i -> P.FALSE i);
@@ -21,6 +20,7 @@ let reserved = [
   ("mod", fun i -> P.MOD i);
   ("module", fun i -> P.MODULE i);
   ("open", fun i -> P.OPEN i);
+  ("rec", fun i -> P.REC i);
   ("struct", fun i -> P.STRUCT i);
   ("then", fun i -> P.THEN i);
   ("true", fun i -> P.TRUE i);

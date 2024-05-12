@@ -37,7 +37,7 @@ open Syntax
 
 %token <Support.Info.info> CELL INDEX ARRAY
 %token <Support.Info.info> FUN
-%token <Support.Info.info> LET IN
+%token <Support.Info.info> LET IN REC
 %token <Support.Info.info> IF THEN ELSE
 %token <Support.Info.info> MATCH WITH
 
@@ -47,7 +47,6 @@ open Syntax
 %token <Support.Info.info> INCLUDE
 %token <Support.Info.info> STRUCT
 %token <Support.Info.info> END
-%token <Support.Info.info> CODEGEN
 
 %token <int Support.Info.withinfo> INT
 %token <char Support.Info.withinfo> CHAR
@@ -84,6 +83,7 @@ toplevel_list:
 
 toplevel:
   | i=LET lb=let_binding { withinfo i @@ TopLet lb }
+  | i=LET REC v=VAR b=let_rec_bounded { withinfo i @@ TopLetRec (v.v, b) }
   | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
   | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
   | i=MODULE v=UVAR EQ m=mod_expr { withinfo i @@ TopModule (v.v, m) }
@@ -199,7 +199,10 @@ expr_full:
       withinfo2 i ee.i @@ ExIf (ec, et, ee)
     } %prec prec_if
   | i=LET lb=let_binding IN e=expr_full {
-      withinfo2 i e.i @@ ExLet(lb, e)
+      withinfo2 i e.i @@ ExLet (lb, e)
+    } %prec prec_let
+  | i=LET REC v=VAR b=let_rec_bounded IN e=expr_full {
+      withinfo2 i e.i @@ ExLetRec (v.v, b, e)
     } %prec prec_let
   | i1=MATCH e=expr_full i2=WITH BAR? c=clauses {
       withinfo2 i1 i2 @@ ExMatch (e, c)
@@ -264,4 +267,11 @@ let_binding:
           e
       in
       (withinfo v.i @@ PatVar v.v, body)
+    }
+
+let_rec_bounded:
+  | pl=pat_simple* EQ e=expr_full {
+      List.fold_right
+        (fun arg body -> withinfo2 arg.i e.i @@ ExFun (arg, body))
+        pl e
     }

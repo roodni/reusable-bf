@@ -13,7 +13,7 @@ let load filename channel =
         | None -> assert false
       end
   in
-  scan_program ~pname:None 0 program;
+  scan_program ~pname:None program;
   program
 
 let lib_path =
@@ -102,6 +102,12 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
   match toplevel.v with
   | TopLet binding ->
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
+      { ctx with
+        envs = Envs.extend_with_value_env env ctx.envs;
+        ex_envs = Envs.extend_with_value_env env ctx.ex_envs;
+      }
+  | TopLetRec (v, ex) ->
+      let env = Eval.eval_let_rec ~recn:0 ctx.envs v ex in
       { ctx with
         envs = Envs.extend_with_value_env env ctx.envs;
         ex_envs = Envs.extend_with_value_env env ctx.ex_envs;

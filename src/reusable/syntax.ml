@@ -58,6 +58,7 @@ and expr' =
   | ExEqual of [`Eq | `Neq] * expr * expr
   | ExIf of expr * expr * expr
   | ExLet of let_binding * expr
+  | ExLetRec of Var.t * expr * expr
   | ExCons of expr * expr
   | ExList of expr list
   | ExMatch of expr * (pat * expr) list
@@ -94,6 +95,7 @@ type program = toplevel list
 and toplevel = toplevel' withinfo
 and toplevel' =
   | TopLet of let_binding
+  | TopLetRec of Var.t * expr
   | TopOpen of mod_expr
   | TopInclude of mod_expr
   | TopModule of UVar.t * mod_expr
@@ -104,16 +106,16 @@ and mod_expr' =
   | ModVar of UVar.t list
 
 
-(* 関数 scan_*** には3つの役割がある
-  1. 深すぎる構造を弾く
-  2. 式の末尾が文列リテラルである展開文にフラグを立てる
-  3. 位置情報に関数名・モジュール名を与える
+(* 関数 scan_*** には2つの役割がある
+  1. 式の末尾が文列リテラルである展開文にフラグを立てる
+  2. 位置情報に関数名・モジュール名を与える
 *)
 
-let rec scan_pat ~pname n (pat: pat) =
-  if n > 10000 then failwith "too deep pattern";
+(* pnameというのは モジュール名:...:変数名 のこと *)
+
+let rec scan_pat ~pname (pat: pat) =
   set_pname_of_info pat.i pname;
-  let scan_pat = scan_pat ~pname (n + 1) in
+  let scan_pat = scan_pat ~pname in
   match pat.v with
   | PatVar _ | PatWild | PatInt _ | PatBool _ | PatUnit -> ();
   | PatCons (p1, p2) | PatPair (p1, p2) ->
@@ -126,10 +128,9 @@ let rec scan_pat ~pname n (pat: pat) =
 (** 式の末尾の形 *)
 type tail_expr_kind = [`Stmts | `NonStmts ]
 
-let rec scan_expr ~pname n (expr: expr) : tail_expr_kind =
-  if n > 10000 then failwith "too deep expression";
+let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
   set_pname_of_info expr.i pname;
-  let scan_expr = scan_expr ~pname (n + 1) in
+  let scan_expr = scan_expr ~pname in
   let scan_expr_u ex = ignore @@ scan_expr ex in
   match expr.v with
   | ExVar _ | ExInt _ | ExBool _ | ExStr _ | ExUnit -> `NonStmts;
@@ -139,7 +140,7 @@ let rec scan_expr ~pname n (expr: expr) : tail_expr_kind =
       `NonStmts
   | ExSelIdx (ex, _) -> scan_expr_u ex; `NonStmts
   | ExFun (pat, ex) ->
-      scan_pat ~pname 0 pat;
+      scan_pat ~pname pat;
       scan_expr_u ex;
       `NonStmts
   | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
@@ -155,10 +156,14 @@ let rec scan_expr ~pname n (expr: expr) : tail_expr_kind =
       if r1 = `Stmts && r2 = `Stmts then `Stmts
       else `NonStmts
   | ExBlock stmts ->
-      scan_stmts ~pname (n + 1) stmts;
+      scan_stmts ~pname stmts;
       `Stmts
   | ExLet ((pat, ex1), ex2) ->
-      scan_pat ~pname 0 pat;
+      scan_pat ~pname pat;
+      scan_expr_u ex1;
+      scan_expr ex2
+  | ExLetRec (_, ex1, ex2) ->
+      (* TODO: 変な右辺を禁止する *)
       scan_expr_u ex1;
       scan_expr ex2
   | ExList el ->
@@ -168,16 +173,15 @@ let rec scan_expr ~pname n (expr: expr) : tail_expr_kind =
       let tails =
         List.rev_map
           (fun (pat, ex) ->
-            scan_pat ~pname 0 pat;
+            scan_pat ~pname pat;
             scan_expr ex )
           bindings
       in
       if List.for_all ((=) `Stmts) tails
         then `Stmts else `NonStmts
-and scan_stmts ~pname n (stmts: stmts) =
-  if n > 10000 then failwith "too deep statements";
-  let scan_stmts = scan_stmts ~pname (n + 1) in
-  let scan_expr = scan_expr ~pname (n + 1) in
+and scan_stmts ~pname (stmts: stmts) =
+  let scan_stmts = scan_stmts ~pname in
+  let scan_expr = scan_expr ~pname in
   let scan_expr_u ex = ignore @@ scan_expr ex in
   List.iter
     (fun st ->
@@ -202,12 +206,11 @@ and scan_stmts ~pname n (stmts: stmts) =
           scan_stmts ss;
           Option.iter scan_stmts ssopt;
       | StAlloc (field, stmts) | StBuild (field, stmts) ->
-          scan_field ~pname (n + 1) field;
+          scan_field ~pname field;
           scan_stmts stmts;
     )
     stmts
-and scan_field ~pname n (field: field) =
-  if n > 10000 then failwith "too deep field";
+and scan_field ~pname (field: field) =
   List.iter
     (fun { v=(_, mtype); i=info } ->
       set_pname_of_info info pname;
@@ -217,22 +220,21 @@ and scan_field ~pname n (field: field) =
           (match length with
             | None -> ()
             | Some expr ->
-                ignore @@ scan_expr ~pname (n + 1) expr;
+                ignore @@ scan_expr ~pname expr;
           );
-          scan_field ~pname (n + 1) mem;
+          scan_field ~pname mem;
         end
     )
     field
 ;;
 
-let rec scan_module_expr ~pname n mod_expr =
-  if n > 10000 then failwith "too deep modules";
+let rec scan_module_expr ~pname mod_expr =
   set_pname_of_info mod_expr.i pname;
   match mod_expr.v with
   | ModImport _ | ModVar _ -> ()
   | ModStruct prog ->
-      scan_program ~pname (n + 1) prog
-and scan_program ~pname n (prog: program) =
+      scan_program ~pname prog
+and scan_program ~pname (prog: program) =
   List.iter
     (fun top ->
       set_pname_of_info top.i pname;
@@ -245,10 +247,17 @@ and scan_program ~pname n (prog: program) =
                 |> Option.some
             | _ -> pname
           in
-          scan_pat ~pname 0 pat;
-          ignore @@ scan_expr ~pname 0 expr;
+          scan_pat ~pname pat;
+          ignore @@ scan_expr ~pname expr;
+      | TopLetRec (v, expr) ->
+          let pname = match pname with
+            | None -> Var.to_string v
+            | Some base -> Printf.sprintf "%s:%s" base (Var.to_string v)
+          in
+          let pname = Some pname in
+          ignore @@ scan_expr ~pname expr;
       | TopOpen modex | TopInclude modex ->
-          scan_module_expr ~pname n modex
+          scan_module_expr ~pname modex
       | TopModule (uvar, modex) ->
           let pname =
             Option.some @@
@@ -256,7 +265,7 @@ and scan_program ~pname n (prog: program) =
             | None -> UVar.to_string uvar
             | Some base -> Printf.sprintf "%s:%s" base (UVar.to_string uvar)
           in
-          scan_module_expr ~pname n modex
+          scan_module_expr ~pname modex
     )
     prog
 ;;

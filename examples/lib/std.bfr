@@ -1,6 +1,4 @@
-let fix f =
-  let g x = f (fun y -> x x y) in
-  g g
+let rec fix f x = f (fix f) x
 
 // falseのとき落ちる
 let verify cond =

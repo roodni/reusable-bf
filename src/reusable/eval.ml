@@ -42,6 +42,13 @@ let rec eval_let_binding ~recn (envs: envs) ((pat, expr) : let_binding) =
   | None -> Error.at (push_info expr.i envs.trace) @@ Eval_Match_failed
   | Some env -> env
 
+and eval_let_rec ~recn (envs: envs) var expr =
+  let rf = ref VaUnit in
+  let venv = VE.extend_ref var rf envs.va_env in
+  let envs = Envs.extend_with_value_env venv envs in
+  rf := eval ~recn ~is_tail:false envs expr;
+  venv
+
 and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
   let trace' = push_info expr.i envs.trace in
   let incr_recn () =
@@ -175,6 +182,10 @@ and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
       let matched_env = eval_let_binding ~recn:(incr_recn ()) envs binding in
       let envs = Envs.extend_with_value_env matched_env envs in
       eval_tail envs ex
+  | ExLetRec (var, ex1, ex2) ->
+      let venv = eval_let_rec ~recn:(incr_recn ()) envs var ex1 in
+      let envs = Envs.extend_with_value_env venv envs in
+      eval_tail envs ex2
   | ExCons (ex_head, ex_tail) ->
       let head = eval_mid envs ex_head in
       let tail = eval_mid envs ex_tail |> Va.to_list envs.trace ex_tail.i in
