@@ -6,6 +6,7 @@ type t =
   | Lexer_Unexpected
   | Lexer_Too_large_int
   | Parser_Unexpected
+  | Syntax_Let_rec_right_hand
   | Eval_Wrong_data_type of string
   | Eval_Match_failed
   | Eval_Variable_not_defined of Var.t
@@ -32,6 +33,7 @@ type t =
 let output ppf msg =
   let pf fs = fprintf ppf fs in
   match msg with
+  | Syntax_Let_rec_right_hand -> pf "This kind of expression is not allowed as right-hand side of `let rec'"
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
   | Top_Missing_main -> pf "Variable 'main' is not defined at the top level"
   | Top_main_is_not_stmts -> pf "The 'main' defined at the top level must be statements"
@@ -53,15 +55,15 @@ let output ppf msg =
   | Eval_Zero_division -> pf "A zero division is attempted"
   | Eval_Equal_failed -> pf "This equality cannot be tested"
   | Eval_Member_is_not_index v ->
-      pf "Member '%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
+      pf "Member `%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
   | Eval_Member_is_index v ->
-      pf "Member '%s' is an index (Use '@' instead of ':')" (Var.to_string v)
+      pf "Member `%s' is an index (Use '@' instead of ':')" (Var.to_string v)
   | Eval_Variable_not_defined v ->
-      pf "Variable '%s' is not defined" (Var.to_string v)
+      pf "Variable `%s' is not defined" (Var.to_string v)
   | Eval_Module_not_defined v ->
-      pf "Module '%s' is not defined" (UVar.to_string v)
+      pf "Module `%s' is not defined" (UVar.to_string v)
   | Eval_Member_not_defined v ->
-      pf "Member '%s' is not defined" (Var.to_string v)
+      pf "Member `%s' is not defined" (Var.to_string v)
   | Eval_Match_failed -> pf "Pattern matching failed"
   | Eval_Wrong_data_type correct ->
       pf "This value is expected to be %s" correct

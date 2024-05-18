@@ -1,0 +1,3 @@
+let main =
+  let rec r = let f () = r in f () in
+  []

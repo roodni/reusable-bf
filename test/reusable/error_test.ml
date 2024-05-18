@@ -32,7 +32,8 @@ let cases =
   let var s = Syntax.Var.of_string s in
   let uvar s = Syntax.UVar.of_string s in
   let open Error in
-  [ ( "eval_equal.bfr", expe Eval_Equal_failed );
+  [
+    ( "eval_equal.bfr", expe Eval_Equal_failed );
     ( "eval_failwith.bfr", expe @@ Eval_Exception "Failed" );
     ( "eval_match_fun.bfr", expe Eval_Match_failed );
     ( "eval_match_let-expr.bfr", expe Eval_Match_failed );
@@ -82,6 +83,8 @@ let cases =
     ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );
     ( "trace_tail.bfr", expe_full [4; 1] @@ Eval_Exception "f" );
     ( "trace_gen.bfr", expe_len [1; 1] );
+    ( "syntax_letrec.bfr", expe_notrace Syntax_Let_rec_right_hand );
+    ( "syntax_letrec_top.bfr", expe_notrace Syntax_Let_rec_right_hand );
   ]
 
 let normal_tests = "normal" >::: List.map test_error cases
