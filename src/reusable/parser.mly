@@ -14,7 +14,7 @@ open Syntax
 %token <Support.Info.info> COLON
 %token <Support.Info.info> COLONCOLON
 %token <Support.Info.info> AT
-%token <Support.Info.info> ATAT // @@
+%token <Support.Info.info> ATAT PIPE // @@ |>
 %token <Support.Info.info> SEMI SEMISEMI
 %token <Support.Info.info> LPAREN RPAREN
 %token <Support.Info.info> EQ NEQ LEQ GEQ
@@ -64,7 +64,7 @@ open Syntax
 %right COMMA
 %right BARBAR
 %right ANDAND
-%left LSHIFT RSHIFT LEQ GEQ EQ NEQ
+%left LSHIFT RSHIFT LEQ GEQ EQ NEQ PIPE
 %right ATAT
 %right COLONCOLON
 %left PLUS MINUS
@@ -218,6 +218,7 @@ expr_full:
   | e1=expr_full EQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Eq, e1, e2) }
   | e1=expr_full NEQ e2=expr_full { withinfo2 e1.i e2.i @@ ExEqual (`Neq, e1, e2) }
   | e1=expr_full ATAT e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e1, e2) }
+  | e1=expr_full PIPE e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e2, e1) }
   | e1=expr_full COLONCOLON e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
   | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
 

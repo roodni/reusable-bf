@@ -94,4 +94,6 @@ let cases =
       [ ("", "A") ];
     case "examples/misc/metalang/patlist.bfr"
       [ ("", "123456") ];
+    case "examples/misc/metalang/pipe.bfr"
+      [ ("", "OK") ];
   ]

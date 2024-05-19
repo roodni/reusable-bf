@@ -1,0 +1,10 @@
+open import "std.bfr"
+
+let f r l = (l, r);;
+
+let act = 0 |> f 1 |> f 2 |> f 3
+let exp = (((0, 1), 2), 3)
+
+let main =
+  let () = verify (act = exp) in
+  [ *gen_puts "OK" ]

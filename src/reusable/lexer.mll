@@ -109,6 +109,7 @@ and main = parse
   | "::" { P.COLONCOLON (info lexbuf) }
   | "@" { P.AT (info lexbuf) }
   | "@@" { P.ATAT (info lexbuf) }
+  | "|>" { P.PIPE (info lexbuf) }
   | ";" { P.SEMI (info lexbuf) }
   | ";;" { P.SEMISEMI (info lexbuf) }
   | "(" { P.LPAREN (info lexbuf) }
