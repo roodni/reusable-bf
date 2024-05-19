@@ -98,4 +98,6 @@ let cases =
       [ ("", "OK") ];
     case "examples/misc/metalang/private.bfr" ~run_bfi:false
       [ ("", "OK") ];
+    case "examples/misc/metalang/include.bfr" ~run_bfi:false
+      [ ("", "OK") ];
   ]

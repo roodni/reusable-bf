@@ -14,7 +14,7 @@ let reserved = [
   ("if", fun i -> P.IF i);
   ("import", fun i -> P.IMPORT i);
   ("in", fun i -> P.IN i);
-  (* ("include", fun i -> P.INCLUDE i); *) (* テストが面倒なので封印 *)
+  ("include", fun i -> P.INCLUDE i);
   ("index", fun i -> P.INDEX i);
   ("let", fun i -> P.LET i);
   ("match", fun i -> P.MATCH i);
