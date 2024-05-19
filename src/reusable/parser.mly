@@ -15,7 +15,7 @@ open Syntax
 %token <Support.Info.info> COLONCOLON
 %token <Support.Info.info> AT
 %token <Support.Info.info> ATAT // @@
-%token <Support.Info.info> SEMI
+%token <Support.Info.info> SEMI SEMISEMI
 %token <Support.Info.info> LPAREN RPAREN
 %token <Support.Info.info> EQ NEQ LEQ GEQ
 %token <Support.Info.info> ASTER
@@ -80,6 +80,7 @@ program:
 
 toplevel_list:
   | t=toplevel ts=toplevel_list { t :: ts }
+  | SEMISEMI ts=toplevel_list { ts }
   | { [] }
 
 toplevel:
