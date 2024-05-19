@@ -12,24 +12,20 @@ brainfuckに変換されるプログラミング言語です。
 ```
 // Hello World!
 
-// 不動点コンビネータ
-let fix f =
-  let g x = f (fun y -> x x y) in
-  g g
-
-// 文字列を引数に取り、それを出力する文列を返す
+// 文字列を引数に取り、それを出力する命令列を返す
 let gen_puts s = [
   $alloc { c }
-  *fix
-    (fun loop prev l -> match l with
-      | () -> []
+
+  **let rec loop prev = function
+      | nil -> []
       | hd :: tl -> [
           + c (hd - prev)
           . c
           *loop hd tl
         ]
-    )
-    0 (string_to_list s)
+    in $
+  
+  *loop 0 (string_to_list s)
 ]
 
 let main = [ *gen_puts "Hello World!\n" ]
