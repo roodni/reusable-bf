@@ -1,6 +1,6 @@
 let _ =
-  match () with
-  | _ :: _ :: () -> 2
-  | _ :: () -> 1
+  match nil with
+  | _ :: _ :: nil -> 2
+  | _ :: nil -> 1
 
 let main = []

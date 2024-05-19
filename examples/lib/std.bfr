@@ -78,7 +78,7 @@ let gen_puts s = [
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
-      | () -> []
+      | nil -> []
       | curr :: rest ->
           let out =
             if abs (curr - prev) <= 3 + curr
@@ -94,18 +94,18 @@ let sort compare l =
   fix
     (fun sort -> fun rest sorted ->
       match rest with
-      | () -> sorted
+      | nil -> sorted
       | pivot :: rest ->
           fix
             (fun partition -> fun left right l ->
               match l with
-              | () -> sort left (pivot :: sort right sorted)
+              | nil -> sort left (pivot :: sort right sorted)
               | hd :: tl ->
                   if compare hd pivot < 0
                   then partition (hd :: left) right tl
                   else partition left (hd :: right) tl)
-            () () rest)
-    l ()
+            nil nil rest)
+    l nil
 
 // セル dest からセル src の中身だけ引く
 // src はゼロになる
@@ -137,7 +137,7 @@ let gen_switch sel cases default = [
   *fix
     (fun loop prev cases ->
       match cases with
-      | () -> default
+      | nil -> default
       | (num, block) :: cases -> [
           + sub_src (num - prev)
           + flag_eq
@@ -168,7 +168,7 @@ let gen_switch_nat sel blocks default = [
   *fix
     (fun loop i blocks ->
       match blocks with
-      | () -> [
+      | nil -> [
           + sel i
           *default
         ]

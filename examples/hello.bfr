@@ -5,7 +5,7 @@ let gen_puts s = [
   $alloc { c }
 
   **let rec loop prev = function
-      | () -> []
+      | nil -> []
       | hd :: tl -> [
           + c (hd - prev)
           . c

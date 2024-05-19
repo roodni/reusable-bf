@@ -28,7 +28,7 @@ let gen_puts2 s = [
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
-      | () -> []
+      | nil -> []
       | curr :: rest ->
           let out =
             if abs (curr - prev) <= 3 + curr then [

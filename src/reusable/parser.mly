@@ -54,6 +54,7 @@ open Syntax
 %token <Syntax.Var.t Support.Info.withinfo> VAR
 %token <Syntax.UVar.t Support.Info.withinfo> UVAR
 %token <Support.Info.info> TRUE FALSE
+%token <Support.Info.info> NIL
 
 %nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match
@@ -171,7 +172,7 @@ expr:
   | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ ExList (e :: l)
     }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ ExList [] }
+  | i=NIL { withinfo i @@ ExList [] }
   | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 ExUnit }
 
 uvar_list:
@@ -242,7 +243,7 @@ pat_simple:
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
   | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
-  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ PatList [] }
+  | i=NIL { withinfo i @@ PatList [] }
   | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ PatList (p :: l)
     }
