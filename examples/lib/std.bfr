@@ -2,7 +2,7 @@ let rec fix f x = f (fix f) x
 
 // falseのとき落ちる
 let verify cond =
-  if cond then {}
+  if cond then ()
   else failwith "Verification failed"
 
 let abs i = if i < 0 then -i else i

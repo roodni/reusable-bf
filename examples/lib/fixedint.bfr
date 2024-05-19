@@ -19,7 +19,7 @@ let gen_build n st = [
 // 指定した桁にアクセスする。0-indexed
 let get_digit_cell i src =
   let n, arr = src in
-  let {} = verify (0 <= i && i < n) in
+  let () = verify (0 <= i && i < n) in
   arr:(n - i - 1)digit
 
 
@@ -85,7 +85,7 @@ let gen_incr fi = gen_add_const 1 fi
 // 定数倍
 // 定数が大きすぎるとオーバーフローすることがある
 let gen_mul_const a dest =
-  let {} = verify (a >= 0) in
+  let () = verify (a >= 0) in
   let _, arr = dest in
   [
     *gen_move_last dest

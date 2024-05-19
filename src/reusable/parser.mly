@@ -173,7 +173,7 @@ expr:
       withinfo2 i1 i2 @@ ExList (e :: l)
     }
   | i=NIL { withinfo i @@ ExList [] }
-  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 ExUnit }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 ExUnit }
 
 uvar_list:
   | uv=UVAR COLON l=uvar_list { uv :: l }
@@ -247,7 +247,7 @@ pat_simple:
   | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ PatList (p :: l)
     }
-  | i1=LBRACE i2=RBRACE { withinfo2 i1 i2 @@ PatUnit }
+  | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ PatUnit }
 
 pat_semi_list:
   | p=pat_full SEMI l=pat_semi_list { p :: l }
