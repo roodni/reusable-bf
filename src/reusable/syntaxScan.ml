@@ -49,6 +49,12 @@ let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
       scan_pat ~pname pat;
       scan_expr_u ex;
       `NonStmts
+  | ExFunction clauses ->
+      List.iter (fun (pat, ex) ->
+          scan_pat ~pname pat;
+          scan_expr_u ex;
+        ) clauses;
+      `NonStmts
   | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
   | ExBOpInt (e1, _, e2) | ExEqual (_, e1, e2)
   | ExCons (e1, e2) | ExPair (e1, e2) ->

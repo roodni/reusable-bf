@@ -117,17 +117,23 @@ and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
               Error.at trace' @@ Eval_Member_is_not_index var
         end
     end
-  | ExFun (var, ex) -> VaFun (envs, var, ex)
+  | ExFun (var, ex) -> VaFun (envs, [(var, ex)])
+  | ExFunction clauses -> VaFun (envs, clauses)
   | ExApp (fn_ex, arg_ex) -> begin
       let fn_va = eval_mid envs fn_ex in
       let arg_va = eval_mid envs arg_ex in
       match fn_va with
       | VaBuiltin fn -> fn trace' (withinfo arg_ex.i arg_va)
-      | VaFun (fn_envs, arg_pat, body_ex) -> begin
-          let arg_env = matches arg_pat arg_va in
-          match arg_env with
+      | VaFun (fn_envs, clauses) -> begin
+          let env_ex_opt =
+            List.find_map (fun (pat, ex) ->
+              matches pat arg_va
+              |> Option.map (fun env -> (env, ex))
+            ) clauses
+          in
+          match env_ex_opt with
           | None -> Error.at (push_info arg_ex.i trace') @@ Eval_Match_failed
-          | Some arg_env ->
+          | Some (arg_env, body_ex) ->
               let trace =
                 if is_tail then push_tailcall envs.trace
                 else trace'

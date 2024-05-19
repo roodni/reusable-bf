@@ -36,7 +36,7 @@ open Syntax
 %token <Support.Info.info> ST_DIVE
 
 %token <Support.Info.info> CELL INDEX ARRAY
-%token <Support.Info.info> FUN
+%token <Support.Info.info> FUN FUNCTION
 %token <Support.Info.info> LET IN REC
 %token <Support.Info.info> IF THEN ELSE
 %token <Support.Info.info> MATCH WITH
@@ -195,6 +195,7 @@ expr_full:
         (fun body arg -> withinfo2 i e.i @@ ExFun (arg, body))
         e
     } %prec prec_fun
+  | i=FUNCTION BAR? c=clauses { withinfo i @@ ExFunction c }
   | i=IF ec=expr_full THEN et=expr_full ELSE ee=expr_full {
       withinfo2 i ee.i @@ ExIf (ec, et, ee)
     } %prec prec_if

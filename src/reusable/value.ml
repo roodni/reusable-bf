@@ -15,7 +15,7 @@ type value =
   | VaUnit
   | VaInt of int
   | VaBool of bool
-  | VaFun of envs * pat * expr
+  | VaFun of envs * (pat * expr) list
   | VaBuiltin of (trace -> value withinfo -> value)
       (* 関数適用のトレース -> 引数とその位置 -> 返値 *)
   | VaBlock of envs * stmts

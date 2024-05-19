@@ -10,6 +10,7 @@ let reserved = [
   ("end", fun i -> P.END i);
   ("false", fun i -> P.FALSE i);
   ("fun", fun i -> P.FUN i);
+  ("function", fun i -> P.FUNCTION i);
   ("if", fun i -> P.IF i);
   ("import", fun i -> P.IMPORT i);
   ("in", fun i -> P.IN i);

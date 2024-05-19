@@ -4,7 +4,7 @@
 let gen_puts s = [
   $alloc { c }
 
-  **let rec loop prev l = match l with
+  **let rec loop prev = function
       | () -> []
       | hd :: tl -> [
           + c (hd - prev)

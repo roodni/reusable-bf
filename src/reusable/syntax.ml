@@ -48,6 +48,7 @@ and expr' =
   | ExSelMem of expr * expr option * Var.t
   | ExSelIdx of expr * Var.t
   | ExFun of pat * expr
+  | ExFunction of (pat * expr) list
   | ExApp of expr * expr
   | ExBlock of stmts
   | ExAnd of expr * expr
