@@ -44,7 +44,7 @@ let rec eval_let_binding ~recn (envs: envs) ((pat, expr) : let_binding) =
 
 and eval_let_rec ~recn (envs: envs) var expr =
   let rf = ref VaUnit in
-  let venv = VE.extend_ref var rf envs.va_env in
+  let venv = VE.extend_ref var rf VE.empty in
   let envs = Envs.extend_with_value_env venv envs in
   rf := eval ~recn ~is_tail:false envs expr;
   venv

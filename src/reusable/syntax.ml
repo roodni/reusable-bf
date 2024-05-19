@@ -68,7 +68,7 @@ and let_binding = pat * expr
 
 and stmts = stmt' withinfo list
 and stmt' =
-  | StAdd of int * expr * expr option  (* sign, cell, int *)
+  | StAdd of int * expr * expr option  (* sign, cell, int *) (* コメントを書くならレコードを使ってほしいな *)
   | StPut of expr
   | StGet of expr
   | StWhile of expr * stmts
@@ -94,8 +94,8 @@ and mtype_expr =
 type program = toplevel list
 and toplevel = toplevel' withinfo
 and toplevel' =
-  | TopLet of let_binding
-  | TopLetRec of Var.t * expr
+  | TopLet of { binding: let_binding; is_priv: bool }
+  | TopLetRec of { binding: Var.t * expr; is_priv: bool }
   | TopOpen of mod_expr
   | TopInclude of mod_expr
   | TopModule of UVar.t * mod_expr

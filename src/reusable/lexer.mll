@@ -22,6 +22,7 @@ let reserved = [
   ("module", fun i -> P.MODULE i);
   ("nil", fun i -> P.NIL i);
   ("open", fun i -> P.OPEN i);
+  ("private", fun i -> P.PRIVATE i);
   ("rec", fun i -> P.REC i);
   ("struct", fun i -> P.STRUCT i);
   ("then", fun i -> P.THEN i);

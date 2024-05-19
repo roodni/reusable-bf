@@ -152,7 +152,7 @@ and scan_program ~pname (prog: program) =
     (fun top ->
       set_pname_of_info top.i pname;
       match top.v with
-      | TopLet (pat, expr) ->
+      | TopLet { binding=(pat, expr); is_priv=_ } ->
           let pname = match pat.v, pname with
             | PatVar v, None -> Var.to_string v |> Option.some
             | PatVar v, Some base ->
@@ -162,7 +162,7 @@ and scan_program ~pname (prog: program) =
           in
           scan_pat ~pname pat;
           ignore @@ scan_expr ~pname expr;
-      | TopLetRec (v, expr) ->
+      | TopLetRec { binding=(v, expr); is_priv=_ } ->
           let pname = match pname with
             | None -> Var.to_string v
             | Some base -> Printf.sprintf "%s:%s" base (Var.to_string v)

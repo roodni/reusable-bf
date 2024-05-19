@@ -35,11 +35,12 @@ open Syntax
 %token <Support.Info.info> ST_ALLOC ST_BUILD
 %token <Support.Info.info> ST_DIVE
 
-%token <Support.Info.info> CELL INDEX ARRAY
+%token <Support.Info.info> CELL INDEX ARRAY  // これらを予約語にするのは気が進まない
 %token <Support.Info.info> FUN FUNCTION
 %token <Support.Info.info> LET IN REC
 %token <Support.Info.info> IF THEN ELSE
 %token <Support.Info.info> MATCH WITH
+%token <Support.Info.info> PRIVATE
 
 %token <Support.Info.info> IMPORT
 %token <Support.Info.info> MODULE
@@ -84,8 +85,20 @@ toplevel_list:
   | { [] }
 
 toplevel:
-  | i=LET lb=let_binding { withinfo i @@ TopLet lb }
-  | i=LET REC v=VAR b=let_rec_bounded { withinfo i @@ TopLetRec (v.v, b) }
+  | ip=PRIVATE? il=LET binding=let_binding {
+      let i, is_priv = match ip with
+        | None -> (il, false)
+        | Some ip -> (ip, true)
+      in
+      withinfo i @@ TopLet { binding; is_priv }
+    }
+  | ip=PRIVATE? il=LET REC v=VAR b=let_rec_bounded {
+      let i, is_priv = match ip with
+        | None -> (il, false)
+        | Some ip -> (ip, true)
+      in
+      withinfo i @@ TopLetRec { binding=(v.v, b); is_priv }
+    }
   | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
   | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
   | i=MODULE v=UVAR EQ m=mod_expr { withinfo i @@ TopModule (v.v, m) }

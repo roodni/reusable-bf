@@ -99,18 +99,26 @@ type ctx =
   }
 
 let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
+  (* print_endline ctx.curr_dirname;
+  VE.to_seq ctx.ex_envs.va_env |> Seq.map fst |> Seq.map Var.to_string
+  |> List.of_seq
+  |> String.concat ", " |> print_endline; *)
   match toplevel.v with
-  | TopLet binding ->
+  | TopLet { binding; is_priv } ->
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
       { ctx with
         envs = Envs.extend_with_value_env env ctx.envs;
-        ex_envs = Envs.extend_with_value_env env ctx.ex_envs;
+        ex_envs = if is_priv
+          then ctx.ex_envs
+          else Envs.extend_with_value_env env ctx.ex_envs;
       }
-  | TopLetRec (v, ex) ->
+  | TopLetRec { binding=(v, ex); is_priv } ->
       let env = Eval.eval_let_rec ~recn:0 ctx.envs v ex in
       { ctx with
         envs = Envs.extend_with_value_env env ctx.envs;
-        ex_envs = Envs.extend_with_value_env env ctx.ex_envs;
+        ex_envs = if is_priv
+          then ctx.ex_envs
+          else Envs.extend_with_value_env env ctx.ex_envs;
       }
   | TopOpen mod_ex ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in

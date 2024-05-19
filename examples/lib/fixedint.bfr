@@ -23,6 +23,7 @@ let get_digit_cell i src =
   arr:(n - i - 1)digit
 
 
+private
 let gen_move_last (n, arr) = [
   > arr@i (n - 1)
 ]
@@ -36,9 +37,11 @@ let gen_zero dest =
     ]
   ]
 
+
 // 現在のインデックスのある桁からdigitを繰り上げる
 // インデックスはゼロになる
 // オーバーフロー時、溢れた数だけoverflowを実行する
+private
 let gen_carry_from_curr (_, arr) overflow = [
   **let i = arr@i in $
   $dive i
@@ -210,6 +213,7 @@ let gen_print_destructive fi = [
 (* 左シフト
    ただしインデックスが右に残る
 *)
+private
 let gen_lshift_to_right (n, arr) = [
   **let i = arr@i in $
   $dive i
@@ -339,7 +343,6 @@ let gen_sub_unsigned src dest overflow = [
   + darr@i:digit
   *gen_carry_from_curr dest [ *overflow ]
 ]
-
 
 let gen_mul a b dest = [
   **let an, aarr = a in

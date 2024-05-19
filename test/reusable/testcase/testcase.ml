@@ -94,6 +94,8 @@ let cases =
       [ ("", "A") ];
     case "examples/misc/metalang/patlist.bfr"
       [ ("", "123456") ];
-    case "examples/misc/metalang/pipe.bfr"
+    case "examples/misc/metalang/pipe.bfr" ~run_bfi:false
+      [ ("", "OK") ];
+    case "examples/misc/metalang/private.bfr" ~run_bfi:false
       [ ("", "OK") ];
   ]
