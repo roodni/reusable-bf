@@ -1,6 +1,0 @@
-let main = [
-  $build {
-    a: array(2) { i: index }
-  }
-  > a@i (-2)
-]

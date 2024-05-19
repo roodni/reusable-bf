@@ -62,8 +62,10 @@ let load_from_source path =
 
 
 module FileMap = struct
-  (* ファイルパス (の指すファイル) をキーとするマップ
-     inodeとかを見る *)
+  (* inodeとかをキーとするマップ
+     読み込んだファイルの評価結果をキャッシュするほか
+     循環参照の検出も行う
+  *)
   module M = Map.Make(struct
     type t = int * int
     let compare = compare
@@ -199,6 +201,7 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   | Some _ -> Error.unknown Top_main_is_not_stmts
 ;;
 
+(** ファイルを読んでbfに変換までする *)
 let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
   let dirname = Filename.dirname path in
   let program = load_from_source path in
