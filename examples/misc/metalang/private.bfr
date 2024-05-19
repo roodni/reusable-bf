@@ -8,11 +8,16 @@ module M = struct
   let rec f () = 10
   private let rec f () = 20
   let () = verify (f () = 20)
+
+  module X = struct let x = 100 end
+  private module X = struct let x = 200 end
+  let () = verify (X:x = 200)
 end
 
 let main = $
 
 ;verify (M:a = 1)
 ;verify (M:f () = 10)
+;verify (M:X:x = 100)
 
 *gen_puts "OK"

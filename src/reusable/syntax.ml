@@ -98,7 +98,7 @@ and toplevel' =
   | TopLetRec of { binding: Var.t * expr; is_priv: bool }
   | TopOpen of mod_expr
   | TopInclude of mod_expr
-  | TopModule of UVar.t * mod_expr
+  | TopModule of { binding: UVar.t * mod_expr; is_priv: bool }
 and mod_expr = mod_expr' withinfo
 and mod_expr' =
   | ModImport of string

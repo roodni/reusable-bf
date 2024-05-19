@@ -88,20 +88,26 @@ toplevel:
   | ip=PRIVATE? il=LET binding=let_binding {
       let i, is_priv = match ip with
         | None -> (il, false)
-        | Some ip -> (ip, true)
+        | Some ip -> (merge_info ip il, true)
       in
       withinfo i @@ TopLet { binding; is_priv }
     }
   | ip=PRIVATE? il=LET REC v=VAR b=let_rec_bounded {
       let i, is_priv = match ip with
         | None -> (il, false)
-        | Some ip -> (ip, true)
+        | Some ip -> (merge_info ip il, true)
       in
       withinfo i @@ TopLetRec { binding=(v.v, b); is_priv }
     }
   | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
   | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
-  | i=MODULE v=UVAR EQ m=mod_expr { withinfo i @@ TopModule (v.v, m) }
+  | i1=PRIVATE? i2=MODULE v=UVAR EQ m=mod_expr {
+      let i, is_priv = match i1 with
+        | None -> (i2, false)
+        | Some i1 -> (merge_info i1 i2, true)
+      in
+      withinfo i @@ TopModule { binding=(v.v, m); is_priv }
+    }
 
 mod_expr:
   | i=IMPORT s=STRING { withinfo2 i s.i @@ ModImport s.v }

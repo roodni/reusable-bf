@@ -172,7 +172,7 @@ and scan_program ~pname (prog: program) =
           validate_let_rec_righthand expr;
       | TopOpen modex | TopInclude modex ->
           scan_module_expr ~pname modex
-      | TopModule (uvar, modex) ->
+      | TopModule { binding=(uvar, modex); is_priv=_ } ->
           let pname =
             Option.some @@
             match pname with

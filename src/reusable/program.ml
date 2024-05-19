@@ -130,11 +130,13 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
         envs = Envs.import mod_envs ctx.envs;
         ex_envs = Envs.import mod_envs ctx.ex_envs;
       }
-  | TopModule (uv, mod_ex) ->
+  | TopModule { binding=(uv, mod_ex); is_priv } ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with
         envs = Envs.add_module_binding uv mod_envs ctx.envs;
-        ex_envs = Envs.add_module_binding uv mod_envs ctx.ex_envs;
+        ex_envs = if is_priv
+          then ctx.ex_envs
+          else Envs.add_module_binding uv mod_envs ctx.ex_envs;
       }
 and eval_toplevels ctx (toplevels: toplevel list) : ctx =
   List.fold_left eval_toplevel ctx toplevels
