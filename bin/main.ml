@@ -111,9 +111,13 @@ let use_as_bfr_compiler () =
   in
   let field, ir_code =
     try
-      let program = Reusable.Program.load !filename channel in
-      close_in channel;
-      Reusable.Program.gen_ir ~path_limit dirname program
+      let res =
+        Fun.protect (fun () -> Reusable.Program.load !filename channel)
+          ~finally:(fun () -> close_in channel)
+      in
+      match res with
+      | Ok program -> Reusable.Program.gen_ir ~path_limit dirname program
+      | Error error -> Reusable.Error.unknown @@ Module_import_failed_to_read { path = !filename; error }
     with Reusable.Error.Exn_at e ->
       Reusable.Error.print e;
       exit 1

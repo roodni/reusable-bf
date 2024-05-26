@@ -3,18 +3,21 @@ open Support.Info
 open Syntax
 open Value
 
+(* ソースコードを読み込むときは必ずこれを通す
+   Parserのエラーハンドリングを行うが
+   それはそうと、ファイルの形式がテキストじゃないとかの場合はimport側でエラーを出したいので
+   区別できるように結果はResult型
+*)
 let load filename channel =
   let lexbuf = Lexer.create filename channel in
-  let program =
-    try Parser.program Lexer.main lexbuf with
-    | Parser.Error -> begin
-        match !Lexer.curr_info with
-        | Some info ->  Error.top info Parser_Unexpected
-        | None -> assert false
-      end
-  in
-  SyntaxScan.scan_program ~pname:None program;
-  program
+  match Parser.program Lexer.main lexbuf with
+  | program ->
+      SyntaxScan.scan_program ~pname:None program;
+      Ok program
+  | exception Parser.Error ->
+      let info = !Lexer.curr_info |> Option.get in
+      Error.top info Parser_Unexpected
+  | exception Sys_error e -> Error e
 
 let lib_path =
   [ Sys.getenv_opt "BFRE_LIB_PATH";
@@ -56,9 +59,8 @@ let find_source info path_limit curr_dir path =
 
 let load_from_source path =
   let channel = open_in path in
-  let res = load path channel in
-  close_in channel;
-  res
+  Fun.protect (fun () -> load path channel)
+    ~finally:(fun () -> close_in channel)
 
 
 module FileMap = struct
@@ -159,7 +161,10 @@ and eval_mod_expr ctx mod_expr =
             filemap = FileMap.add path Loading ctx.filemap;
             path_limit = NoLimit; (* import先でのimportは信用する *)
           } in
-          let prog = load_from_source path in
+          let prog = match load_from_source path with
+            | Ok p -> p
+            | Error error -> Error.top mod_expr.i @@ Error.Module_import_failed_to_read { path; error }
+          in
           let ctx' = eval_toplevels ctx' prog in
           let envs = ctx'.ex_envs in
           let filemap = FileMap.add path (Loaded envs) ctx'.filemap in
@@ -201,10 +206,11 @@ let gen_ir ~path_limit (dirname: string) (program: program)
   | Some _ -> Error.unknown Top_main_is_not_stmts
 ;;
 
-(** ファイルを読んでbfに変換までする *)
+(** ファイルを読んでbfに変換する
+    ハンドリングが雑なのでテスト用 *)
 let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
   let dirname = Filename.dirname path in
-  let program = load_from_source path in
+  let program = load_from_source path |> Result.get_ok in
   let field, ir_code = gen_ir ~path_limit dirname program in
   let opt_context =
     Ir.Opt.{ field; code=ir_code; chan=stderr; dump=false }

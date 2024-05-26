@@ -25,7 +25,7 @@ type t =
   | Module_Recursive_import
   | Module_Limited_import
   | Module_import_file_not_found of string
-  (* | Module_import_failed_to_read of string *)
+  | Module_import_failed_to_read of { path: string; error: string }
   | Top_Missing_main
   | Top_main_is_not_stmts
   | Memory_Recursion_limit
@@ -39,8 +39,9 @@ let output ppf msg =
   | Top_main_is_not_stmts -> pf "The 'main' defined at the top level must be statements"
   | Module_Limited_import -> pf "This import path is not allowed"
   | Module_Recursive_import -> pf "This import is recursive"
-  | Module_import_file_not_found path -> pf "The file '%s' is not found" path
-  (* | Module_import_failed_to_read path -> pf "The file '%s' cannot be read" path *)
+  | Module_import_file_not_found path -> pf "The file \"%s\" is not found" (String.escaped path)
+  | Module_import_failed_to_read {path; error} ->
+      pf "The file \"%s\" cannot be read (%s)" (String.escaped path) error
   | Gen_Field_Unlimited_array_cannot_be_array_member ->
       pf "An unlimited array cannot be allocated as a member of an array"
   | Gen_Field_Array_length_cannot_be_negative ->

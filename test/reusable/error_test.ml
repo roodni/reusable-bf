@@ -78,6 +78,10 @@ let cases =
     ( "top_codegen-missing.bfr", expe_notrace Top_Missing_main );
     ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
     ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
+    ( "module_import-failed-to-read.bfr", fun (_, e) -> match e with
+        | Module_import_failed_to_read _ -> true
+        | _ -> false
+    );
     ( "memory_stack_eval.bfr", expe Memory_Recursion_limit );
     ( "memory_stack_gen.bfr", expe Memory_Recursion_limit );
     ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );
@@ -85,6 +89,7 @@ let cases =
     ( "trace_gen.bfr", expe_len [1; 1] );
     ( "syntax_letrec.bfr", expe_notrace Syntax_Let_rec_right_hand );
     ( "syntax_letrec_top.bfr", expe_notrace Syntax_Let_rec_right_hand );
+
   ]
 
 let normal_tests = "normal" >::: List.map test_error cases

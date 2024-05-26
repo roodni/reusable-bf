@@ -1,0 +1,3 @@
+open import "."
+
+let main = []
