@@ -17,14 +17,15 @@ let parse_args () =
   let speclist = Arg.[
     ("-b", Set flag_bf, " Load and run a brainfuck program instead of bf-reusable programs");
     ("-r", Set flag_run, " Run a bf-reusable program after compilation");
-    ("--ir", Set flag_ir, " Use the IR interpreter");
+    ( "--ir",
+      Unit (fun () -> flag_ir := true; flag_run := true;),
+      " Run a bf-reusable program using the IR interpreter");
     ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
     ("-v", Set flag_show_layouts, " Show detailed compilation information");
     ("--show-layout", Set flag_show_layouts, " ");
-    ("--optimize",
+    ("--opt",
       Set_int arg_optimize_level,
       sprintf " Set optimization level (0-%d)" Ir.Opt.max_level);
-    ("--opt", Set_int arg_optimize_level, " ");
     ("--print-opt", Set flag_print_opt, " ");
     (* ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " "); *)
     ("--sandbox", Set flag_sandbox, " ");
@@ -49,10 +50,15 @@ let parse_args () =
 
 let get_source () =
   if !flag_stdin then
+    (* なんでfilenameが"-"かどうかを見ずに専用のフラグを用意したんだっけ？思い出せない *)
     if !filename = "" then (Sys.getcwd (), stdin)
     else failwith "File is given but stdin flag is set"
-  else
+  else if Sys.file_exists !filename then
     (Filename.dirname !filename, open_in !filename)
+  else begin
+    Reusable.Error.print (`Info None, Module_import_file_not_found !filename);
+    exit 1
+  end
 
 
 (** bfのコードを実行する *)
