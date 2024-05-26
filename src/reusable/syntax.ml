@@ -91,14 +91,14 @@ and mtype_expr =
       mem: field;
     }
 
-type program = toplevel list
-and toplevel = toplevel' withinfo
-and toplevel' =
-  | TopLet of { binding: let_binding; is_priv: bool }
-  | TopLetRec of { binding: Var.t * expr; is_priv: bool }
-  | TopOpen of mod_expr
-  | TopInclude of mod_expr
-  | TopModule of { binding: UVar.t * mod_expr; is_priv: bool }
+type program = decl list
+and decl = decl' withinfo
+and decl' =
+  | DeclLet of { binding: let_binding; is_priv: bool }
+  | DeclLetRec of { binding: Var.t * expr; is_priv: bool }
+  | DeclOpen of mod_expr
+  | DeclInclude of mod_expr
+  | DeclModule of { binding: UVar.t * mod_expr; is_priv: bool }
 and mod_expr = mod_expr' withinfo
 and mod_expr' =
   | ModImport of string

@@ -99,13 +99,13 @@ type ctx =
     path_limit: path_limit;
   }
 
-let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
+let rec eval_decl ctx decl : ctx =
   (* print_endline ctx.curr_dirname;
   VE.to_seq ctx.ex_envs.va_env |> Seq.map fst |> Seq.map Var.to_string
   |> List.of_seq
   |> String.concat ", " |> print_endline; *)
-  match toplevel.v with
-  | TopLet { binding; is_priv } ->
+  match decl.v with
+  | DeclLet { binding; is_priv } ->
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
       { ctx with
         envs = Envs.extend_with_value_env env ctx.envs;
@@ -113,7 +113,7 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
           then ctx.ex_envs
           else Envs.extend_with_value_env env ctx.ex_envs;
       }
-  | TopLetRec { binding=(v, ex); is_priv } ->
+  | DeclLetRec { binding=(v, ex); is_priv } ->
       let env = Eval.eval_let_rec ~recn:0 ctx.envs v ex in
       { ctx with
         envs = Envs.extend_with_value_env env ctx.envs;
@@ -121,17 +121,17 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
           then ctx.ex_envs
           else Envs.extend_with_value_env env ctx.ex_envs;
       }
-  | TopOpen mod_ex ->
+  | DeclOpen mod_ex ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with envs = Envs.import mod_envs ctx.envs }
-  | TopInclude mod_ex ->
+  | DeclInclude mod_ex ->
       (* 封印中 *)
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with
         envs = Envs.import mod_envs ctx.envs;
         ex_envs = Envs.import mod_envs ctx.ex_envs;
       }
-  | TopModule { binding=(uv, mod_ex); is_priv } ->
+  | DeclModule { binding=(uv, mod_ex); is_priv } ->
       let ctx, mod_envs = eval_mod_expr ctx mod_ex in
       { ctx with
         envs = Envs.add_module_binding uv mod_envs ctx.envs;
@@ -139,8 +139,10 @@ let rec eval_toplevel ctx (toplevel: toplevel) : ctx =
           then ctx.ex_envs
           else Envs.add_module_binding uv mod_envs ctx.ex_envs;
       }
-and eval_toplevels ctx (toplevels: toplevel list) : ctx =
-  List.fold_left eval_toplevel ctx toplevels
+
+and eval_decls ctx decls : ctx =
+  List.fold_left eval_decl ctx decls
+
 and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
@@ -164,7 +166,7 @@ and eval_mod_expr ctx mod_expr =
             | Ok p -> p
             | Error error -> Error.top mod_expr.i @@ Error.Module_import_failed_to_read { path; error }
           in
-          let ctx' = eval_toplevels ctx' prog in
+          let ctx' = eval_decls ctx' prog in
           let envs = ctx'.ex_envs in
           let filemap = FileMap.add path (Loaded envs) ctx'.filemap in
           ({ ctx with filemap }, envs)
@@ -174,7 +176,7 @@ and eval_mod_expr ctx mod_expr =
         ctx with
         ex_envs = Envs.empty;
       } in
-      let ctx' = eval_toplevels ctx' prog in
+      let ctx' = eval_decls ctx' prog in
       ({ ctx with filemap = ctx'.filemap }, ctx'.ex_envs)
   | ModVar l -> begin
       assert (l <> []);
@@ -198,7 +200,7 @@ let gen_ir ~path_limit (dirname: string) (program: program)
     filemap = FileMap.empty;
     path_limit;
   } in
-  let ctx = eval_toplevels ctx program in
+  let ctx = eval_decls ctx program in
   match VE.lookup (Var.of_string "main") ctx.ex_envs.va_env with
   | None -> Error.unknown Top_Missing_main
   | Some (VaBlock (envs, stmts)) -> IrGen.generate envs stmts

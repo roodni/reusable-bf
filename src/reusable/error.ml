@@ -35,8 +35,8 @@ let output ppf msg =
   match msg with
   | Syntax_Let_rec_right_hand -> pf "This kind of expression is not allowed as right-hand side of `let rec'"
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
-  | Top_Missing_main -> pf "Variable 'main' is not defined at the top level"
-  | Top_main_is_not_stmts -> pf "The 'main' defined at the top level must be statements"
+  | Top_Missing_main -> pf "Variable 'main' is not bound at the top level"
+  | Top_main_is_not_stmts -> pf "The 'main' bound at the top level must be statements"
   | Module_Limited_import -> pf "This import path is not allowed"
   | Module_Recursive_import -> pf "This import is recursive"
   | Module_import_file_not_found path -> pf "The file \"%s\" is not found" (String.escaped path)
@@ -60,11 +60,11 @@ let output ppf msg =
   | Eval_Member_is_index v ->
       pf "Member `%s' is an index (Use '@' instead of ':')" (Var.to_string v)
   | Eval_Variable_not_defined v ->
-      pf "Variable `%s' is not defined" (Var.to_string v)
+      pf "Variable `%s' is not bound" (Var.to_string v)
   | Eval_Module_not_defined v ->
-      pf "Module `%s' is not defined" (UVar.to_string v)
+      pf "Module `%s' is not bound" (UVar.to_string v)
   | Eval_Member_not_defined v ->
-      pf "Member `%s' is not defined" (Var.to_string v)
+      pf "Member `%s' is not bound" (Var.to_string v)
   | Eval_Match_failed -> pf "Pattern matching failed"
   | Eval_Wrong_data_type correct ->
       pf "This value is expected to be %s" correct

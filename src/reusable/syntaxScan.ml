@@ -149,10 +149,10 @@ let rec scan_module_expr ~pname mod_expr =
       scan_program ~pname prog
 and scan_program ~pname (prog: program) =
   List.iter
-    (fun top ->
-      set_pname_of_info top.i pname;
-      match top.v with
-      | TopLet { binding=(pat, expr); is_priv=_ } ->
+    (fun decl ->
+      set_pname_of_info decl.i pname;
+      match decl.v with
+      | DeclLet { binding=(pat, expr); is_priv=_ } ->
           let pname = match pat.v, pname with
             | PatVar v, None -> Var.to_string v |> Option.some
             | PatVar v, Some base ->
@@ -162,7 +162,7 @@ and scan_program ~pname (prog: program) =
           in
           scan_pat ~pname pat;
           ignore @@ scan_expr ~pname expr;
-      | TopLetRec { binding=(v, expr); is_priv=_ } ->
+      | DeclLetRec { binding=(v, expr); is_priv=_ } ->
           let pname = match pname with
             | None -> Var.to_string v
             | Some base -> Printf.sprintf "%s:%s" base (Var.to_string v)
@@ -170,9 +170,9 @@ and scan_program ~pname (prog: program) =
           let pname = Some pname in
           ignore @@ scan_expr ~pname expr;
           validate_let_rec_righthand expr;
-      | TopOpen modex | TopInclude modex ->
+      | DeclOpen modex | DeclInclude modex ->
           scan_module_expr ~pname modex
-      | TopModule { binding=(uvar, modex); is_priv=_ } ->
+      | DeclModule { binding=(uvar, modex); is_priv=_ } ->
           let pname =
             Option.some @@
             match pname with

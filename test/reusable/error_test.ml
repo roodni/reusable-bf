@@ -37,7 +37,7 @@ let cases =
     ( "eval_failwith.bfr", expe @@ Eval_Exception "Failed" );
     ( "eval_match_fun.bfr", expe Eval_Match_failed );
     ( "eval_match_let-expr.bfr", expe Eval_Match_failed );
-    ( "eval_match_let-top.bfr", expe Eval_Match_failed );
+    ( "eval_match_let-decl.bfr", expe Eval_Match_failed );
     ( "eval_match_match.bfr", expe Eval_Match_failed );
     ( "eval_nd-member_idx.bfr",
       expe @@ Eval_Member_not_defined (var "idx") );
@@ -89,7 +89,7 @@ let cases =
     ( "trace_tail.bfr", expe_full [4; 1] @@ Eval_Exception "f" );
     ( "trace_gen.bfr", expe_len [1; 1] );
     ( "syntax_letrec.bfr", expe_notrace Syntax_Let_rec_right_hand );
-    ( "syntax_letrec_top.bfr", expe_notrace Syntax_Let_rec_right_hand );
+    ( "syntax_letrec_decl.bfr", expe_notrace Syntax_Let_rec_right_hand );
 
   ]
 

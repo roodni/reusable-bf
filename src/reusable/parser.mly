@@ -77,41 +77,41 @@ open Syntax
 %%
 
 program:
-  | ts=toplevel_list EOF { ts }
+  | ts=decl_list EOF { ts }
 
-toplevel_list:
-  | t=toplevel ts=toplevel_list { t :: ts }
-  | SEMISEMI ts=toplevel_list { ts }
+decl_list:
+  | t=decl ts=decl_list { t :: ts }
+  | SEMISEMI ts=decl_list { ts }
   | { [] }
 
-toplevel:
+decl:
   | ip=PRIVATE? il=LET binding=let_binding {
       let i, is_priv = match ip with
         | None -> (il, false)
         | Some ip -> (merge_info ip il, true)
       in
-      withinfo i @@ TopLet { binding; is_priv }
+      withinfo i @@ DeclLet { binding; is_priv }
     }
   | ip=PRIVATE? il=LET REC v=VAR b=let_rec_bounded {
       let i, is_priv = match ip with
         | None -> (il, false)
         | Some ip -> (merge_info ip il, true)
       in
-      withinfo i @@ TopLetRec { binding=(v.v, b); is_priv }
+      withinfo i @@ DeclLetRec { binding=(v.v, b); is_priv }
     }
-  | i=OPEN m=mod_expr { withinfo i @@ TopOpen m }
-  | i=INCLUDE m=mod_expr { withinfo i @@ TopInclude m }
+  | i=OPEN m=mod_expr { withinfo i @@ DeclOpen m }
+  | i=INCLUDE m=mod_expr { withinfo i @@ DeclInclude m }
   | i1=PRIVATE? i2=MODULE v=UVAR EQ m=mod_expr {
       let i, is_priv = match i1 with
         | None -> (i2, false)
         | Some i1 -> (merge_info i1 i2, true)
       in
-      withinfo i @@ TopModule { binding=(v.v, m); is_priv }
+      withinfo i @@ DeclModule { binding=(v.v, m); is_priv }
     }
 
 mod_expr:
   | i=IMPORT s=STRING { withinfo2 i s.i @@ ModImport s.v }
-  | i1=STRUCT ts=toplevel_list i2=END { withinfo2 i1 i2 @@ ModStruct ts }
+  | i1=STRUCT ts=decl_list i2=END { withinfo2 i1 i2 @@ ModStruct ts }
   | l=separated_nonempty_list(COLON, UVAR) {
       match l with
       | [] -> assert false
