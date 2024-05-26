@@ -1,6 +1,6 @@
-(lang dune 3.6)
+(lang dune 3.15)
 (name bf-reusable)
-(using menhir 2.1)
+(using menhir 3.0)
 
 (generate_opam_files true)
 

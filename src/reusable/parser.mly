@@ -80,25 +80,20 @@ program:
   | ts=decl_list EOF { ts }
 
 decl_list:
-  | t=decl ts=decl_list { t :: ts }
-  | SEMISEMI ts=decl_list { ts }
+  | e=expr_full l=decl_loop { (withinfo e.i @@ DeclExpr e) :: l }
+  | l=decl_loop { l }
+
+decl_loop:
+  | t=decl ts=decl_loop { t :: ts }
+  | SEMISEMI ts=decl_loop { ts }
+  | SEMISEMI e=expr_full ts=decl_loop { (withinfo e.i @@ DeclExpr e) :: ts }
   | { [] }
 
 decl:
-  | ip=PRIVATE? il=LET binding=let_binding {
-      let i, is_priv = match ip with
-        | None -> (il, false)
-        | Some ip -> (merge_info ip il, true)
-      in
-      withinfo i @@ DeclLet { binding; is_priv }
-    }
-  | ip=PRIVATE? il=LET REC v=VAR b=let_rec_bounded {
-      let i, is_priv = match ip with
-        | None -> (il, false)
-        | Some ip -> (merge_info ip il, true)
-      in
-      withinfo i @@ DeclLetRec { binding=(v.v, b); is_priv }
-    }
+  | i=LET binding=let_binding { withinfo i @@ DeclLet { binding; is_priv=false } }
+  | i1=PRIVATE i2=LET binding=let_binding { withinfo2 i1 i2 @@ DeclLet { binding; is_priv=true } }
+  | i1=LET i2=REC v=VAR b=let_rec_bounded { withinfo2 i1 i2 @@ DeclLetRec { binding=(v.v, b); is_priv=false } }
+  | i1=PRIVATE LET i2=REC v=VAR b=let_rec_bounded { withinfo2 i1 i2 @@ DeclLetRec { binding=(v.v, b); is_priv=true } }
   | i=OPEN m=mod_expr { withinfo i @@ DeclOpen m }
   | i=INCLUDE m=mod_expr { withinfo i @@ DeclInclude m }
   | i1=PRIVATE? i2=MODULE v=UVAR EQ m=mod_expr {

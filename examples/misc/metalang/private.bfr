@@ -3,15 +3,15 @@ open import "std.bfr"
 module M = struct
   let a = 1
   private let a = 2
-  let () = verify (a = 2)
+  ;;verify (a = 2)
 
   let rec f () = 10
   private let rec f () = 20
-  let () = verify (f () = 20)
+  ;;verify (f () = 20)
 
   module X = struct let x = 100 end
   private module X = struct let x = 200 end
-  let () = verify (X:x = 200)
+  ;;verify (X:x = 200)
 end
 
 let main = $

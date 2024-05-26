@@ -6,7 +6,7 @@ authors: ["roodni"]
 homepage: "https://github.com/roodni/bf-reusable"
 bug-reports: "https://github.com/roodni/bf-reusable/issues"
 depends: [
-  "dune" {>= "3.6"}
+  "dune" {>= "3.15"}
   "ocaml" {>= "4.14"}
   "ounit2" {with-test}
   "menhir"

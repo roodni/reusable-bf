@@ -152,6 +152,8 @@ and scan_program ~pname (prog: program) =
     (fun decl ->
       set_pname_of_info decl.i pname;
       match decl.v with
+      | DeclExpr expr ->
+          ignore @@ scan_expr ~pname expr;
       | DeclLet { binding=(pat, expr); is_priv=_ } ->
           let pname = match pat.v, pname with
             | PatVar v, None -> Var.to_string v |> Option.some

@@ -99,6 +99,7 @@ and decl' =
   | DeclOpen of mod_expr
   | DeclInclude of mod_expr
   | DeclModule of { binding: UVar.t * mod_expr; is_priv: bool }
+  | DeclExpr of expr  (* 式を評価するだけ *)
 and mod_expr = mod_expr' withinfo
 and mod_expr' =
   | ModImport of string

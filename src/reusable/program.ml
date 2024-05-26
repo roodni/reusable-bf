@@ -105,6 +105,9 @@ let rec eval_decl ctx decl : ctx =
   |> List.of_seq
   |> String.concat ", " |> print_endline; *)
   match decl.v with
+  | DeclExpr expr ->
+      Eval.eval ~recn:0 ctx.envs expr |> Va.to_unit empty_trace expr.i;
+      ctx
   | DeclLet { binding; is_priv } ->
       let env = Eval.eval_let_binding ~recn:0 ctx.envs binding in
       { ctx with

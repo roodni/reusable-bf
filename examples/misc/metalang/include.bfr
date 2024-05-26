@@ -8,14 +8,14 @@ module A = struct
   let x = 2
   open Included
 
-  let () = verify (x = 1)
+  ;;verify (x = 1)
 end
 
 module B = struct
   let x = 3
   include Included
 
-  let () = verify (x = 1)
+  ;;verify (x = 1)
 end
 
 let main = $

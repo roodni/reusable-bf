@@ -62,6 +62,7 @@ let cases =
     ( "eval_wdt_cell.bfr", expe @@ Eval_Wrong_data_type "cell selector" );
     ( "eval_wdt_index.bfr", expe @@ Eval_Wrong_data_type "index selector" );
     ( "eval_wdt_selectable.bfr", expe @@ Eval_Wrong_data_type "array or index selector" );
+    ( "eval_wdt_unit.bfr", expe @@ Eval_Wrong_data_type "unit" );
     ( "eval_zero-div_div.bfr", expe Eval_Zero_division );
     ( "eval_zero-div_mod.bfr", expe Eval_Zero_division );
     ( "gen_alloc-index_diving.bfr", expe Gen_Alloc_Index_must_be_array_member );
