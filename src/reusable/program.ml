@@ -32,30 +32,27 @@ type path_limit =
   | NoLimit
   | Limited of string list
 
-let find_source info path_limit curr_dir path =
-  ( match path_limit with
-    | NoLimit -> ()
-    | Limited l ->
-        if not (List.mem path l) then
-          Error.top info (Module_Limited_import)
-  );
-  if not (Filename.is_relative path) then path
-  else begin
-    let lib_dirs =
-      [ Some curr_dir; lib_path ] |> List.filter_map Fun.id
+let find_source path_limit curr_dir path =
+  let exception R of Error.t in
+  try
+    ( match path_limit with
+      | NoLimit -> ()
+      | Limited l ->
+          if not (List.mem path l) then raise @@ R Module_Limited_import
+    );
+    let paths =
+      if not (Filename.is_relative path) then [path]
+      else
+        [ lib_path ]
+        |> List.filter_map Fun.id
+        |> List.cons curr_dir
+        |> List.map (fun dir -> Filename.concat dir path)
     in
-    let found_path =
-      List.find_map
-        (fun dir ->
-          let path = Filename.concat dir path in
-          if Sys.file_exists path then Some path else None
-        )
-        lib_dirs
-    in
+    let found_path = List.find_opt Sys.file_exists paths in
     match found_path with
-    | Some p -> p
-    | None -> Error.top info (Module_import_file_not_found path)
-  end
+    | Some p -> Ok p
+    | None -> raise @@ R (Module_import_file_not_found path)
+  with R e -> Error e
 
 let load_from_source path =
   let channel = open_in path in
@@ -148,7 +145,9 @@ and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
       let path =
-        find_source mod_expr.i ctx.path_limit ctx.curr_dirname p
+        match find_source ctx.path_limit ctx.curr_dirname p with
+        | Ok p -> p
+        | Error e -> Error.top mod_expr.i e
       in
       match FileMap.find path ctx.filemap with
       | Some Loading -> Error.top mod_expr.i Module_Recursive_import

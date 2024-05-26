@@ -1,0 +1,4 @@
+// 絶対パスで存在しないファイルを指定した場合
+open import "/absolute-path-that-does-not-exist"
+
+let main = []

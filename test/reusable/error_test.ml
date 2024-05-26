@@ -78,6 +78,7 @@ let cases =
     ( "top_codegen-missing.bfr", expe_notrace Top_Missing_main );
     ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
     ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
+    ( "module_import-not-found-absolute.bfr", expe_notrace @@ Module_import_file_not_found "/absolute-path-that-does-not-exist");
     ( "module_import-failed-to-read.bfr", fun (_, e) -> match e with
         | Module_import_failed_to_read _ -> true
         | _ -> false
