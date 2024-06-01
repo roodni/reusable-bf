@@ -147,12 +147,12 @@ and main = parse
       let p1 = Lexing.lexeme_start_p lexbuf in
       str p1 [] lexbuf
     }
-  | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
+  | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in
       try (List.assoc id reserved) (info lexbuf)
       with Not_found -> P.VAR (withinfo (info lexbuf) (Syntax.Var.of_string id))
     }
-  | ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* {
+  | ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in
       P.UVAR (withinfo (info lexbuf) (Syntax.UVar.of_string id))
     }
