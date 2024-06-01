@@ -6,5 +6,5 @@ let act = 0 |> f 1 |> f 2 |> f 3
 let exp = (((0, 1), 2), 3)
 
 let main =
-  let () = verify (act = exp) in
+  verify (act = exp);
   [ *gen_puts "OK" ]

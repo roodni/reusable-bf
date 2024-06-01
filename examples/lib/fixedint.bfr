@@ -19,9 +19,8 @@ let gen_build n st = [
 // 指定した桁にアクセスする。0-indexed
 let get_digit_cell i src =
   let n, arr = src in
-  let () = verify (0 <= i && i < n) in
+  verify (0 <= i && i < n);
   arr:(n - i - 1)digit
-
 
 private
 let gen_move_last (n, arr) = [

@@ -78,6 +78,7 @@ module Va = struct
       | [] -> Some true
       | (x, y) :: rest -> begin
           match x, y with
+          | VaUnit, VaUnit -> Some true
           | VaInt x, VaInt y -> if x = y then loop rest else Some false
           | VaBool x, VaBool y -> if x = y then loop rest else Some false
           | VaCellSel x, VaCellSel y

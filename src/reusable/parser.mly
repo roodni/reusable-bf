@@ -47,7 +47,7 @@ open Syntax
 %token <Support.Info.info> OPEN
 %token <Support.Info.info> INCLUDE
 %token <Support.Info.info> STRUCT
-%token <Support.Info.info> END
+%token <Support.Info.info> END BEGIN
 
 %token <int Support.Info.withinfo> INT
 %token <char Support.Info.withinfo> CHAR
@@ -59,7 +59,7 @@ open Syntax
 
 %nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match
-%right SEMI
+%right SEMI prec_last_semi LET
 %nonassoc prec_if
 %nonassoc BAR
 %right COMMA
@@ -183,20 +183,17 @@ expr:
     }
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
   | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
-  | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v }
-  | i1=LPAREN e=expr_full SEMI l=expr_semi_list i2=RPAREN {
-      withinfo2 i1 i2 @@ ExList (e :: l)
+  | i1=LPAREN e=expr_full i2=RPAREN {
+      match e.v with
+      | ExSemicolon l -> withinfo2 i1 i2 @@ ExList l
+      | _ -> withinfo2 i1 i2 e.v
     }
+  | i1=BEGIN e=expr_full i2=END { withinfo2 i1 i2 e.v }
   | i=NIL { withinfo i @@ ExList [] }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 ExUnit }
 
 uvar_list:
   | uv=UVAR COLON l=uvar_list { uv :: l }
-  | { [] }
-
-expr_semi_list:
-  | e=expr_full SEMI l=expr_semi_list { e :: l }
-  | e=expr_full { [ e ] }
   | { [] }
 
 expr_appable:
@@ -235,6 +232,12 @@ expr_full:
   | e1=expr_full PIPE e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e2, e1) }
   | e1=expr_full COLONCOLON e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
   | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
+  | e1=expr_full SEMI e2=expr_full {
+      match e2.v with
+      | ExSemicolon l -> withinfo2 e1.i e2.i @@ ExSemicolon (e1 :: l)
+      | _ -> withinfo2 e1.i e2.i @@ ExSemicolon [e1; e2]
+    }
+  | e=expr_full i=SEMI { withinfo2 e.i i @@ ExSemicolon [e;] } %prec prec_last_semi
 
 %inline bop_int:
   | PLUS { BOp.Add }

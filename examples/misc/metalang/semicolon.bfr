@@ -1,0 +1,22 @@
+open import "std.bfr"
+
+let rec list_length = function
+  | nil -> 0
+  | _ :: tl -> 1 + list_length tl
+
+let a = (); (); ()
+let b = ((); (); ())
+let c = begin (); (); () end
+let d = (0)
+let e = (0;)
+let f = (); let cc = 0 in cc
+
+let main =
+  verify (a = ());
+  verify (list_length b = 3);
+  verify (c = ());
+  verify (d = 0);
+  verify (list_length e = 1);
+  verify (f = 0);
+  gen_puts "OK";
+;;

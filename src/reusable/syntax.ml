@@ -64,6 +64,7 @@ and expr' =
   | ExMatch of expr * (pat * expr) list
   | ExPair of expr * expr
   | ExUnit
+  | ExSemicolon of expr list
 and let_binding = pat * expr
 
 and stmts = stmt' withinfo list

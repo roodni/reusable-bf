@@ -218,3 +218,12 @@ and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
       let v1 = eval_mid envs ex1 in
       let v2 = eval_mid envs ex2 in
       VaPair (v1, v2)
+  | ExSemicolon l ->
+      let rec loop = function
+        | [] -> assert false
+        | [e] -> eval_tail envs e
+        | hd :: tl ->
+            eval_mid envs hd |> Va.to_unit envs.trace hd.i;
+            loop tl
+      in
+      loop l

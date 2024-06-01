@@ -5,6 +5,7 @@ module P = Parser
 let reserved = [
   ("_", fun i -> P.UNDER i);
   ("array", fun i -> P.ARRAY i);
+  ("begin", fun i -> P.BEGIN i);
   ("cell", fun i -> P.CELL i);
   ("else", fun i -> P.ELSE i);
   ("end", fun i -> P.END i);

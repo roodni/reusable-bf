@@ -31,7 +31,7 @@ type tail_expr_kind = [`Stmts | `NonStmts ]
 *)
 let validate_let_rec_righthand ex =
   match ex.v with
-  | ExFun _ | ExBlock _ -> ()
+  | ExFun _ | ExFunction _ | ExBlock _ -> ()
   | _ -> Error.top ex.i Syntax_Let_rec_right_hand
 
 let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
@@ -92,6 +92,9 @@ let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
       in
       if List.for_all ((=) `Stmts) tails
         then `Stmts else `NonStmts
+  | ExSemicolon l ->
+      List.fold_left (fun _ -> scan_expr) `NonStmts l
+
 and scan_stmts ~pname (stmts: stmts) =
   let scan_stmts = scan_stmts ~pname in
   let scan_expr = scan_expr ~pname in
