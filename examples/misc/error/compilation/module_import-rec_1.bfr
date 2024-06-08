@@ -1,3 +1,3 @@
-open import "module_import-rec_2.bfr"
+open import "../compilation/./module_import-rec_2.bfr"
 
 let main = []

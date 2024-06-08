@@ -1,8 +1,7 @@
 (library
  (name reusable)
- (libraries support bf ir fileutils)
+ (libraries support bf ir unix fileutils)
  (flags (:standard -warn-error -a)))
-
 
 (menhir
  (modules parser))

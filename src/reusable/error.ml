@@ -6,6 +6,7 @@ type t =
   | Lexer_Unexpected
   | Lexer_Too_large_int
   | Parser_Unexpected
+  (* | File_Failed_to_read of { reason: string } *)  (* lexerがSys_errorを吐いたときに拾うやつ。open_inにも対応させるべきか？ *)
   | Syntax_Let_rec_right_hand
   | Eval_Wrong_data_type of string
   | Eval_Match_failed
@@ -25,7 +26,7 @@ type t =
   | Module_Recursive_import
   | Module_Limited_import
   | Module_import_file_not_found of string
-  | Module_import_failed_to_read of { path: string; error: string }
+  | Module_import_file_is_directory of string
   | Top_Missing_main
   | Top_main_is_not_stmts
   | Memory_Recursion_limit
@@ -40,8 +41,9 @@ let output ppf msg =
   | Module_Limited_import -> pf "This import path is not allowed"
   | Module_Recursive_import -> pf "This import is recursive"
   | Module_import_file_not_found path -> pf "The file \"%s\" is not found" (String.escaped path)
-  | Module_import_failed_to_read {path; error} ->
-      pf "The file \"%s\" cannot be read (%s)" (String.escaped path) error
+  | Module_import_file_is_directory path -> pf "The file \"%s\" is a directory" (String.escaped path)
+  (* | File_Failed_to_read { reason } ->
+      pf "The file cannot be read (%s)" reason *)
   | Gen_Field_Unlimited_array_cannot_be_array_member ->
       pf "An unlimited array cannot be allocated as a member of an array"
   | Gen_Field_Array_length_cannot_be_negative ->

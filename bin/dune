@@ -1,4 +1,17 @@
-(executables
- (names main measurelen)
- (public_names bfre -)
+(executable
+ (name main)
+ (public_name bfre)
+ (modules main)
  (libraries support bf ir reusable))
+
+(executable
+ (name measurelen)
+ (modules measurelen)
+ (libraries support bf ir reusable))
+
+(executable
+ (name playground)
+ (modules playground)
+ (modes js)
+ (preprocess (pps js_of_ocaml-ppx))
+ (libraries js_of_ocaml support bf ir reusable))

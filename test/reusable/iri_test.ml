@@ -9,7 +9,6 @@ let output_test =
       let field, ir_code =
         try
           Reusable.Program.load_from_source path
-          |> Result.get_ok
           |> Reusable.Program.gen_ir
             ~path_limit:NoLimit
             (Filename.dirname path)
@@ -38,7 +37,7 @@ let error_test =
     name >:: (fun _ ->
       let dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
       let path = Filename.concat dir name in
-      let program = Reusable.Program.load_from_source path |> Result.get_ok in
+      let program = Reusable.Program.load_from_source path in
       let field, ir_code =
         Reusable.Program.gen_ir
           ~path_limit:NoLimit

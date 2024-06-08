@@ -80,10 +80,7 @@ let cases =
     ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
     ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
     ( "module_import-not-found-absolute.bfr", expe_notrace @@ Module_import_file_not_found "/absolute-path-that-does-not-exist");
-    ( "module_import-failed-to-read.bfr", fun (_, e) -> match e with
-        | Module_import_failed_to_read _ -> true
-        | _ -> false
-    );
+    ( "module_import-file-is-directory.bfr", expe_notrace @@ Module_import_file_is_directory ".");
     ( "memory_stack_eval.bfr", expe Memory_Recursion_limit );
     ( "memory_stack_gen.bfr", expe Memory_Recursion_limit );
     ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );

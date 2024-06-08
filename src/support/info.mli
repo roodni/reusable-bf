@@ -3,6 +3,8 @@ type info
 type 'a withinfo = { i : info; v : 'a }
 
 val create_info : Lexing.position -> Lexing.position -> info
+val create_info_only_filename : string -> info
+
 val set_pname_of_info : info -> string option -> unit
 val get_pname_of_info : info -> string option
 

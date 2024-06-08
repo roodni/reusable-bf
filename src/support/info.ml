@@ -29,6 +29,16 @@ let create_info pos1 pos2 =
     parent_name = None;
   }
 
+let create_info_only_filename fname =
+  Loc {
+    fname;
+    l_start = 0;
+    l_end = 0;
+    c_start = 0;
+    c_end = 0;
+    parent_name = None;
+  }
+
 let set_pname_of_info (Loc i) pname =
   i.parent_name <- pname
 let get_pname_of_info (Loc i) = i.parent_name

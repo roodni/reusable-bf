@@ -53,13 +53,14 @@ let get_source () =
     (* なんでfilenameが"-"かどうかを見ずに専用のフラグを用意したんだっけ？思い出せない *)
     if !filename = "" then (Sys.getcwd (), stdin)
     else failwith "File is given but stdin flag is set"
-  else if Sys.file_exists !filename then
-    (Filename.dirname !filename, open_in !filename)
-  else begin
+  else if not @@ Sys.file_exists !filename then begin
     Reusable.Error.print (`Info None, Module_import_file_not_found !filename);
     exit 1
-  end
-
+  end else if Sys.is_directory !filename then begin
+    Reusable.Error.print (`Info None, Module_import_file_is_directory !filename);
+    exit 1
+  end else
+    (Filename.dirname !filename, open_in !filename)
 
 (** bfのコードを実行する *)
 let run_bf bf_code =
@@ -117,13 +118,11 @@ let use_as_bfr_compiler () =
   in
   let field, ir_code =
     try
-      let res =
+      let program =
         Fun.protect (fun () -> Reusable.Program.load !filename channel)
           ~finally:(fun () -> close_in channel)
       in
-      match res with
-      | Ok program -> Reusable.Program.gen_ir ~path_limit dirname program
-      | Error error -> Reusable.Error.unknown @@ Module_import_failed_to_read { path = !filename; error }
+      Reusable.Program.gen_ir ~path_limit dirname program
     with Reusable.Error.Exn_at e ->
       Reusable.Error.print e;
       exit 1
