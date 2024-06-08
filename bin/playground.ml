@@ -1,5 +1,4 @@
 open Js_of_ocaml
-open Printf
 
 type message_req = <
   files: <
@@ -9,13 +8,14 @@ type message_req = <
 
   optimize: int Js.prop;
   showLayout: bool Js.t Js.prop;
+  maxLength: int Js.prop;
   entrypoint: Js.js_string Js.t Js.prop;
 > Js.t
 
 type message_res = <
-  success: bool Js.t Js.prop;
-  out: Js.js_string Js.t Js.prop;
-  err: Js.js_string Js.t Js.prop;
+  success: bool Js.t Js.readonly_prop;
+  out: Js.js_string Js.t Js.readonly_prop;
+  err: Js.js_string Js.t Js.readonly_prop;
 > Js.t
 
 exception Failed of string
@@ -28,10 +28,8 @@ let handler (req: message_req) =
       Sys_js.create_file ~name ~content
     );
   let optimize = req##.optimize in
+  let max_length = req##.maxLength in
   let show_layout = req##.showLayout |> Js.to_bool in
-
-  print_endline (string_of_bool show_layout);
-  printf "opt %d\n" optimize;
 
   let entrypoint = req##.entrypoint |> Js.to_string in
 
@@ -63,7 +61,7 @@ let handler (req: message_req) =
       let layout, bf_code = Ir.Opt.codegen_by_level optimize opt_context in
 
       let len = Bf.Code.length bf_code in
-      if len > 100000 then
+      if len > max_length then
         raise @@ Failed (Printf.sprintf "The output code size is too large (%d)" len);
 
       let out = Bf.Code.to_string bf_code in
@@ -77,16 +75,16 @@ let handler (req: message_req) =
         end else ""
       in
       object%js
-        val mutable success = Js.bool true
-        val mutable out = Js.string out
-        val mutable err = Js.string err
+        val success = Js.bool true
+        val out = Js.string out
+        val err = Js.string err
       end
     with
     | Failed e ->
         object%js
-          val mutable success = Js.bool false
-          val mutable out = Js.string ""
-          val mutable err = Js.string e
+          val success = Js.bool false
+          val out = Js.string ""
+          val err = Js.string e
         end
   in
   Worker.post_message res
