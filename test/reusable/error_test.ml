@@ -4,10 +4,10 @@ open Reusable
 
 let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "examples/misc/error/compilation"
 
-let test_error ?(path_limit=Program.NoLimit) (filename, f) =
+let test_error (filename, f) =
   filename >:: fun _ ->
     let path = Filename.concat error_dir filename in
-    match Program.gen_bf_from_source ~path_limit path with
+    match Program.gen_bf_from_source path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at e ->
         if not (f e) then begin
@@ -93,14 +93,6 @@ let cases =
 
 let normal_tests = "normal" >::: List.map test_error cases
 
-let sandbox_tests =
-  let open Error in
-  "sandbox" >:::
-    List.map
-      (test_error ~path_limit:(Program.Limited ["std.bfr"]))
-      [ ( "module_prohibited-import.bfr", expe_notrace Module_Limited_import );
-        ( "module_prohibited-import-submodule.bfr", expe_notrace Module_Limited_import );
-      ]
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
@@ -112,6 +104,5 @@ let () =
   run_test_tt_main
     ("error" >::: [
       normal_tests;
-      sandbox_tests;
       too_large_bf_test;
     ])

@@ -10,7 +10,6 @@ let channel_print_opt = ref stderr
 let flag_show_layouts = ref false
 let flag_dump_tape = ref false
 let flag_sandbox = ref false
-let arg_limit_import_paths = ref None
 let flag_stdin = ref false
 let filename = ref ""
 let parse_args () =
@@ -29,12 +28,6 @@ let parse_args () =
     ("--print-opt", Set flag_print_opt, " ");
     (* ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " "); *)
     ("--sandbox", Set flag_sandbox, " ");
-    ("--limit-import-paths",
-      String (fun s ->
-        let l = String.split_on_char ',' s in
-        arg_limit_import_paths := Some l ),
-      " "
-    );
     ("--stdin", Set flag_stdin, " ");
   ] in
   let usage_msg =
@@ -108,21 +101,13 @@ let use_as_bf_interpreter () =
 (** bf-reusableのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
   let dirname, channel = get_source () in
-  let path_limit =
-    match !arg_limit_import_paths with
-    | None ->
-        if !flag_sandbox
-          then Reusable.Program.Limited []
-          else NoLimit
-    | Some l -> Limited l
-  in
   let field, ir_code =
     try
       let program =
         Fun.protect (fun () -> Reusable.Program.load !filename channel)
           ~finally:(fun () -> close_in channel)
       in
-      Reusable.Program.gen_ir ~path_limit dirname program
+      Reusable.Program.gen_ir dirname program
     with Reusable.Error.Exn_at e ->
       Reusable.Error.print e;
       exit 1

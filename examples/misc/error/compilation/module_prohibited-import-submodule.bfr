@@ -1,9 +1,0 @@
-// web playground では変なパスへのimportを禁止する
-
-open import "std.bfr" // 可能
-
-module Sub = struct
-  open import "./std.bfr" // 禁止
-end
-
-let main = []

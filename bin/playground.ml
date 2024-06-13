@@ -58,7 +58,7 @@ let handler (req: message_req) =
       let ir =
         try
           let program = Reusable.Program.load_from_source entrypoint in
-          Reusable.Program.gen_ir ~path_limit:NoLimit dirname program
+          Reusable.Program.gen_ir dirname program
         with
         | Reusable.Error.Exn_at e -> begin
             let buf_err = Buffer.create 100 in

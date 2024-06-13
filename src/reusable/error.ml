@@ -24,7 +24,6 @@ type t =
   | Gen_Field_Unlimited_array_cannot_be_array_member
   | Gen_Field_Array_length_cannot_be_negative
   | Module_Recursive_import
-  | Module_Limited_import
   | Module_import_file_not_found of string
   | Module_import_file_is_directory of string
   | Top_Missing_main
@@ -38,7 +37,6 @@ let output ppf msg =
   | Memory_Recursion_limit -> pf "Recursion depth exceeded the limit"
   | Top_Missing_main -> pf "Variable 'main' is not bound at the top level"
   | Top_main_is_not_stmts -> pf "The 'main' bound at the top level must be statements"
-  | Module_Limited_import -> pf "This import path is not allowed"
   | Module_Recursive_import -> pf "This import is recursive"
   | Module_import_file_not_found path -> pf "The file \"%s\" is not found" (String.escaped path)
   | Module_import_file_is_directory path -> pf "The file \"%s\" is a directory" (String.escaped path)

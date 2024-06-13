@@ -9,9 +9,7 @@ let output_test =
       let field, ir_code =
         try
           Reusable.Program.load_from_source path
-          |> Reusable.Program.gen_ir
-            ~path_limit:NoLimit
-            (Filename.dirname path)
+          |> Reusable.Program.gen_ir (Filename.dirname path)
         with Reusable.Error.Exn_at msg ->
           Reusable.Error.print ~ppf:Format.str_formatter msg;
           assert_failure @@ Format.flush_str_formatter ();
@@ -38,12 +36,7 @@ let error_test =
       let dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
       let path = Filename.concat dir name in
       let program = Reusable.Program.load_from_source path in
-      let field, ir_code =
-        Reusable.Program.gen_ir
-          ~path_limit:NoLimit
-          dir
-          program
-      in
+      let field, ir_code = Reusable.Program.gen_ir dir program in
       let res, _ =
         Ir.Interpreter.run_string
           ~cell_type:Overflow256

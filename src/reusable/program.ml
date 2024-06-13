@@ -37,20 +37,11 @@ let lib_path =
   ]
   |> List.find_map Fun.id
 
-type path_limit =
-  | NoLimit
-  | Limited of string list
-
 (** 相対パスまたは絶対パスからファイルを探し、
     存在すればカレントディレクトリからのパスまたは絶対パスを返す *)
-let find_source path_limit base_dir path =
+let find_source base_dir path =
   let exception R of Error.t in
   try
-    ( match path_limit with
-      | NoLimit -> ()
-      | Limited l ->
-          if not (List.mem path l) then raise @@ R Module_Limited_import
-    );
     let paths =
       if not (Filename.is_relative path) then [path]
       else
@@ -111,7 +102,6 @@ type ctx =
     ex_envs: envs; (* エクスポートされる環境 *)
     base_dirname: string;
     filemap: FileMap.t;
-    path_limit: path_limit;
   }
 
 let rec eval_decl ctx decl : ctx =
@@ -165,7 +155,7 @@ and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
       let path =
-        match find_source ctx.path_limit ctx.base_dirname p with
+        match find_source ctx.base_dirname p with
         | Ok p -> p
         | Error e -> Error.top mod_expr.i e
       in
@@ -178,7 +168,6 @@ and eval_mod_expr ctx mod_expr =
             ex_envs = Envs.empty;
             base_dirname = Filename.dirname path;
             filemap = FileMap.add path Loading ctx.filemap;
-            path_limit = NoLimit; (* import先でのimportは信用する *)
           } in
           let prog = load_from_source path in
           let ctx' = eval_decls ctx' prog in
@@ -206,14 +195,13 @@ and eval_mod_expr ctx mod_expr =
       (ctx, envs)
     end
 
-let gen_ir ~path_limit (dirname: string) (program: program)
+let gen_ir (dirname: string) (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
   let ctx = {
     envs = Envs.initial;
     ex_envs = Envs.empty;
     base_dirname = dirname;
     filemap = FileMap.empty;
-    path_limit;
   } in
   let ctx = eval_decls ctx program in
   match VE.lookup (Var.of_string "main") ctx.ex_envs.va_env with
@@ -224,10 +212,10 @@ let gen_ir ~path_limit (dirname: string) (program: program)
 
 (** ファイルを読んでbfに変換する
     エラーハンドリングが雑なので開発用 *)
-let gen_bf_from_source ?(path_limit=NoLimit) ?(opt_level=Ir.Opt.max_level) path =
+let gen_bf_from_source ?(opt_level=Ir.Opt.max_level) path =
   let dirname = Filename.dirname path in
   let program = load_from_source path in
-  let field, ir_code = gen_ir ~path_limit dirname program in
+  let field, ir_code = gen_ir dirname program in
   let opt_context =
     Ir.Opt.{ field; code=ir_code; chan=stderr; dump=false }
   in
