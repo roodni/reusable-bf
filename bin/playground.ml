@@ -20,6 +20,25 @@ type message_res = <
 
 exception Failed of string
 
+module Js = struct
+  include Js
+
+  let to_string o =
+    if Js.typeof o |> Js.to_string = "string"
+      then Js.to_string o
+      else assert false
+  
+  let to_bool o =
+    if Js.typeof o |> Js.to_string = "boolean"
+      then Js.to_bool o
+      else assert false
+
+  let to_number o =
+    if Obj.magic o |> Js.typeof |> Js.to_string = "number"
+      then o
+      else assert false
+end
+
 let handler (req: message_req) =
   let files = req##.files |> Js.to_array in
   files |> Array.iter (fun file ->
@@ -27,8 +46,8 @@ let handler (req: message_req) =
       let content = file##.content |> Js.to_string in
       Sys_js.create_file ~name ~content
     );
-  let optimize = req##.optimize in
-  let max_length = req##.maxLength in
+  let optimize = req##.optimize |> Js.to_number in
+  let max_length = req##.maxLength  |> Js.to_number in
   let show_layout = req##.showLayout |> Js.to_bool in
 
   let entrypoint = req##.entrypoint |> Js.to_string in
