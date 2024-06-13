@@ -16,4 +16,5 @@
   (ounit2 :with-test)
   menhir
   js_of_ocaml
+  js_of_ocaml-ppx_deriving_json
   fileutils))
