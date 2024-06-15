@@ -10,9 +10,13 @@ let channel_print_opt = ref stderr
 let flag_show_layouts = ref false
 let flag_dump_tape = ref false
 let flag_sandbox = ref false
-let flag_stdin = ref false
 let filename = ref ""
+
 let parse_args () =
+  let filenames = ref [] in
+  let anon_fun s =
+    filenames := s :: !filenames
+  in
   let speclist = Arg.[
     ("-b", Set flag_bf, " Load and run a brainfuck program instead of bf-reusable programs");
     ("-r", Set flag_run, " Run a bf-reusable program after compilation");
@@ -28,24 +32,23 @@ let parse_args () =
     ("--print-opt", Set flag_print_opt, " ");
     (* ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " "); *)
     ("--sandbox", Set flag_sandbox, " ");
-    ("--stdin", Set flag_stdin, " ");
+    ("-", Unit (fun () -> anon_fun "-"), "");
   ] in
+  (* --print-opt-oはファイルを上書きする危険性があるので消されているが、open_outのタイミングが悪いだけなので、そのうち復活させる *)
   let usage_msg =
     sprintf "Usage: %s <options> <file>" Sys.argv.(0)
   in
-  Arg.parse speclist (fun s -> filename := s ) usage_msg;
+  Arg.parse speclist anon_fun usage_msg;
 
-  if Array.length Sys.argv = 1 then begin
-    Arg.usage speclist usage_msg;
-    exit 2
-  end;
+  (match !filenames with
+    | [s] -> filename := s
+    | _ -> Arg.usage speclist usage_msg; exit 2
+  )
 ;;
 
 let get_source () =
-  if !flag_stdin then
-    (* なんでfilenameが"-"かどうかを見ずに専用のフラグを用意したんだっけ？思い出せない *)
-    if !filename = "" then (Sys.getcwd (), stdin)
-    else failwith "File is given but stdin flag is set"
+  if !filename = "-" then
+    (Sys.getcwd (), stdin)
   else if not @@ Sys.file_exists !filename then begin
     Reusable.Error.print (`Info None, Module_import_file_not_found !filename);
     exit 1
