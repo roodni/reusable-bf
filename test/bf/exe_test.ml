@@ -20,7 +20,7 @@ let test_run { name; program; input; output; is_ok; ptr_max } =
         ~input
         (Exe.from_code program)
     in
-    assert_equal (Code.length program) (Code.to_buffer program |> Buffer.length);
+    assert_equal (Code.length program) (Code.to_string program |> String.length);
     assert_equal ~printer:string_of_bool is_ok (Result.is_ok res);
     assert_equal ~printer:Fun.id output output_actual;
     assert_equal ~printer:string_of_int ptr_max dump.p_max

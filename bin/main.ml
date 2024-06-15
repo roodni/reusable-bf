@@ -158,9 +158,8 @@ let use_as_bfr_compiler () =
       then run_ir field ir_code
       else run_bf bf_code;
   end else begin
-    let bf_code_buf = Bf.Code.to_buffer bf_code in
-    Buffer.output_buffer stdout bf_code_buf;
-    print_newline ();
+    Bf.Code.output_skelton print_char bf_code;
+    flush stdout;
   end
 ;;
 

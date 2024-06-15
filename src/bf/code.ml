@@ -22,34 +22,30 @@ let rec length code =
     0 code
 
 
-let to_buffer code =
-  let buf = Buffer.create 10000 in
-  let rec loop code =
-    List.iter
-      (function
-        | Add n ->
-            let c = if n < 0 then '-' else '+' in
-            for _ = 1 to abs n do
-              Buffer.add_char buf c
-            done
-        | Put -> Buffer.add_char buf '.'
-        | Get -> Buffer.add_char buf ','
-        | Shift n ->
-            let c = if n < 0 then '<' else '>' in
-            for _ = 1 to abs n do
-              Buffer.add_char buf c
-            done
-        | Loop l ->
-            Buffer.add_char buf '[';
-            loop l;
-            Buffer.add_char buf ']'
-      )
-      code
-  in
-  loop code;
-  buf
+let rec output_skelton f code =
+  List.iter
+    (function
+      | Add n ->
+          let c = if n < 0 then '-' else '+' in
+          for _ = 1 to abs n do
+            f c
+          done
+      | Put -> f '.'
+      | Get -> f ','
+      | Shift n ->
+          let c = if n < 0 then '<' else '>' in
+          for _ = 1 to abs n do
+            f c
+          done
+      | Loop l -> f '['; output_skelton f l; f ']'
+    )
+    code
 
-let to_string code = Buffer.contents (to_buffer code)
+
+let to_string code =
+  let buf = Buffer.create (length code) in
+  output_skelton (Buffer.add_char buf) code;
+  Buffer.contents buf
 
 exception ParseError
 
