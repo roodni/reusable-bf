@@ -1,22 +1,26 @@
 open Js_of_ocaml
 
-type message_req = <
-  files: <
-    name: Js.js_string Js.t Js.prop;
-    content: Js.js_string Js.t Js.prop;
-  > Js.t Js.js_array Js.t Js.prop;
+module Message = struct
+  open Js
+  
+  type req = <
+    files: <
+      name: js_string t prop;
+      content: js_string t prop;
+    > t js_array t prop;
 
-  optimize: int Js.prop;
-  showLayout: bool Js.t Js.prop;
-  maxLength: int Js.prop;
-  entrypoint: Js.js_string Js.t Js.prop;
-> Js.t
+    optimize: int prop;
+    showLayout: bool t prop;
+    maxLength: int prop;
+    entrypoint: js_string t prop;
+  > t
 
-type message_res = <
-  success: bool Js.t Js.readonly_prop;
-  out: Js.js_string Js.t Js.readonly_prop;
-  err: Js.js_string Js.t Js.readonly_prop;
-> Js.t
+  type res = <
+    success: bool t readonly_prop;
+    out: js_string t readonly_prop;
+    err: js_string t readonly_prop;
+  > t
+end
 
 exception Failed of string
 
@@ -39,7 +43,7 @@ module Js = struct
       else assert false
 end
 
-let handler (req: message_req) =
+let handler (req: Message.req) =
   let files = req##.files |> Js.to_array in
   files |> Array.iter (fun file ->
       let name = file##.name |> Js.to_string in
@@ -53,7 +57,7 @@ let handler (req: message_req) =
   let entrypoint = req##.entrypoint |> Js.to_string in
 
   let dirname = Filename.dirname entrypoint in
-  let res: message_res =
+  let res: Message.res =
     try
       let ir =
         try
