@@ -9,7 +9,6 @@ let flag_print_opt = ref false
 let channel_print_opt = ref stderr
 let flag_show_layouts = ref false
 let flag_dump_tape = ref false
-let flag_sandbox = ref false
 let filename = ref ""
 
 let parse_args () =
@@ -31,7 +30,6 @@ let parse_args () =
       sprintf " Set optimization level (0-%d)" Ir.Opt.max_level);
     ("--print-opt", Set flag_print_opt, " ");
     (* ("--print-opt-o", String (fun s -> channel_print_opt := open_out s), " "); *)
-    ("--sandbox", Set flag_sandbox, " ");
     ("-", Unit (fun () -> anon_fun "-"), "");
   ] in
   (* --print-opt-oはファイルを上書きする危険性があるので消されているが、open_outのタイミングが悪いだけなので、そのうち復活させる *)
@@ -149,10 +147,6 @@ let use_as_bfr_compiler () =
   end;
 
   (* コンパイル結果の出力または実行 *)
-  if !flag_sandbox && Bf.Code.length bf_code > 100000 then begin
-    eprintf "The output code size is too large\n";
-    exit 1;
-  end;
   if !flag_run then begin
     if !flag_ir
       then run_ir field ir_code
@@ -166,25 +160,7 @@ let use_as_bfr_compiler () =
 (* entrypoint *)
 let () =
   parse_args ();
-  if !flag_bf then use_as_bf_interpreter ()
-  else begin
-    if not !flag_sandbox then use_as_bfr_compiler ()
-    else begin
-      (* ヒープ使用量に制限をかけて実行する *)
-      let handler () =
-        let heapsize =
-          (Gc.quick_stat ()).heap_words * Sys.word_size / 8
-        in
-        if heapsize > 20_000_000 then
-          raise Out_of_memory;
-      in
-      let alarm = Gc.create_alarm handler in
-      try
-        Fun.protect use_as_bfr_compiler
-          ~finally:(fun () -> Gc.delete_alarm alarm)
-      with Out_of_memory ->
-        eprintf "Heap usage exceeded the limit\n";
-        exit 1;
-    end;
-  end;
+  if !flag_bf
+    then use_as_bf_interpreter ()
+    else use_as_bfr_compiler ()
 ;;

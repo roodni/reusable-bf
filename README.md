@@ -79,7 +79,7 @@ opam install .
 * ドキュメントは準備中です
 * 解説スライド https://www.slideshare.net/roodni/brainfuckbfreusable
   * 情報が古いです
-  * 現状とは構文がすこし違います
+  * 現状とは構文がだいぶ違います
 
 <!--
 ### 負のセルに関する注意
