@@ -57,6 +57,7 @@ and expr' =
   | ExMinus of expr
   | ExEqual of [`Eq | `Neq] * expr * expr
   | ExIf of expr * expr * expr
+  | ExIfUnit of expr * expr
   | ExLet of let_binding * expr
   | ExLetRec of Var.t * expr * expr
   | ExCons of expr * expr

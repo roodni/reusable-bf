@@ -58,9 +58,11 @@ open Syntax
 %token <Support.Info.info> NIL
 
 %nonassoc prec_stmts
-%nonassoc prec_fun prec_let prec_match
-%right SEMI prec_last_semi LET
+%nonassoc prec_fun prec_let prec_match prec_last_semi
+%nonassoc LET
+%right SEMI
 %nonassoc prec_if
+%nonassoc ELSE
 %nonassoc BAR
 %right COMMA
 %right BARBAR
@@ -211,6 +213,9 @@ expr_full:
   | i=FUNCTION BAR? c=clauses { withinfo i @@ ExFunction c }
   | i=IF ec=expr_full THEN et=expr_full ELSE ee=expr_full {
       withinfo2 i ee.i @@ ExIf (ec, et, ee)
+    } %prec prec_if
+  | i=IF ec=expr_full THEN et=expr_full {
+      withinfo2 i et.i @@ ExIfUnit (ec, et)
     } %prec prec_if
   | i=LET lb=let_binding IN e=expr_full {
       withinfo2 i e.i @@ ExLet (lb, e)

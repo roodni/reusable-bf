@@ -184,6 +184,10 @@ and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
   | ExIf (ex_cond, ex_then, ex_else) ->
       let cond = eval_mid envs ex_cond |> Va.to_bool envs.trace ex_cond.i in
       eval_tail envs (if cond then ex_then else ex_else)
+  | ExIfUnit (ex_cond, ex_then) ->
+      let cond = eval_mid envs ex_cond |> Va.to_bool envs.trace ex_cond.i in
+      if cond then eval_mid envs ex_then |> Va.to_unit envs.trace ex_then.i;
+      VaUnit
   | ExLet (binding, ex) ->
       let matched_env = eval_let_binding ~recn:(incr_recn ()) envs binding in
       let envs = Envs.extend_with_value_env matched_env envs in

@@ -1,0 +1,11 @@
+open import "std.bfr"
+
+let () =
+  if false then
+    if true
+      then failwith "never"
+      else failwith "never"
+
+let main = [
+  *gen_puts "OK"
+]

@@ -67,6 +67,10 @@ let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
       let r2 = scan_expr e3 in
       if r1 = `Stmts && r2 = `Stmts then `Stmts
       else `NonStmts
+  | ExIfUnit (e1, e2) ->
+      scan_expr_u e1;
+      scan_expr_u e2;
+      `NonStmts
   | ExBlock stmts ->
       scan_stmts ~pname stmts;
       `Stmts
