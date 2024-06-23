@@ -1,7 +1,7 @@
 (executable
  (name main)
- (public_name bfre)
  (modules main)
+ (public_name bfml)
  (libraries support bf ir reusable))
 
 (executable

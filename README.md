@@ -46,33 +46,33 @@ opam install .
 
 ## 実行
 
-* コンパイルする `bfre file.bfml`
-* コンパイルして実行する `bfre -r file.bfml`
-* brainfuckのプログラムを実行する `bfre -b file.b`
+* コンパイルする `bfml file.bfml`
+* コンパイルして実行する `bfml -r file.bfml`
+* brainfuckのプログラムを実行する `bfml -b file.b`
 
 ### サンプルプログラムの実行例
 
 * `examples/hello.bfml`: Hello World!
   ```sh
-  bfre -r examples/hello.bfml
+  bfml -r examples/hello.bfml
   ```
 
 * `examples/bfi.bfml`: brainfuckインタプリタ
   ```sh
   mkdir _sandbox
   cd _sandbox
-  bfre ../examples/bfi.bfml > bfi.b
-  bfre ../examples/hello.bfml > hello.b
+  bfml ../examples/bfi.bfml > bfi.b
+  bfml ../examples/hello.bfml > hello.b
 
   # hello.b を実行する
   echo '\' >> hello.b
-  bfre -b bfi.b < hello.b
+  bfml -b bfi.b < hello.b
 
   # 自分自身を実行して hello.b を入力に与える
   cp bfi.b input.txt
   echo '\' >> input.txt
   cat hello.b >> input.txt
-  bfre -b bfi.b < input.txt
+  bfml -b bfi.b < input.txt
   ```
 
 ## 資料

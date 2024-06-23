@@ -29,7 +29,7 @@ let load_from_source path =
     ~finally:(fun () -> close_in channel)
 
 let lib_path =
-  [ Sys.getenv_opt "BFRE_LIB_PATH";
+  [ Sys.getenv_opt "BFML_LIB_PATH";
     Sys.getenv_opt "DUNE_SOURCEROOT"
       |> Option.map (fun r -> Filename.concat r "examples/lib");
     Sys.getenv_opt "OPAM_SWITCH_PREFIX"
