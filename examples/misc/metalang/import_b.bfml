@@ -2,4 +2,4 @@ let b = 'B'
 
 let x = '2'
 
-open import "./import_c.bfr"
+open import "./import_c.bfml"

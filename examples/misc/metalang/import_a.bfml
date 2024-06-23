@@ -8,8 +8,8 @@ let x = '1'
 
 let p1 = gen_putc x
 
-open import "./import_b.bfr"
-module C = import "./import_c.bfr"
+open import "./import_b.bfml"
+module C = import "./import_c.bfml"
 
 let p2 = gen_putc x
 

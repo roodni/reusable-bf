@@ -1,14 +1,14 @@
 open Printf
 
 let programs = [
-  "./examples/misc/bf/rev3.bfr";
-  "./examples/misc/bf/nested_array.bfr";
-  "./examples/misc/bf/switch.bfr";
-  "./examples/fizzbuzz.bfr";
-  "./examples/misc/bf/queens.bfr";
-  "./examples/bfi.bfr";
-  "./examples/addsubmul.bfr";
-  "./examples/misc/bf/ifelse.bfr";
+  "./examples/misc/bf/rev3.bfml";
+  "./examples/misc/bf/nested_array.bfml";
+  "./examples/misc/bf/switch.bfml";
+  "./examples/fizzbuzz.bfml";
+  "./examples/misc/bf/queens.bfml";
+  "./examples/bfi.bfml";
+  "./examples/addsubmul.bfml";
+  "./examples/misc/bf/ifelse.bfml";
 ]
 
 let () =

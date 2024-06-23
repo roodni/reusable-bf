@@ -1,5 +1,5 @@
-open import "std.bfr"
-open import "fixedint.bfr"
+open import "std.bfml"
+open import "fixedint.bfml"
 
 // input: a b
 // output: (a + b) (a * b)

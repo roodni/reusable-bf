@@ -1,4 +1,4 @@
-open import "std.bfr"
+open import "std.bfml"
 
 let puti = fun n -> [
   $alloc { x }

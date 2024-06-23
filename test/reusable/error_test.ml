@@ -33,61 +33,61 @@ let cases =
   let uvar s = Syntax.UVar.of_string s in
   let open Error in
   [
-    ( "eval_equal.bfr", expe Eval_Equal_failed );
-    ( "eval_failwith.bfr", expe @@ Eval_Exception "Failed" );
-    ( "eval_match_fun.bfr", expe Eval_Match_failed );
-    ( "eval_match_let-expr.bfr", expe Eval_Match_failed );
-    ( "eval_match_let-decl.bfr", expe Eval_Match_failed );
-    ( "eval_match_match.bfr", expe Eval_Match_failed );
-    ( "eval_nd-member_idx.bfr",
+    ( "eval_equal.bfml", expe Eval_Equal_failed );
+    ( "eval_failwith.bfml", expe @@ Eval_Exception "Failed" );
+    ( "eval_match_fun.bfml", expe Eval_Match_failed );
+    ( "eval_match_let-expr.bfml", expe Eval_Match_failed );
+    ( "eval_match_let-decl.bfml", expe Eval_Match_failed );
+    ( "eval_match_match.bfml", expe Eval_Match_failed );
+    ( "eval_nd-member_idx.bfml",
       expe @@ Eval_Member_not_defined (var "idx") );
-    ( "eval_nd-member_mem.bfr",
+    ( "eval_nd-member_mem.bfml",
       expe @@ Eval_Member_not_defined (var "mem") );
-    ( "eval_nd-module.bfr",
+    ( "eval_nd-module.bfml",
       expe @@ Eval_Module_not_defined (uvar "M") );
-    ( "eval_nd-var_module.bfr",
+    ( "eval_nd-var_module.bfml",
       expe @@ Eval_Variable_not_defined (var "c") );
-    ( "eval_nd-var_var.bfr",
+    ( "eval_nd-var_var.bfml",
       expe @@ Eval_Variable_not_defined (var "hoge") );
-    ( "eval_unexpected-index.bfr",
+    ( "eval_unexpected-index.bfml",
       expe @@ Eval_Member_is_index (var "i") );
-    ( "eval_unexpected-non-index.bfr",
+    ( "eval_unexpected-non-index.bfml",
       expe @@ Eval_Member_is_not_index (var "x") );
-    ( "eval_wdt_bool.bfr", expe @@ Eval_Wrong_data_type "bool" );
-    ( "eval_wdt_function.bfr", expe @@ Eval_Wrong_data_type "function" );
-    ( "eval_wdt_int.bfr", expe @@ Eval_Wrong_data_type "int" );
-    ( "eval_wdt_list.bfr", expe @@ Eval_Wrong_data_type "list" );
-    ( "eval_wdt_stmts.bfr", expe @@ Eval_Wrong_data_type "statements" );
-    ( "eval_wdt_array.bfr", expe @@ Eval_Wrong_data_type "array selector" );
-    ( "eval_wdt_cell.bfr", expe @@ Eval_Wrong_data_type "cell selector" );
-    ( "eval_wdt_index.bfr", expe @@ Eval_Wrong_data_type "index selector" );
-    ( "eval_wdt_selectable.bfr", expe @@ Eval_Wrong_data_type "array or index selector" );
-    ( "eval_wdt_unit.bfr", expe @@ Eval_Wrong_data_type "unit" );
-    ( "eval_zero-div_div.bfr", expe Eval_Zero_division );
-    ( "eval_zero-div_mod.bfr", expe Eval_Zero_division );
-    ( "gen_alloc-index_diving.bfr", expe Gen_Alloc_Index_must_be_array_member );
-    ( "gen_alloc-index_root.bfr", expe Gen_Alloc_Index_must_be_array_member );
-    ( "gen_alloc-tmp-array.bfr", expe Gen_Alloc_Array_not_implemented );
-    ( "gen_uarray-in-array.bfr", expe Gen_Field_Unlimited_array_cannot_be_array_member );
-    ( "gen_negative-length-array.bfr", expe Gen_Field_Array_length_cannot_be_negative );
-    ( "lexer_string.bfr", expe_notrace Lexer_Unexpected );
-    ( "lexer_unexpected.bfr", expe_notrace Lexer_Unexpected );
-    ( "lexer_large-int.bfr", expe_notrace Lexer_Too_large_int );
-    ( "parser_1.bfr", expe_notrace Parser_Unexpected );
-    ( "parser_2.bfr", expe_notrace Parser_Unexpected );
-    ( "top_codegen-wrongtype.bfr", expe_notrace Top_main_is_not_stmts );
-    ( "top_codegen-missing.bfr", expe_notrace Top_Missing_main );
-    ( "module_import-rec_1.bfr", expe_notrace Module_Recursive_import );
-    ( "module_import-not-found.bfr", expe_notrace @@ Module_import_file_not_found "./file" );
-    ( "module_import-not-found-absolute.bfr", expe_notrace @@ Module_import_file_not_found "/absolute-path-that-does-not-exist");
-    ( "module_import-file-is-directory.bfr", expe_notrace @@ Module_import_file_is_directory ".");
-    ( "memory_stack_eval.bfr", expe Memory_Recursion_limit );
-    ( "memory_stack_gen.bfr", expe Memory_Recursion_limit );
-    ( "trace_eval.bfr", expe_full [1; 1] Eval_Match_failed );
-    ( "trace_tail.bfr", expe_full [4; 1] @@ Eval_Exception "f" );
-    ( "trace_gen.bfr", expe_len [1; 1] );
-    ( "syntax_letrec.bfr", expe_notrace Syntax_Let_rec_right_hand );
-    ( "syntax_letrec_decl.bfr", expe_notrace Syntax_Let_rec_right_hand );
+    ( "eval_wdt_bool.bfml", expe @@ Eval_Wrong_data_type "bool" );
+    ( "eval_wdt_function.bfml", expe @@ Eval_Wrong_data_type "function" );
+    ( "eval_wdt_int.bfml", expe @@ Eval_Wrong_data_type "int" );
+    ( "eval_wdt_list.bfml", expe @@ Eval_Wrong_data_type "list" );
+    ( "eval_wdt_stmts.bfml", expe @@ Eval_Wrong_data_type "statements" );
+    ( "eval_wdt_array.bfml", expe @@ Eval_Wrong_data_type "array selector" );
+    ( "eval_wdt_cell.bfml", expe @@ Eval_Wrong_data_type "cell selector" );
+    ( "eval_wdt_index.bfml", expe @@ Eval_Wrong_data_type "index selector" );
+    ( "eval_wdt_selectable.bfml", expe @@ Eval_Wrong_data_type "array or index selector" );
+    ( "eval_wdt_unit.bfml", expe @@ Eval_Wrong_data_type "unit" );
+    ( "eval_zero-div_div.bfml", expe Eval_Zero_division );
+    ( "eval_zero-div_mod.bfml", expe Eval_Zero_division );
+    ( "gen_alloc-index_diving.bfml", expe Gen_Alloc_Index_must_be_array_member );
+    ( "gen_alloc-index_root.bfml", expe Gen_Alloc_Index_must_be_array_member );
+    ( "gen_alloc-tmp-array.bfml", expe Gen_Alloc_Array_not_implemented );
+    ( "gen_uarray-in-array.bfml", expe Gen_Field_Unlimited_array_cannot_be_array_member );
+    ( "gen_negative-length-array.bfml", expe Gen_Field_Array_length_cannot_be_negative );
+    ( "lexer_string.bfml", expe_notrace Lexer_Unexpected );
+    ( "lexer_unexpected.bfml", expe_notrace Lexer_Unexpected );
+    ( "lexer_large-int.bfml", expe_notrace Lexer_Too_large_int );
+    ( "parser_1.bfml", expe_notrace Parser_Unexpected );
+    ( "parser_2.bfml", expe_notrace Parser_Unexpected );
+    ( "top_codegen-wrongtype.bfml", expe_notrace Top_main_is_not_stmts );
+    ( "top_codegen-missing.bfml", expe_notrace Top_Missing_main );
+    ( "module_import-rec_1.bfml", expe_notrace Module_Recursive_import );
+    ( "module_import-not-found.bfml", expe_notrace @@ Module_import_file_not_found "./file" );
+    ( "module_import-not-found-absolute.bfml", expe_notrace @@ Module_import_file_not_found "/absolute-path-that-does-not-exist");
+    ( "module_import-file-is-directory.bfml", expe_notrace @@ Module_import_file_is_directory ".");
+    ( "memory_stack_eval.bfml", expe Memory_Recursion_limit );
+    ( "memory_stack_gen.bfml", expe Memory_Recursion_limit );
+    ( "trace_eval.bfml", expe_full [1; 1] Eval_Match_failed );
+    ( "trace_tail.bfml", expe_full [4; 1] @@ Eval_Exception "f" );
+    ( "trace_gen.bfml", expe_len [1; 1] );
+    ( "syntax_letrec.bfml", expe_notrace Syntax_Let_rec_right_hand );
+    ( "syntax_letrec_decl.bfml", expe_notrace Syntax_Let_rec_right_hand );
 
   ]
 
@@ -96,7 +96,7 @@ let normal_tests = "normal" >::: List.map test_error cases
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
-    Program.gen_bf_from_source (Filename.concat error_dir "etc_large-bfcode.bfr")
+    Program.gen_bf_from_source (Filename.concat error_dir "etc_large-bfcode.bfml")
   in
   assert_equal max_int (Bf.Code.length bfcode)
 

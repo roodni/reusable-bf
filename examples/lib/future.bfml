@@ -1,4 +1,4 @@
-open import "std.bfr"
+open import "std.bfml"
 
 (* 除算のスケルトンコード
    divisor_cell で rem_cell を割り

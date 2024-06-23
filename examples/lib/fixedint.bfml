@@ -1,7 +1,7 @@
 (* 固定長10進整数 *)
 
-open import "std.bfr"
-open import "future.bfr"
+open import "std.bfml"
+open import "future.bfml"
 
 let base = 10
 

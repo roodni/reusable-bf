@@ -1,6 +1,6 @@
 // Hello World!
 
-open import "std.bfr"
+open import "std.bfml"
 
 let gen_short_incr x n =
   let score (a, b) = a + abs b + abs (n - a * b) in

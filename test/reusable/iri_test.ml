@@ -55,12 +55,12 @@ let error_test =
   in
   "error" >:::
     List.map test_run [
-      ("eof.bfr", 5, "End of input");
-      ("index1.bfr", 9, "Index out of range");
-      ("index2.bfr", 10, "Index out of range");
-      ("index3.bfr", 11, "Index out of range");
-      ("overflow1.bfr", 6, "Overflow");
-      ("overflow2.bfr", 5, "Overflow");
+      ("eof.bfml", 5, "End of input");
+      ("index1.bfml", 9, "Index out of range");
+      ("index2.bfml", 10, "Index out of range");
+      ("index3.bfml", 11, "Index out of range");
+      ("overflow1.bfml", 6, "Overflow");
+      ("overflow2.bfml", 5, "Overflow");
     ]
 
 

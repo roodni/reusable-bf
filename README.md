@@ -46,23 +46,23 @@ opam install .
 
 ## 実行
 
-* コンパイルする `bfre file.bfr`
-* コンパイルして実行する `bfre -r file.bfr`
+* コンパイルする `bfre file.bfml`
+* コンパイルして実行する `bfre -r file.bfml`
 * brainfuckのプログラムを実行する `bfre -b file.b`
 
 ### サンプルプログラムの実行例
 
-* `examples/hello.bfr`: Hello World!
+* `examples/hello.bfml`: Hello World!
   ```sh
-  bfre -r examples/hello.bfr
+  bfre -r examples/hello.bfml
   ```
 
-* `examples/bfi.bfr`: brainfuckインタプリタ
+* `examples/bfi.bfml`: brainfuckインタプリタ
   ```sh
   mkdir _sandbox
   cd _sandbox
-  bfre ../examples/bfi.bfr > bfi.b
-  bfre ../examples/hello.bfr > hello.b
+  bfre ../examples/bfi.bfml > bfi.b
+  bfre ../examples/hello.bfml > hello.b
 
   # hello.b を実行する
   echo '\' >> hello.b

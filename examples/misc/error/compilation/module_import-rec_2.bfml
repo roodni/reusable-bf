@@ -1,4 +1,4 @@
 open import
-  "../compilation/module_import-rec_1.bfr"
+  "../compilation/module_import-rec_1.bfml"
 
 let main = []
