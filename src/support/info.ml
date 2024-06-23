@@ -6,6 +6,7 @@ type info = Loc of {
   l_end : int;
   c_start : int;
   c_end : int;
+  parened : bool;
   mutable parent_name : string option;
     (* 自分が属する関数などの名前 *)
 }
@@ -27,6 +28,7 @@ let create_info pos1 pos2 =
     c_end =
       if (l1, c1) = (l2, c2) then c1 else c2 - 1;
     parent_name = None;
+    parened = false;
   }
 
 let create_info_only_filename fname =
@@ -37,11 +39,26 @@ let create_info_only_filename fname =
     c_start = 0;
     c_end = 0;
     parent_name = None;
+    parened = false;
   }
 
 let set_pname_of_info (Loc i) pname =
   i.parent_name <- pname
 let get_pname_of_info (Loc i) = i.parent_name
+
+
+module I = struct
+  let is_parened (Loc i) = i.parened
+
+  let enparen (Loc i) =
+    Loc { i with parened = true }
+end
+
+module Withinfo = struct
+  let enparen wi =
+    let i = I.enparen wi.i in
+    { wi with i }
+end
 
 let withinfo i v = { i; v; }
 let clearinfo { v; _ } = v
@@ -51,7 +68,8 @@ let merge_info (Loc l1) (Loc l2) =
     fname = l1.fname;
     parent_name = l1.parent_name;
     l_start = l1.l_start; l_end = l2.l_end;
-    c_start = l1.c_start; c_end = l2.c_end
+    c_start = l1.c_start; c_end = l2.c_end;
+    parened = false;
   }
 
 let withinfo2 i1 i2 v = withinfo (merge_info i1 i2) v

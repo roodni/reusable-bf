@@ -34,7 +34,7 @@ and pat' =
   | PatWild
   | PatCons of pat * pat
   | PatList of pat list
-  | PatPair of pat * pat
+  | PatTuple of pat list
   | PatInt of int
   | PatBool of bool
   | PatUnit
@@ -63,7 +63,7 @@ and expr' =
   | ExCons of expr * expr
   | ExList of expr list
   | ExMatch of expr * (pat * expr) list
-  | ExPair of expr * expr
+  | ExTuple of expr list
   | ExUnit
   | ExSemicolon of expr list
 and let_binding = pat * expr

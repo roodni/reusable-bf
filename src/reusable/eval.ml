@@ -12,7 +12,8 @@ let matches pat value =
     | PatCons (phd, ptl), VaList (vhd :: vtl) ->
         let* env = matches env phd vhd in
         matches env ptl (VaList vtl)
-    | PatList pl, VaList vl -> begin
+    | PatList pl, VaList vl
+    | PatTuple pl, VaTuple vl -> begin
         try
           List.fold_left2
             (fun env p v ->
@@ -22,14 +23,11 @@ let matches pat value =
         with Invalid_argument _ -> None
           (* サイズが合わないかマッチしなければ例外で脱出 *)
       end
-    | PatPair (pf, ps), VaPair (vf, vs) ->
-        let* env = matches env pf vf in
-        matches env ps vs
     | PatInt pi, VaInt vi when pi = vi -> Some env
     | PatBool pb, VaBool vb when pb = vb -> Some env
     | PatUnit, VaUnit -> Some env
-    | ( PatCons _ | PatList _ | PatPair _
-        | PatInt _ | PatBool _ | PatUnit
+    | ( PatCons _ | PatList _ | PatTuple _
+      | PatInt _ | PatBool _ | PatUnit
       ), _ -> None
   in
   matches VE.empty pat value
@@ -218,10 +216,9 @@ and eval ~recn ?(is_tail=false) (envs: envs) (expr: expr) : value =
           eval_tail envs ex
       | None -> Error.at (push_info matched_ex.i envs.trace) @@ Eval_Match_failed
     end
-  | ExPair (ex1, ex2) ->
-      let v1 = eval_mid envs ex1 in
-      let v2 = eval_mid envs ex2 in
-      VaPair (v1, v2)
+  | ExTuple el ->
+      let vll = List.map (eval_mid envs) el in
+      VaTuple vll
   | ExSemicolon l ->
       let rec loop = function
         | [] -> assert false

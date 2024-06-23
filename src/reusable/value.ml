@@ -21,7 +21,7 @@ type value =
   | VaBlock of envs * stmts
   | VaList of value list
   | VaString of string
-  | VaPair of value * value
+  | VaTuple of value list
   | VaCellSel of Ir.Sel.t
   | VaArraySel of Ir.Sel.t * irid_env
   | VaIndexSel of Ir.Sel.index * irid_env
@@ -56,9 +56,6 @@ module Va = struct
   let to_string tr i = function
     | VaString s -> s
     | _ -> raise_wdt tr i "string"
-  let to_pair tr i = function
-    | VaPair (v1, v2) -> (v1, v2)
-    | _ -> raise_wdt tr i "pair"
   let to_cell tr i = function
     | VaCellSel sel -> sel
     | _ -> raise_wdt tr i "cell selector"
@@ -91,7 +88,12 @@ module Va = struct
                   List.fold_left2 (fun r x y -> (x, y) :: r) rest xl yl
                 in
                 loop rest
-          | VaPair (x1, x2), VaPair (y1, y2) -> loop ((x1, y1) :: (x2, y2) :: rest)
+          | VaTuple xl, VaTuple yl ->
+              if List.(length xl <> length yl) then None
+              else
+                (* タプルは頑張って大量に手書きしないとstack overflowしないので対策は不要 *)
+                let rest = List.rev_append (List.combine xl yl) rest in
+                loop rest
           | _ -> None
         end
     in

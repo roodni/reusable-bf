@@ -1,0 +1,12 @@
+(*
+  これ型システム導入すると動かなくなるよな
+  まあいいか...
+*)
+
+open import "std.bfr"
+
+let main =
+  match 1, 2, 3 with
+  | 1, (2, 3) -> failwith "RIGHT"
+  | (1, 2), 3 -> failwith "LEFT"
+  | 1, 2, 3 -> gen_puts "NONASSOC"

@@ -64,7 +64,7 @@ open Syntax
 %nonassoc prec_if
 %nonassoc ELSE
 %nonassoc BAR
-%right COMMA
+%right COMMA  // べつに右結合ではないのだが、リスト処理のしやすさからこうしている
 %right BARBAR
 %right ANDAND
 %left LSHIFT RSHIFT LEQ GEQ EQ NEQ PIPE
@@ -188,9 +188,9 @@ expr:
   | i1=LPAREN e=expr_full i2=RPAREN {
       match e.v with
       | ExSemicolon l -> withinfo2 i1 i2 @@ ExList l
-      | _ -> withinfo2 i1 i2 e.v
+      | _ -> withinfo2 i1 i2 e.v |> Withinfo.enparen
     }
-  | i1=BEGIN e=expr_full i2=END { withinfo2 i1 i2 e.v }
+  | i1=BEGIN e=expr_full i2=END { withinfo2 i1 i2 e.v |> Withinfo.enparen }
   | i=NIL { withinfo i @@ ExList [] }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 ExUnit }
 
@@ -236,11 +236,17 @@ expr_full:
   | e1=expr_full ATAT e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e1, e2) }
   | e1=expr_full PIPE e2=expr_full { withinfo2 e1.i e2.i @@ ExApp (e2, e1) }
   | e1=expr_full COLONCOLON e2=expr_full { withinfo2 e1.i e2.i @@ ExCons (e1, e2) }
-  | e1=expr_full COMMA e2=expr_full { withinfo2 e1.i e2.i @@ ExPair (e1, e2) }
   | e1=expr_full SEMI e2=expr_full {
       match e2.v with
       | ExSemicolon l -> withinfo2 e1.i e2.i @@ ExSemicolon (e1 :: l)
       | _ -> withinfo2 e1.i e2.i @@ ExSemicolon [e1; e2]
+    }
+  | e1=expr_full COMMA e2=expr_full {
+      match e2.v with
+      | ExTuple l when not (I.is_parened e2.i) ->
+          (* パーサが , を右結合で扱う前提 *)
+          withinfo2 e1.i e2.i @@ ExTuple (e1 :: l)
+      | _ -> withinfo2 e1.i e2.i @@ ExTuple [e1; e2]
     }
   | e=expr_full i=SEMI { withinfo2 e.i i @@ ExSemicolon [e;] } %prec prec_last_semi
 
@@ -258,7 +264,12 @@ expr_full:
 pat_full:
   | p=pat_simple { p }
   | p1=pat_full COLONCOLON p2=pat_full { withinfo2 p1.i p2.i @@ PatCons (p1, p2) }
-  | p1=pat_full COMMA p2=pat_full { withinfo2 p1.i p2.i @@ PatPair (p1, p2) }
+  | p1=pat_full COMMA p2=pat_full {
+      match p2.v with
+      | PatTuple l when not (I.is_parened p2.i) ->
+          withinfo2 p1.i p2.i @@ PatTuple (p1 :: l)
+      | _ -> withinfo2 p1.i p2.i @@ PatTuple [p1; p2]
+    }
 
 pat_simple:
   | v=VAR { withinfo v.i @@ PatVar v.v }
@@ -266,7 +277,7 @@ pat_simple:
   | i=INT { withinfo i.i @@ PatInt i.v }
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
-  | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v }
+  | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v |> Withinfo.enparen }
   | i=NIL { withinfo i @@ PatList [] }
   | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
       withinfo2 i1 i2 @@ PatList (p :: l)

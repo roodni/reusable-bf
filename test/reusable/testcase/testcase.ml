@@ -104,4 +104,6 @@ let cases =
       [ ("", "OK") ];
     case "examples/misc/metalang/ifunit.bfr" ~run_bfi:false
       [ ("", "OK") ];
+    case "examples/misc/metalang/tuple.bfr"
+      [ ("", "NONASSOC") ];
   ]

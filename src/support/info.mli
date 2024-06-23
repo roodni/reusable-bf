@@ -5,9 +5,6 @@ type 'a withinfo = { i : info; v : 'a }
 val create_info : Lexing.position -> Lexing.position -> info
 val create_info_only_filename : string -> info
 
-val set_pname_of_info : info -> string option -> unit
-val get_pname_of_info : info -> string option
-
 val withinfo : info -> 'a -> 'a withinfo
 val clearinfo : 'a withinfo -> 'a
 
@@ -18,6 +15,19 @@ val withinfo2 : info -> info -> 'a -> 'a withinfo
 
 val output_info : Format.formatter -> info -> unit
 val lines_of_info : info -> int * int
+
+val set_pname_of_info : info -> string option -> unit
+val get_pname_of_info : info -> string option
+
+module I : sig
+  (* 全部の関数をopen前提で書くのがつらくなってきた *)
+  val is_parened : info -> bool
+  val enparen : info -> info
+end
+
+module Withinfo : sig
+  val enparen : 'a withinfo -> 'a withinfo
+end
 
 
 type trace

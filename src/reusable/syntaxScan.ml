@@ -14,10 +14,10 @@ let rec scan_pat ~pname (pat: pat) =
   let scan_pat = scan_pat ~pname in
   match pat.v with
   | PatVar _ | PatWild | PatInt _ | PatBool _ | PatUnit -> ();
-  | PatCons (p1, p2) | PatPair (p1, p2) ->
+  | PatCons (p1, p2) ->
       scan_pat p1;
       scan_pat p2;
-  | PatList l ->
+  | PatList l | PatTuple l ->
       List.iter scan_pat l;
 ;;
 
@@ -57,7 +57,7 @@ let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
       `NonStmts
   | ExApp (e1, e2) | ExAnd (e1, e2) | ExOr(e1, e2)
   | ExBOpInt (e1, _, e2) | ExEqual (_, e1, e2)
-  | ExCons (e1, e2) | ExPair (e1, e2) ->
+  | ExCons (e1, e2) ->
       List.iter scan_expr_u [e1; e2];
       `NonStmts
   | ExMinus ex -> scan_expr_u ex; `NonStmts
@@ -83,8 +83,9 @@ let rec scan_expr ~pname (expr: expr) : tail_expr_kind =
       scan_expr_u ex1;
       validate_let_rec_righthand ex1;
       scan_expr ex2
-  | ExList el ->
-      List.iter scan_expr_u el; `NonStmts
+  | ExList el | ExTuple el ->
+      List.iter scan_expr_u el;
+      `NonStmts
   | ExMatch (e0, bindings) ->
       scan_expr_u e0;
       let tails =
