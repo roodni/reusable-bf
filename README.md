@@ -15,20 +15,21 @@ brainfuckに変換されるプログラミング言語です。
 // 文字列を引数に取り、それを出力する命令列を返す
 let gen_puts s = [
   $alloc { c }
-
-  **let rec loop prev = function
-      | nil -> []
-      | hd :: tl -> [
-          + c (hd - prev)
+  **let len = string_length s in
+    let rec loop i prev =
+      if i < len then
+        let curr = string_get s i in
+        [
+          + c (curr - prev)
           . c
-          *loop hd tl
+          *loop (i + 1) curr
         ]
-    in $
-  
-  *loop 0 (string_to_list s)
+      else []
+    in
+    loop 0 0
 ]
 
-let main = [ *gen_puts "Hello World!\n" ]
+let main = gen_puts "Hello World!\n"
 ```
 
 ## インストール

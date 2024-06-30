@@ -114,18 +114,26 @@ module Envs = struct
     in
     { empty with
       va_env = empty.va_env
-        |> add_builtin "string_to_list"
-          (fun trace s ->
-            let l =
+        |> add_builtin "string_length" (fun trace s ->
+            let l = 
               Va.to_string trace s.i s.v
-              |> String.to_seq
-              |> Seq.map int_of_char
-              |> Seq.map (fun i -> VaInt i)
+              |> String.length
             in
-            VaList (List.of_seq l)
+            VaInt l
           )
-        |> add_builtin "failwith"
-          (fun trace msg ->
+        |> add_builtin "string_get" (fun trace s ->
+            let s = Va.to_string trace s.i s.v in
+            VaBuiltin (fun trace i ->
+              let i = Va.to_int trace i.i i.v in
+              let c =
+                try int_of_char s.[i] with
+                | Invalid_argument _ ->
+                    Error.at trace (Eval_Exception "index out of bounds")
+              in
+              VaInt c
+            )
+          )
+        |> add_builtin "failwith" (fun trace msg ->
             let msg = Va.to_string trace msg.i msg.v in
             Error.at trace (Eval_Exception msg)
           )

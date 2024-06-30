@@ -1,6 +1,6 @@
 open import "std.bfml"
 module Counter = import "counter.bfml"
-  (* sample/lib 以下のライブラリはimportの検索対象 *)
+  (* example/lib 以下のライブラリはimportの検索対象 *)
 
 let main = [
   **Counter:gen_build @@ fun counter -> $

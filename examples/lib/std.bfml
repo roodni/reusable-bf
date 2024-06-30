@@ -74,6 +74,15 @@ let gen_geti dest ed = [
   ]
 ]
 
+let string_to_list s =
+  let rec loop i accu =
+    if i < 0 then accu
+    else
+      let c = string_get s i in
+      loop (i - 1) (c :: accu)
+  in
+  loop (string_length s - 1) nil
+
 let gen_puts s = [
   $alloc { c }
   *fix
