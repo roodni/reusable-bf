@@ -12,24 +12,11 @@ brainfuckに変換されるプログラミング言語です。
 ```
 // Hello World!
 
-// 文字列を引数に取り、それを出力する命令列を返す
-let gen_puts s = [
-  $alloc { c }
-  **let len = string_length s in
-    let rec loop i prev =
-      if i < len then
-        let curr = string_get s i in
-        [
-          + c (curr - prev)
-          . c
-          *loop (i + 1) curr
-        ]
-      else []
-    in
-    loop 0 0
-]
+module Std = import "std.bfml"
 
-let main = gen_puts "Hello World!\n"
+let main = [
+  *Std:gen_puts "Hello World!\n"
+]
 ```
 
 ## インストール
@@ -51,30 +38,34 @@ opam install .
 * コンパイルして実行する `bfml -r file.bfml`
 * brainfuckのプログラムを実行する `bfml -b file.b`
 
-### サンプルプログラムの実行例
+### サンプルプログラム
 
 * `examples/hello.bfml`: Hello World!
   ```sh
   bfml -r examples/hello.bfml
   ```
-
-* `examples/bfi.bfml`: brainfuckインタプリタ
+* `examples/bfi.bfml`: 自分自身を実行可能なbrainfuckインタプリタ
   ```sh
   mkdir _sandbox
   cd _sandbox
   bfml ../examples/bfi.bfml > bfi.b
   bfml ../examples/hello.bfml > hello.b
 
-  # hello.b を実行する
+  # インタプリタ上で hello.b を動かす
   echo '\' >> hello.b
   bfml -b bfi.b < hello.b
 
-  # 自分自身を実行して hello.b を入力に与える
+  # インタプリタ上で動くインタプリタ上で hello.b を動かす
   cp bfi.b input.txt
   echo '\' >> input.txt
   cat hello.b >> input.txt
   bfml -b bfi.b < input.txt
   ```
+* `examples/hello2.bfml`: Hello World! コード長削減バージョン
+* `examples/geti.bfml`: 10進数入力
+* `examples/fizzbuzz.bfml`: FizzBuzz
+* `examples/addsubmul.bfml`: https://atcoder.jp/contests/abc098/tasks/abc098_a
+
 
 ## 資料
 * ドキュメントは準備中です

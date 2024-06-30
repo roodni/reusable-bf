@@ -1,4 +1,5 @@
 // Hello World!
+// 乗算でコード長を短くするバージョン
 
 open import "std.bfml"
 
