@@ -17,11 +17,11 @@ let parse_args () =
     filenames := s :: !filenames
   in
   let speclist = Arg.[
-    ("-b", Set flag_bf, " Load and run a brainfuck program instead of bf-reusable programs");
-    ("-r", Set flag_run, " Run a bf-reusable program after compilation");
+    ("-b", Set flag_bf, " Load and run a brainfuck program instead of reusable-bf programs");
+    ("-r", Set flag_run, " Run a reusable-bf program after compilation");
     ( "--ir",
       Unit (fun () -> flag_ir := true; flag_run := true;),
-      " Run a bf-reusable program using the IR interpreter");
+      " Run a reusable-bf program using the IR interpreter");
     ("--dump-tape", Set flag_dump_tape, " Dump the brainfuck array after run");
     ("-v", Set flag_show_layouts, " Show detailed compilation information");
     ("--show-layout", Set flag_show_layouts, " ");
@@ -99,7 +99,7 @@ let use_as_bf_interpreter () =
   run_bf bf_code
 ;;
 
-(** bf-reusableのコンパイラとして使う場合の処理 *)
+(** reusable-bfのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
   let dirname, channel = get_source () in
   let field, ir_code =

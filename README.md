@@ -1,6 +1,6 @@
-# bf-reusable
+# reusable-bf
 
-brainfuckに変換されるプログラミング言語です。
+再利用性の高いbrainfuck生成言語
 - 抽象化されたポインタ操作
 - brainfuckに近い命令セット
 - ML風のメタプログラミング機構
@@ -27,8 +27,8 @@ let main = [
 
 ### ビルド
 ```sh
-git clone https://github.com/roodni/bf-reusable
-cd bf-reusable
+git clone https://github.com/roodni/reusable-bf
+cd reusable-bf
 opam install .
 ```
 

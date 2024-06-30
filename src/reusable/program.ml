@@ -33,7 +33,7 @@ let lib_path =
     Sys.getenv_opt "DUNE_SOURCEROOT"
       |> Option.map (fun r -> Filename.concat r "examples/lib");
     Sys.getenv_opt "OPAM_SWITCH_PREFIX"
-      |> Option.map (fun r -> Filename.concat r "share/bf-reusable/lib");
+      |> Option.map (fun r -> Filename.concat r "share/reusable-bf/lib");
   ]
   |> List.find_map Fun.id
 

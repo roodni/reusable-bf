@@ -1,16 +1,16 @@
 (lang dune 3.15)
-(name bf-reusable)
+(name reusable-bf)
 (using menhir 3.0)
 
 (generate_opam_files true)
 
 (maintainers "roodni")
 (authors "roodni")
-(source (github roodni/bf-reusable))
+(source (github roodni/reusable-bf))
 
 (package
- (name bf-reusable)
- (synopsis "A programming language to generate brainf*ck code")
+ (name reusable-bf)
+ (synopsis "A reusable meta language of brainf*ck")
  (depends
   (ocaml (>= 4.14))
   (ounit2 :with-test)
