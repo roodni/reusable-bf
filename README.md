@@ -7,8 +7,6 @@
 
 ## 例
 
-[Playgroundで試せます](https://roodni.github.io/bf-reusable-playground-frontend/)
-
 ```
 // Hello World!
 
