@@ -1,4 +1,4 @@
-# reusable-bf
+# Reusable-bf (bfml)
 
 再利用性の高いbrainfuck生成言語
 - 抽象化されたポインタ操作
