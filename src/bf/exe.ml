@@ -149,12 +149,12 @@ let run ~printer ~input ~cell_type executable =
   let mut_p = ref 0 in
   let mut_p_max = ref 0 in
 
-  let modify_cell_value =
+  let modify_cell_value v =
     match cell_type with
-      | WrapAround256 -> (fun v -> v land 255)
+      | WrapAround256 -> v land 255
       | Overflow256 ->
-          (fun v -> if 0 <= v && v < 256 then v else raise (Err "Overflow"))
-      | OCamlInt -> (fun (v: int) -> v)
+          if 0 <= v && v < 256 then v else raise (Err "Overflow")
+      | OCamlInt -> v
   in
 
   let update_p_max p_new =
