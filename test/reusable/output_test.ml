@@ -3,7 +3,7 @@ open Printf
 
 let test_run Testcase.{ path; io_list; cell_type; _ } =
   path >:: (fun _ ->
-    let bf_code = Reusable.Program.gen_bf_from_source path in
+    let bf_code = Helper.gen_bf_from_source path in
     io_list |> List.iter (fun (ipt, opt) ->
       let res, dump, opt_act =
         Bf.Exe.run_string

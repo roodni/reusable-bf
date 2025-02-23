@@ -101,14 +101,15 @@ let use_as_bf_interpreter () =
 
 (** reusable-bfのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
-  let dirname, channel = get_source () in
+  let lib_dirs = Cli.default_lib_dirs Sys.getenv_opt in
+  let base_dir, channel = get_source () in
   let field, ir_code =
     try
       let program =
         Fun.protect (fun () -> Reusable.Program.load !filename channel)
           ~finally:(fun () -> close_in channel)
       in
-      Reusable.Program.gen_ir dirname program
+      Reusable.Program.gen_ir ~lib_dirs ~base_dir program
     with Reusable.Error.Exn_at e ->
       Reusable.Error.print e;
       exit 1

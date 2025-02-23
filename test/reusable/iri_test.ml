@@ -3,13 +3,15 @@ open Printf
 
 open Support.Info
 
+let lib_dirs = Cli.default_lib_dirs Sys.getenv_opt
+
 let output_test =
   let test_run Testcase.{ path; io_list; cell_type; _ } =
     path >:: (fun _ ->
       let field, ir_code =
         try
           Reusable.Program.load_from_source path
-          |> Reusable.Program.gen_ir (Filename.dirname path)
+          |> Reusable.Program.gen_ir ~lib_dirs ~base_dir:(Filename.dirname path)
         with Reusable.Error.Exn_at msg ->
           Reusable.Error.print ~ppf:Format.str_formatter msg;
           assert_failure @@ Format.flush_str_formatter ();
@@ -33,10 +35,12 @@ let output_test =
 let error_test =
   let test_run (name, line_expe, msg_expe) =
     name >:: (fun _ ->
-      let dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
-      let path = Filename.concat dir name in
+      let base_dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
+      let path = Filename.concat base_dir name in
       let program = Reusable.Program.load_from_source path in
-      let field, ir_code = Reusable.Program.gen_ir dir program in
+      let field, ir_code =
+        Reusable.Program.gen_ir ~lib_dirs ~base_dir program
+      in
       let res, _ =
         Ir.Interpreter.run_string
           ~cell_type:Overflow256

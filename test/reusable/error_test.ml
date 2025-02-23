@@ -7,7 +7,7 @@ let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "examples/misc/er
 let test_error (filename, f) =
   filename >:: fun _ ->
     let path = Filename.concat error_dir filename in
-    match Program.gen_bf_from_source path with
+    match Helper.gen_bf_from_source path with
     | _ -> assert_failure "No error"
     | exception Error.Exn_at e ->
         if not (f e) then begin
@@ -96,7 +96,7 @@ let normal_tests = "normal" >::: List.map test_error cases
 
 let too_large_bf_test = "too large bf" >:: fun _ ->
   let bfcode =
-    Program.gen_bf_from_source (Filename.concat error_dir "etc_large-bfcode.bfml")
+    Helper.gen_bf_from_source (Filename.concat error_dir "etc_large-bfcode.bfml")
   in
   assert_equal max_int (Bf.Code.length bfcode)
 

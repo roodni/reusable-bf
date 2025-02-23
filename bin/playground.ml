@@ -56,13 +56,13 @@ let handler (req: Message.req) =
 
   let entrypoint = req##.entrypoint |> Js.to_string in
 
-  let dirname = Filename.dirname entrypoint in
+  let base_dir = Filename.dirname entrypoint in
   let res: Message.res =
     try
       let ir =
         try
           let program = Reusable.Program.load_from_source entrypoint in
-          Reusable.Program.gen_ir dirname program
+          Reusable.Program.gen_ir ~lib_dirs:["/"] ~base_dir program
         with
         | Reusable.Error.Exn_at e -> begin
             let buf_err = Buffer.create 100 in

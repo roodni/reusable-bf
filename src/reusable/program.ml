@@ -28,37 +28,25 @@ let load_from_source path =
   Fun.protect (fun () -> load path channel)
     ~finally:(fun () -> close_in channel)
 
-let lib_path =
-  [ Sys.getenv_opt "BFML_LIB_PATH";
-    Sys.getenv_opt "DUNE_SOURCEROOT"
-      |> Option.map (fun r -> Filename.concat r "examples/lib");
-    Sys.getenv_opt "OPAM_SWITCH_PREFIX"
-      |> Option.map (fun r -> Filename.concat r "share/reusable-bf/lib");
-  ]
-  |> List.find_map Fun.id
-
-(** 相対パスまたは絶対パスからファイルを探し、
-    存在すればカレントディレクトリからのパスまたは絶対パスを返す *)
-let find_source base_dir path =
-  let exception R of Error.t in
-  try
-    let paths =
-      if not (Filename.is_relative path) then [path]
-      else
-        [ lib_path ]
-        |> List.filter_map Fun.id
-        |> List.cons base_dir
-        |> List.map (fun dir -> Filename.concat dir path)
-    in
-    let found_path = List.find_opt Sys.file_exists paths in
-    match found_path with
-    | Some p ->
-        if Sys.is_directory p then
-          raise @@ R (Module_import_file_is_directory path);
-        Ok (FilePath.reduce p)  (* 余分な ./ は一応消しておく *)
-    | None -> raise @@ R (Module_import_file_not_found path)
-  with R e -> Error e
-
+(**
+  ソースコードを探し、存在すればパスを返す
+  implicit な相対パスの場合はライブラリから検索する
+*)
+let find_source ~lib_dirs ~base_dir path =
+  let paths =
+    if not (Filename.is_relative path) then [path]
+    else if Filename.is_implicit path then
+      lib_dirs |> List.map (fun dir -> Filename.concat dir path)
+    else [Filename.concat base_dir path]
+  in
+  let found_path = List.find_opt Sys.file_exists paths in
+  match found_path with
+  | Some p when Sys.is_directory p ->
+      Error (Error.Module_import_file_is_directory path)
+  | Some p ->
+      Ok (FilePath.reduce p)  (* 余分な ./ は一応消しておく *)
+  | None ->
+      Error (Error.Module_import_file_not_found path)
 
 module FileMap = struct
   (* カレントディレクトリからのパスをキーとするマップ
@@ -100,7 +88,8 @@ end
 type ctx =
   { envs: envs;
     ex_envs: envs; (* エクスポートされる環境 *)
-    base_dirname: string;
+    base_dir: string;
+    lib_dirs: string list;
     filemap: FileMap.t;
   }
 
@@ -155,7 +144,8 @@ and eval_mod_expr ctx mod_expr =
   match mod_expr.v with
   | ModImport p -> begin
       let path =
-        match find_source ctx.base_dirname p with
+        let { lib_dirs; base_dir; _ } = ctx in
+        match find_source ~lib_dirs ~base_dir p with
         | Ok p -> p
         | Error e -> Error.top mod_expr.i e
       in
@@ -166,7 +156,8 @@ and eval_mod_expr ctx mod_expr =
           let ctx' = {
             envs = Envs.initial;
             ex_envs = Envs.empty;
-            base_dirname = Filename.dirname path;
+            base_dir = Filename.dirname path;
+            lib_dirs = ctx.lib_dirs;
             filemap = FileMap.add path Loading ctx.filemap;
           } in
           let prog = load_from_source path in
@@ -195,12 +186,13 @@ and eval_mod_expr ctx mod_expr =
       (ctx, envs)
     end
 
-let gen_ir (dirname: string) (program: program)
+let gen_ir ~lib_dirs ~base_dir (program: program)
     : Ir.Field.main * 'a Ir.Code.t =
   let ctx = {
     envs = Envs.initial;
     ex_envs = Envs.empty;
-    base_dirname = dirname;
+    base_dir;
+    lib_dirs;
     filemap = FileMap.empty;
   } in
   let ctx = eval_decls ctx program in
@@ -209,17 +201,3 @@ let gen_ir (dirname: string) (program: program)
   | Some (VaBlock (envs, stmts)) -> IrGen.generate envs stmts
   | Some _ -> Error.unknown Top_main_is_not_stmts
 ;;
-
-(** ファイルを読んでbfに変換する
-    エラーハンドリングが雑なので開発用 *)
-let gen_bf_from_source ?(opt_level=Ir.Opt.max_level) path =
-  let dirname = Filename.dirname path in
-  let program = load_from_source path in
-  let field, ir_code = gen_ir dirname program in
-  let opt_context =
-    Ir.Opt.{ field; code=ir_code; chan=stderr; dump=false }
-  in
-  let _, bf_code =
-    Ir.Opt.codegen_by_level opt_level opt_context
-  in
-  bf_code

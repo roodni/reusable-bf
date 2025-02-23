@@ -2,12 +2,12 @@
  (name main)
  (modules main)
  (public_name bfml)
- (libraries support bf ir reusable))
+ (libraries support bf ir reusable cli))
 
 (executable
  (name measurelen)
  (modules measurelen)
- (libraries support bf ir reusable))
+ (libraries support bf ir reusable helper))
 
 (executable
  (name playground)

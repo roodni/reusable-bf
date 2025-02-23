@@ -4,14 +4,14 @@ open OUnit2
 module BfI = struct
   let filename = Filename.concat Testcase.source_root "examples/bfi.bfml"
   let bf_exe =
-    Reusable.Program.gen_bf_from_source filename
+    Helper.gen_bf_from_source filename
     |> Bf.Exe.from_code
 end
 
 let test_run Testcase.{ path; io_list; cell_type; _ } =
   path >:: (fun _ ->
     let bf_code =
-      Reusable.Program.gen_bf_from_source path
+      Helper.gen_bf_from_source path
       |> Bf.Code.to_string
     in
     io_list |> List.iter (fun (ipt, opt) ->

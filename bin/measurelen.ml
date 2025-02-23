@@ -21,7 +21,7 @@ let () =
       let name = Filename.basename path |> Filename.chop_extension in
       let bf_code =
         try
-          Reusable.Program.gen_bf_from_source ~opt_level path
+          Helper.gen_bf_from_source ~opt_level path
         with
         | Reusable.Error.Exn_at msg_wi ->
             Reusable.Error.print msg_wi;

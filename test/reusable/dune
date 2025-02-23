@@ -1,5 +1,5 @@
 (tests
  (names output_test bfi_test error_test iri_test)
- (libraries support bf ir reusable testcase ounit2)
+ (libraries support bf ir reusable cli helper testcase ounit2)
  (deps
   (source_tree %{project_root}/examples)))

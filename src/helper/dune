@@ -1,0 +1,4 @@
+; テストなどで使う用の物置
+(library
+ (name helper)
+ (libraries reusable ir cli))
