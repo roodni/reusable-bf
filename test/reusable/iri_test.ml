@@ -1,7 +1,7 @@
 open OUnit2
 open Printf
-
 open Support.Info
+module Testcase = Helper.Testcase
 
 let lib_dirs = Cli.default_lib_dirs Sys.getenv_opt
 

@@ -1,3 +1,5 @@
+module Testcase = Testcase
+
 (** ソースコードを読んで一気にbfに変換する *)
 let gen_bf_from_source ?(opt_level=Ir.Opt.max_level) path =
   let lib_dirs = Cli.default_lib_dirs Sys.getenv_opt in

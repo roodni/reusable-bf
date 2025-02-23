@@ -1,8 +1,10 @@
 open OUnit2
-
+module Testcase = Helper.Testcase
 
 module BfI = struct
-  let filename = Filename.concat Testcase.source_root "examples/bfi.bfml"
+  let filename =
+    Filename.concat Testcase.source_root "examples/bfi.bfml"
+  
   let bf_exe =
     Helper.gen_bf_from_source filename
     |> Bf.Exe.from_code
@@ -29,6 +31,6 @@ let test_run Testcase.{ path; io_list; cell_type; _ } =
 
 let test =
   "bfi" >::: List.map test_run
-    Testcase.(cases |> List.filter (fun c -> c.run_bfi))
+    Helper.Testcase.(cases |> List.filter (fun c -> c.run_bfi))
 
 let () = run_test_tt_main test

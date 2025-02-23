@@ -1,5 +1,6 @@
 open OUnit2
 open Printf
+module Testcase = Helper.Testcase
 
 let test_run Testcase.{ path; io_list; cell_type; _ } =
   path >:: (fun _ ->
