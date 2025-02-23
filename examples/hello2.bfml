@@ -11,7 +11,7 @@ let gen_short_incr x n =
   let a, b =
     fix
       (fun loop prev a ->
-        if n <= a then prev
+        if abs n <= a then prev
         else
           let curr = min_ab (a, n / a) (a, n / a + 1) in
           loop (min_ab prev curr) (a + 1)
