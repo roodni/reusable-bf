@@ -1,5 +1,4 @@
 open Printf
-open Support.Pervasive
 
 type t = int
 type label =

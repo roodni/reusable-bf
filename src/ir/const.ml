@@ -1,4 +1,3 @@
-open Support.Pervasive
 open Printf
 
 (* 抽象解釈による最適化

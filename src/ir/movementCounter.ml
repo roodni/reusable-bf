@@ -1,5 +1,12 @@
 open Printf
-open Support.Pervasive
+
+module Hashtbl = struct
+  include Hashtbl
+  let find_default tbl key default =
+    find_opt tbl key |> Option.value ~default
+  let add_assign_int tbl key n =
+    replace tbl key (find_default tbl key 0 + n)
+end
 
 (** フィールドの並びを最適化するため、
     フィールドのメンバのペアごとに移動回数をカウントする
@@ -9,6 +16,7 @@ type t = (Id.t * Id.t, int) Hashtbl.t
 (* 初期位置や配列の添字付きメンバなど、明確に左か右にあるメンバを表すid *)
 let leftside = Id.gen_special "LEFT"
 let rightside = Id.gen_special "RIGHT"
+
 
 let add (tbl: t) id1 id2 = Hashtbl.add_assign_int tbl (id1, id2) 1
 let dec (tbl: t) id1 id2 = Hashtbl.add_assign_int tbl (id1, id2) (-1)

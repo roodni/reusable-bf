@@ -1,5 +1,3 @@
-open Support.Pervasive
-
 let gen_bf (layout: Layout.t) (code: 'a Code.t): Bf.Code.t =
   let code = Code.delete_annot code in
   let rec gen_bf (pos_init: Pos.t) (code: unit Code.t) =

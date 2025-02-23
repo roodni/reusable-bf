@@ -1,4 +1,3 @@
-open Support.Pervasive
 open Info
 
 (** 中間言語のコード

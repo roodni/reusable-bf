@@ -1,5 +1,3 @@
-open Support.Pervasive
-
 (** ポインタ移動コードを生成するためのテープ位置 (コード生成に利用) *)
 type t =
   | Cell of int

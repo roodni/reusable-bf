@@ -1,6 +1,5 @@
 open OUnit2
 open Ir
-open Support.Pervasive
 open Info
 
 (* テープの状態を比較するテスト *)
@@ -62,7 +61,8 @@ let test_run (name, program, expected) =
     in
     let ptr_max = List.length expected - 1 in
     let actual =
-      (0 -- ptr_max) |> List.map (fun i -> Bf.Exe.Dump.geti dump i)
+      List.init (ptr_max + 1) Fun.id
+        |> List.map (fun i -> Bf.Exe.Dump.geti dump i)
     in
     assert_equal
       ~printer:(fun l -> l |> List.map string_of_int |> String.concat ";")

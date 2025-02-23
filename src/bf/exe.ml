@@ -1,5 +1,4 @@
 open Printf
-open Support.Pervasive
 
 type cell_type = WrapAround256 | Overflow256 | OCamlInt
 
@@ -87,6 +86,22 @@ module Dump = struct
     p_max: int;
     cells: int Array.t;
   }
+
+  (* 謎の演算子　使うのをやめたい *)
+  let (--) a b =
+    let len = b - a + 1 in
+    if len < 0 then []
+    else List.init len (fun i -> a + i)
+
+  module String = struct
+    include String
+    let repeat s n =
+      let buf = Buffer.create (String.length s * n) in
+      for _ = 1 to n do
+        Buffer.add_string buf s;
+      done;
+      Buffer.contents buf
+  end
 
   let dump d =
     let cols_n = 20 in

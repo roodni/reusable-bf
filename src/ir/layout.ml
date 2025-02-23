@@ -1,5 +1,3 @@
-open Support.Pervasive
-
 (** メンバ名と確保されたテープ位置の対応 *)
 type t = (Id.t * loc) list
 and loc =
@@ -69,7 +67,7 @@ let create (mcounter: MovementCounter.t) (field: Field.main): t =
             |> List.of_seq
             |> List.iter
               (fun id ->
-                Hashtbl.add_assign_int cost_table id
+                MovementCounter.Hashtbl.add_assign_int cost_table id
                   (MovementCounter.get mcounter top_id id)
               );
           (* 左に詰める *)

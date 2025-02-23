@@ -1,5 +1,4 @@
 %{
-open Support.Pervasive
 open Info
 open Syntax
 %}

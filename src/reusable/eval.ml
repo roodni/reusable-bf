@@ -1,4 +1,3 @@
-open Support.Pervasive
 open Info
 open Syntax
 open Value

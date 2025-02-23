@@ -1,8 +1,5 @@
 (* 生存セル解析 *)
 
-open Support.Pervasive
-
-
 module IdSet = Set.Make(Id)
 module IdMap = Map.Make(Id)
 
@@ -167,7 +164,8 @@ end = struct
   let mem_cell graph node = CellSet.mem node graph.nodes
   let succ graph node =
     assert (mem_cell graph node);
-    Hashtbl.find_default graph.edges node CellSet.empty
+    Hashtbl.find_opt graph.edges node
+      |> Option.value ~default:CellSet.empty
   let add_edge graph n1 n2 =
     let n1_succ = succ graph n1 in
     let n2_succ = succ graph n2 in
