@@ -1,5 +1,5 @@
 open Support.Pervasive
-open Support.Info
+open Info
 
 exception ExecutionError of string
 exception ExecutionExit of trace * string

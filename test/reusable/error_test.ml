@@ -1,5 +1,5 @@
 open OUnit2
-open Support.Info
+open Info
 open Reusable
 
 let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "examples/misc/error/compilation"

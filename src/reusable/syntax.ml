@@ -1,4 +1,4 @@
-open Support.Info
+open Info
 
 module type VarS = sig
   type t

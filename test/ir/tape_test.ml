@@ -1,7 +1,7 @@
 open OUnit2
 open Ir
 open Support.Pervasive
-open Support.Info
+open Info
 
 (* テープの状態を比較するテスト *)
 

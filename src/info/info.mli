@@ -1,3 +1,9 @@
+(*
+  ソースコードの位置情報を格納するもの
+  info というアレな名前は TaPL の参考実装由来
+  https://github.com/mspertus/TAPL/blob/1ed01066b8ecf5575d38379e4006b2610e1e461a/arith/lib/support.mli#L30
+*)
+
 (** ソースコード中の位置 *)
 type info
 type 'a withinfo = { i : info; v : 'a }

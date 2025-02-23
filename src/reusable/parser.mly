@@ -1,61 +1,61 @@
 %{
 open Support.Pervasive
-open Support.Info
+open Info
 open Syntax
 %}
 
-%token <Support.Info.info> EOF
-%token <Support.Info.info> PLUS MINUS
-%token <Support.Info.info> DOT COMMA
-%token <Support.Info.info> RSHIFT LSHIFT  // > <
-%token <Support.Info.info> LBRACKET RBRACKET
-%token <Support.Info.info> EXCL QUES
-%token <Support.Info.info> LBRACE RBRACE
-%token <Support.Info.info> COLON
-%token <Support.Info.info> COLONCOLON
-%token <Support.Info.info> AT
-%token <Support.Info.info> ATAT PIPE // @@ |>
-%token <Support.Info.info> SEMI SEMISEMI
-%token <Support.Info.info> LPAREN RPAREN
-%token <Support.Info.info> EQ NEQ LEQ GEQ
-%token <Support.Info.info> ASTER
-%token <Support.Info.info> ASTER2 // **
-%token <Support.Info.info> SLASH
-%token <Support.Info.info> ARROW  // ->
-%token <Support.Info.info> UNDER
-%token <Support.Info.info> BAR  // |
-%token <Support.Info.info> BARBAR // ||
-%token <Support.Info.info> ANDAND // &&
-%token <Support.Info.info> MOD  // %
+%token <Info.info> EOF
+%token <Info.info> PLUS MINUS
+%token <Info.info> DOT COMMA
+%token <Info.info> RSHIFT LSHIFT  // > <
+%token <Info.info> LBRACKET RBRACKET
+%token <Info.info> EXCL QUES
+%token <Info.info> LBRACE RBRACE
+%token <Info.info> COLON
+%token <Info.info> COLONCOLON
+%token <Info.info> AT
+%token <Info.info> ATAT PIPE // @@ |>
+%token <Info.info> SEMI SEMISEMI
+%token <Info.info> LPAREN RPAREN
+%token <Info.info> EQ NEQ LEQ GEQ
+%token <Info.info> ASTER
+%token <Info.info> ASTER2 // **
+%token <Info.info> SLASH
+%token <Info.info> ARROW  // ->
+%token <Info.info> UNDER
+%token <Info.info> BAR  // |
+%token <Info.info> BARBAR // ||
+%token <Info.info> ANDAND // &&
+%token <Info.info> MOD  // %
 
-%token <Support.Info.info> INDEX_LOOP // <!>
-%token <Support.Info.info> INDEX_IF // <?>
+%token <Info.info> INDEX_LOOP // <!>
+%token <Info.info> INDEX_IF // <?>
 
-%token <Support.Info.info> ST  // $
-%token <Support.Info.info> ST_ALLOC ST_BUILD
-%token <Support.Info.info> ST_DIVE
+%token <Info.info> ST  // $
+%token <Info.info> ST_ALLOC ST_BUILD
+%token <Info.info> ST_DIVE
 
-%token <Support.Info.info> CELL INDEX ARRAY  // これらを予約語にするのは気が進まない
-%token <Support.Info.info> FUN FUNCTION
-%token <Support.Info.info> LET IN REC
-%token <Support.Info.info> IF THEN ELSE
-%token <Support.Info.info> MATCH WITH
-%token <Support.Info.info> PRIVATE
+%token <Info.info> CELL INDEX ARRAY  // これらを予約語にするのは気が進まない
+%token <Info.info> FUN FUNCTION
+%token <Info.info> LET IN REC
+%token <Info.info> IF THEN ELSE
+%token <Info.info> MATCH WITH
+%token <Info.info> PRIVATE
 
-%token <Support.Info.info> IMPORT
-%token <Support.Info.info> MODULE
-%token <Support.Info.info> OPEN
-%token <Support.Info.info> INCLUDE
-%token <Support.Info.info> STRUCT
-%token <Support.Info.info> END BEGIN
+%token <Info.info> IMPORT
+%token <Info.info> MODULE
+%token <Info.info> OPEN
+%token <Info.info> INCLUDE
+%token <Info.info> STRUCT
+%token <Info.info> END BEGIN
 
-%token <int Support.Info.withinfo> INT
-%token <char Support.Info.withinfo> CHAR
-%token <string Support.Info.withinfo> STRING
-%token <Syntax.Var.t Support.Info.withinfo> VAR
-%token <Syntax.UVar.t Support.Info.withinfo> UVAR
-%token <Support.Info.info> TRUE FALSE
-%token <Support.Info.info> NIL
+%token <int Info.withinfo> INT
+%token <char Info.withinfo> CHAR
+%token <string Info.withinfo> STRING
+%token <Syntax.Var.t Info.withinfo> VAR
+%token <Syntax.UVar.t Info.withinfo> UVAR
+%token <Info.info> TRUE FALSE
+%token <Info.info> NIL
 
 %nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match prec_last_semi

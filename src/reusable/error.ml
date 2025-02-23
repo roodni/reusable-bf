@@ -1,6 +1,6 @@
 open Format
 open Syntax
-open Support.Info
+open Info
 
 type t =
   | Lexer_Unexpected

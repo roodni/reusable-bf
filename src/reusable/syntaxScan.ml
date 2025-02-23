@@ -1,4 +1,4 @@
-open Support.Info
+open Info
 open Syntax
 
 (* 関数 scan_*** にはいくつか役割がある

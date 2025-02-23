@@ -1,5 +1,5 @@
 open Support.Pervasive
-open Support.Info
+open Info
 open Syntax
 open Value
 

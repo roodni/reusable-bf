@@ -1,5 +1,5 @@
 open Support.Pervasive
-open Support.Info
+open Info
 
 (** 中間言語のコード
     解析のため追加情報を付与できる

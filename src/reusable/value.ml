@@ -1,4 +1,4 @@
-open Support.Info
+open Info
 open Syntax
 
 module VE = Env.Make(Var)
