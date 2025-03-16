@@ -10,10 +10,10 @@ let output_test =
     path >:: (fun _ ->
       let field, ir_code =
         try
-          Reusable.Program.load_from_source path
-          |> Reusable.Program.gen_ir ~lib_dirs ~base_dir:(Filename.dirname path)
-        with Reusable.Error.Exn_at msg ->
-          Reusable.Error.print ~ppf:Format.str_formatter msg;
+          Metalang.Program.load_from_source path
+          |> Metalang.Program.gen_ir ~lib_dirs ~base_dir:(Filename.dirname path)
+        with Metalang.Error.Exn_at msg ->
+          Metalang.Error.print ~ppf:Format.str_formatter msg;
           assert_failure @@ Format.flush_str_formatter ();
       in
       List.iter
@@ -37,9 +37,9 @@ let error_test =
     name >:: (fun _ ->
       let base_dir = Filename.concat Testcase.source_root "examples/misc/error/execution" in
       let path = Filename.concat base_dir name in
-      let program = Reusable.Program.load_from_source path in
+      let program = Metalang.Program.load_from_source path in
       let field, ir_code =
-        Reusable.Program.gen_ir ~lib_dirs ~base_dir program
+        Metalang.Program.gen_ir ~lib_dirs ~base_dir program
       in
       let res, _ =
         Ir.Interpreter.run_string

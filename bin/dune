@@ -2,16 +2,16 @@
  (name main)
  (modules main)
  (public_name bfml)
- (libraries bf ir reusable cli))
+ (libraries bf ir metalang cli))
 
 (executable
  (name measurelen)
  (modules measurelen)
- (libraries bf ir reusable helper))
+ (libraries bf ir metalang helper))
 
 (executable
  (name playground)
  (modules playground)
  (modes js)
  (preprocess (pps js_of_ocaml-ppx))
- (libraries js_of_ocaml bf ir reusable))
+ (libraries js_of_ocaml bf ir metalang))

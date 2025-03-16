@@ -1,6 +1,6 @@
 open OUnit2
 open Info
-open Reusable
+open Metalang
 
 let error_dir = Filename.concat (Sys.getenv "DUNE_SOURCEROOT") "examples/misc/error/compilation"
 

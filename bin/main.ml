@@ -48,10 +48,10 @@ let get_source () =
   if !filename = "-" then
     (Sys.getcwd (), stdin)
   else if not @@ Sys.file_exists !filename then begin
-    Reusable.Error.print (`Info None, Module_import_file_not_found !filename);
+    Metalang.Error.print (`Info None, Module_import_file_not_found !filename);
     exit 1
   end else if Sys.is_directory !filename then begin
-    Reusable.Error.print (`Info None, Module_import_file_is_directory !filename);
+    Metalang.Error.print (`Info None, Module_import_file_is_directory !filename);
     exit 1
   end else
     (Filename.dirname !filename, open_in !filename)
@@ -106,12 +106,12 @@ let use_as_bfr_compiler () =
   let field, ir_code =
     try
       let program =
-        Fun.protect (fun () -> Reusable.Program.load !filename channel)
+        Fun.protect (fun () -> Metalang.Program.load !filename channel)
           ~finally:(fun () -> close_in channel)
       in
-      Reusable.Program.gen_ir ~lib_dirs ~base_dir program
-    with Reusable.Error.Exn_at e ->
-      Reusable.Error.print e;
+      Metalang.Program.gen_ir ~lib_dirs ~base_dir program
+    with Metalang.Error.Exn_at e ->
+      Metalang.Error.print e;
       exit 1
   in
 

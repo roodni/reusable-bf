@@ -23,8 +23,8 @@ let () =
         try
           Helper.gen_bf_from_source ~opt_level path
         with
-        | Reusable.Error.Exn_at msg_wi ->
-            Reusable.Error.print msg_wi;
+        | Metalang.Error.Exn_at msg_wi ->
+            Metalang.Error.print msg_wi;
             exit 1;
       in
       printf "%s:\t%d\n" name (Bf.Code.length bf_code)

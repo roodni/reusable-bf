@@ -61,13 +61,13 @@ let handler (req: Message.req) =
     try
       let ir =
         try
-          let program = Reusable.Program.load_from_source entrypoint in
-          Reusable.Program.gen_ir ~lib_dirs:["/"] ~base_dir program
+          let program = Metalang.Program.load_from_source entrypoint in
+          Metalang.Program.gen_ir ~lib_dirs:["/"] ~base_dir program
         with
-        | Reusable.Error.Exn_at e -> begin
+        | Metalang.Error.Exn_at e -> begin
             let buf_err = Buffer.create 100 in
             let ppf_err = Format.formatter_of_buffer buf_err in
-            Reusable.Error.print ~ppf:ppf_err e;
+            Metalang.Error.print ~ppf:ppf_err e;
             Format.pp_print_flush ppf_err ();
             raise @@ Failed (Buffer.contents buf_err)
           end

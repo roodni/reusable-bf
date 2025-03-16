@@ -1,5 +1,5 @@
 (library
- (name reusable)
+ (name metalang)
  (libraries info bf ir unix fileutils)
  (flags (:standard -warn-error -a)))
 
