@@ -50,9 +50,9 @@ let get_source () =
   else if not @@ Sys.file_exists !filename then begin
     Metalang.Error.print (`Info None, Module_import_file_not_found !filename);
     exit 1
-  end else if Sys.is_directory !filename then begin
+  (* end else if Sys.is_directory !filename then begin
     Metalang.Error.print (`Info None, Module_import_file_is_directory !filename);
-    exit 1
+    exit 1 *)
   end else
     (Filename.dirname !filename, open_in !filename)
 
@@ -106,10 +106,13 @@ let use_as_bfr_compiler () =
   let field, ir_code =
     try
       let program =
-        Fun.protect (fun () -> Metalang.Program.load !filename channel)
+        Fun.protect (fun () ->
+            let lexbuf = Lexing.from_channel channel in
+            Cli.Program.load !filename lexbuf
+          )
           ~finally:(fun () -> close_in channel)
       in
-      Metalang.Program.gen_ir ~lib_dirs ~base_dir program
+      Cli.Program.gen_ir ~lib_dirs ~base_dir program
     with Metalang.Error.Exn_at e ->
       Metalang.Error.print e;
       exit 1

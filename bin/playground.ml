@@ -43,6 +43,29 @@ module Js = struct
       else assert false
 end
 
+module FileSystem = struct
+  (* TODO: あとでPlayground用にする *)
+  module FileId = struct
+    type t = string
+    let compare = String.compare
+  end
+
+  let file_exists path = Sys.file_exists path
+
+  let path_to_file_id path = Unix.realpath path
+
+  let open_file path f =
+    let ic = open_in path in
+    Fun.protect
+      ~finally:(fun () -> close_in ic)
+      (fun () ->
+        let lexbuf = Lexing.from_channel ic in
+        f lexbuf
+      )
+end
+
+module Program = Metalang.Program.Make(FileSystem)
+
 let handler (req: Message.req) =
   let files = req##.files |> Js.to_array in
   files |> Array.iter (fun file ->
@@ -61,8 +84,8 @@ let handler (req: Message.req) =
     try
       let ir =
         try
-          let program = Metalang.Program.load_from_source entrypoint in
-          Metalang.Program.gen_ir ~lib_dirs:["/"] ~base_dir program
+          let program = Program.load_by_path entrypoint in
+          Program.gen_ir ~lib_dirs:["/"] ~base_dir program
         with
         | Metalang.Error.Exn_at e -> begin
             let buf_err = Buffer.create 100 in

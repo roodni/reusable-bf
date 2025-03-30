@@ -54,18 +54,11 @@ let info lexbuf =
   let p1 = Lexing.lexeme_start_p lexbuf in
   let p2 = Lexing.lexeme_end_p lexbuf in
   create_info p1 p2
-
-let create filename channel =
-  let lexbuf = Lexing.from_channel channel in
-  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  lexbuf
 }
-
 
 let character =
   [' '-'!' '#'-'[' ']'-'~'] |
   "\\" ['n' 't' '\\' '\'' '\"']
-
 
 rule comment = parse
   | "(*" { comment (comment lexbuf) }

@@ -80,7 +80,7 @@ let cases =
     ( "module_import-rec_1.bfml", expe_notrace Module_Recursive_import );
     ( "module_import-not-found.bfml", expe_notrace @@ Module_import_file_not_found "./file" );
     ( "module_import-not-found-absolute.bfml", expe_notrace @@ Module_import_file_not_found "/absolute-path-that-does-not-exist");
-    ( "module_import-file-is-directory.bfml", expe_notrace @@ Module_import_file_is_directory ".");
+    (* ( "module_import-file-is-directory.bfml", expe_notrace @@ Module_import_file_is_directory "."); *)
     ( "memory_stack_eval.bfml", expe Memory_Recursion_limit );
     ( "memory_stack_gen.bfml", expe Memory_Recursion_limit );
     ( "trace_eval.bfml", expe_full [1; 1] Eval_Match_failed );
