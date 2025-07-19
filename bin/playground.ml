@@ -43,25 +43,33 @@ module Js = struct
       else assert false
 end
 
-module FileSystem = struct
-  (* TODO: あとでPlayground用にする *)
-  module FileId = struct
-    type t = string
-    let compare = String.compare
-  end
+(* ファイルシステムをエミュレートする *)
+(* js_of_ocaml の pseudo filesystem をご存じない？ *)
+module FileId = struct
+  type t = string
+  let compare = String.compare
+end
+let file_tbl = Hashtbl.create 10
 
-  let file_exists path = Sys.file_exists path
+module FileSystem : (Metalang.Program.FileSystem with module FileId = FileId) = struct
+  module FileId = FileId
 
-  let path_to_file_id path = Unix.realpath path
+  let path_to_file_id path =
+    let path =
+      if Filename.is_relative path then Filename.concat "/" path
+      else path
+    in
+    FilePath.reduce ~no_symlink:true path
+
+  let file_exists path =
+    let file_id = path_to_file_id path in
+    Hashtbl.find_opt file_tbl file_id |> Option.is_some 
 
   let open_file path f =
-    let ic = open_in path in
-    Fun.protect
-      ~finally:(fun () -> close_in ic)
-      (fun () ->
-        let lexbuf = Lexing.from_channel ic in
-        f lexbuf
-      )
+    let file_id = path_to_file_id path in
+    let content = Hashtbl.find file_tbl file_id in
+    let lexbuf = Lexing.from_string content in
+    f lexbuf 
 end
 
 module Program = Metalang.Program.Make(FileSystem)
@@ -69,9 +77,9 @@ module Program = Metalang.Program.Make(FileSystem)
 let handler (req: Message.req) =
   let files = req##.files |> Js.to_array in
   files |> Array.iter (fun file ->
-      let name = file##.name |> Js.to_string in
+      let file_id = file##.name |> Js.to_string |> FileSystem.path_to_file_id in
       let content = file##.content |> Js.to_string in
-      Sys_js.create_file ~name ~content
+      Hashtbl.add file_tbl file_id content
     );
   let optimize = req##.optimize |> Js.to_number in
   let max_length = req##.maxLength  |> Js.to_number in
