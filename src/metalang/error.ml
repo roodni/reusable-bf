@@ -54,15 +54,15 @@ let output ppf msg =
   | Eval_Zero_division -> pf "A zero division is attempted"
   | Eval_Equal_failed -> pf "This equality cannot be tested"
   | Eval_Member_is_not_index v ->
-      pf "Member `%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
+      pf "Member '%s' is not an index (Use ':' instead of '@')" (Var.to_string v)
   | Eval_Member_is_index v ->
-      pf "Member `%s' is an index (Use '@' instead of ':')" (Var.to_string v)
+      pf "Member '%s' is an index (Use '@' instead of ':')" (Var.to_string v)
   | Eval_Variable_not_defined v ->
-      pf "Variable `%s' is not bound" (Var.to_string v)
+      pf "Variable '%s' is not bound" (Var.to_string v)
   | Eval_Module_not_defined v ->
-      pf "Module `%s' is not bound" (UVar.to_string v)
+      pf "Module '%s' is not bound" (UVar.to_string v)
   | Eval_Member_not_defined v ->
-      pf "Member `%s' is not bound" (Var.to_string v)
+      pf "Member '%s' is not bound" (Var.to_string v)
   | Eval_Match_failed -> pf "Pattern matching failed"
   | Eval_Wrong_data_type correct ->
       pf "This value is expected to be %s" correct
