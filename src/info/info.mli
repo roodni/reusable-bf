@@ -21,6 +21,7 @@ val withinfo2 : info -> info -> 'a -> 'a withinfo
 
 val output_info : Format.formatter -> info -> unit
 val lines_of_info : info -> int * int
+val cols_of_info : info -> int * int
 
 val set_pname_of_info : info -> string option -> unit
 val get_pname_of_info : info -> string option

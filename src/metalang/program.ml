@@ -29,13 +29,24 @@ module Make(FS: FileSystem) = struct
   *)
   let load path lexbuf =
     Lexing.set_filename lexbuf path;
-    match Parser.program Lexer.main lexbuf with
+
+    (* 構文解析の失敗時に原因トークンがわかるようにする *)
+    let curr_token_info = ref None in
+    let wrapped_lexer lexbuf =
+      let token = Lexer.main lexbuf in
+      curr_token_info := Some (ParserLib.info_of_token token);
+      token
+    in
+
+    (* 構文解析する *)
+    match Parser.program wrapped_lexer lexbuf with
     | program ->
         SyntaxScan.scan_program ~pname:None program;
         program
     | exception Parser.Error ->
-        let info = !Lexer.curr_info |> Option.get in
-        Error.top info Parser_Unexpected
+        let token = !curr_token_info |> Option.get in
+        Error.top token Parser_Unexpected
+  ;;
 
   (**
     importing path から、必要に応じてライブラリディレクトリを検索してファイルを探す

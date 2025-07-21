@@ -41,15 +41,6 @@ let string_to_char = function
   | _ -> assert false
 
 
-let curr_info = ref None
-
-(** [Info]の[create_info]を隠蔽
-    info作成と同時にcurr_infoを書きかえる *)
-let create_info p1 p2 =
-  let i = Info.create_info p1 p2 in
-  curr_info := Some i;
-  i
-
 let info lexbuf =
   let p1 = Lexing.lexeme_start_p lexbuf in
   let p2 = Lexing.lexeme_end_p lexbuf in
@@ -87,6 +78,15 @@ and main = parse
   | "\n" { Lexing.new_line lexbuf; main lexbuf }
   | "//" [^'\n']* { main lexbuf }
   | "(*" { main (comment lexbuf) }
+  | "\"" {
+      let p1 = Lexing.lexeme_start_p lexbuf in
+      str p1 [] lexbuf
+    }
+  | "\'" (character | "\"") "\'" {
+      let s = Lexing.lexeme lexbuf in
+      let c = String.sub s 1 (String.length s - 2) |> string_to_char in
+      P.CHAR (withinfo (info lexbuf) c)
+    }
   | eof { P.EOF (info lexbuf) }
   | "+" { P.PLUS (info lexbuf) }
   | "-" { P.MINUS (info lexbuf) }
@@ -130,15 +130,6 @@ and main = parse
       match int_of_string_opt (Lexing.lexeme lexbuf) with
       | Some i -> P.INT (withinfo (info lexbuf) i)
       | None -> Error.top (info lexbuf) Lexer_Too_large_int
-    }
-  | "\'" (character | "\"") "\'" {
-      let s = Lexing.lexeme lexbuf in
-      let c = String.sub s 1 (String.length s - 2) |> string_to_char in
-      P.CHAR (withinfo (info lexbuf) c)
-    }
-  | "\"" {
-      let p1 = Lexing.lexeme_start_p lexbuf in
-      str p1 [] lexbuf
     }
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in

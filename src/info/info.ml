@@ -93,7 +93,7 @@ let output_info ppf (Loc info) =
 ;;
 
 let lines_of_info (Loc { l_start; l_end; _ }) = (l_start, l_end)
-
+let cols_of_info (Loc {c_start; c_end; _}) = (c_start, c_end)
 
 type trace = Trace of {
     tailcalln : int;
