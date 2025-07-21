@@ -9,13 +9,16 @@ module FileSystem : Metalang.Program.FileSystem = struct
   let path_to_file_id path = Unix.realpath path
 
   let open_file path f =
-    let ic = open_in path in
-    Fun.protect
-      ~finally:(fun () -> close_in ic)
-      (fun () ->
-        let lexbuf = Lexing.from_channel ic in
-        f lexbuf
-      )
+    try
+      let ic = open_in path in
+      Fun.protect
+        ~finally:(fun () -> close_in ic)
+        (fun () ->
+          let lexbuf = Lexing.from_channel ic in
+          Ok (f lexbuf)
+        )
+    with Sys_error reason -> Error reason
+    (* 読むファイルがディレクトリだった場合はinputで失敗するので、全体をtryで囲っている *)
 end
 
 module Program = Metalang.Program.Make(FileSystem)

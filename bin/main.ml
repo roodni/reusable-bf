@@ -44,18 +44,6 @@ let parse_args () =
   )
 ;;
 
-let get_source () =
-  if !filename = "-" then
-    (Sys.getcwd (), stdin)
-  else if not @@ Sys.file_exists !filename then begin
-    Metalang.Error.print (`Info None, Module_import_file_not_found !filename);
-    exit 1
-  (* end else if Sys.is_directory !filename then begin
-    Metalang.Error.print (`Info None, Module_import_file_is_directory !filename);
-    exit 1 *)
-  end else
-    (Filename.dirname !filename, open_in !filename)
-
 (** bfのコードを実行する *)
 let run_bf bf_code =
   let exe = Bf.Exe.from_code bf_code in
@@ -87,14 +75,22 @@ let run_ir field ir_code =
 (** bfのインタプリタとして使う場合の処理 *)
 let use_as_bf_interpreter () =
   let bf_code =
-    let _, channel = get_source () in
-    let code =
-      Seq.of_dispenser
-        (fun () -> In_channel.input_char channel)
-      |> Bf.Code.parse
-    in
-    close_in channel;
-    code
+    try
+      let channel = match !filename with
+        | "-" -> stdin
+        | f -> open_in f
+      in
+      let code =
+        Seq.of_dispenser
+          (fun () -> In_channel.input_char channel)
+        |> Bf.Code.parse
+      in
+      close_in channel;
+      code
+    with
+    | Sys_error e ->
+        eprintf "%s" e;
+        exit 1
   in
   run_bf bf_code
 ;;
@@ -102,15 +98,19 @@ let use_as_bf_interpreter () =
 (** reusable-bfのコンパイラとして使う場合の処理 *)
 let use_as_bfr_compiler () =
   let lib_dirs = Cli.default_lib_dirs Sys.getenv_opt in
-  let base_dir, channel = get_source () in
   let field, ir_code =
     try
-      let program =
-        Fun.protect (fun () ->
-            let lexbuf = Lexing.from_channel channel in
-            Cli.Program.load !filename lexbuf
-          )
-          ~finally:(fun () -> close_in channel)
+      let program, base_dir = match !filename with
+        | "-" ->
+            let program = Cli.Program.load "-" (Lexing.from_channel stdin) in
+            (program, Sys.getcwd ())
+        | f ->
+            let program =
+              match Cli.FileSystem.open_file f (fun lexbuf -> Cli.Program.load f lexbuf) with
+              | Ok p -> p
+              | Error reason -> Metalang.Error.unknown (File_Failed_to_read { reason })
+            in
+            (program, Filename.dirname f)
       in
       Cli.Program.gen_ir ~lib_dirs ~base_dir program
     with Metalang.Error.Exn_at e ->

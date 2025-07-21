@@ -16,18 +16,16 @@ module type FileSystem = sig
   (**
     path から lexbuf を取得してなんかする
     - ファイルは自動でクローズされる
-    - ファイルを開けなければエラー
+    - ファイルを開けない場合は理由を文字列で返す
     - lexbuf に対する set_filename は他の場所で行うので不要
   *)
-  val open_file : string -> (Lexing.lexbuf -> 'a) -> 'a
+  val open_file : string -> (Lexing.lexbuf -> 'a) -> ('a, string) result
 end
 
 module Make(FS: FileSystem) = struct
   (**
     ソースコードを読み込むときは必ずこれを通すこと
-    失敗した場合は例外を投げる。
-    Lexerのエラー、Parserのエラーの2通りがある。
-    TODO: 例外を投げないようにしたい。それはimportの位置情報をエラーに含めたいから。
+    失敗した場合はExn_at例外を投げる。Lexerの失敗もExn_atになるので安心してほしい
   *)
   let load path lexbuf =
     Lexing.set_filename lexbuf path;
@@ -38,10 +36,6 @@ module Make(FS: FileSystem) = struct
     | exception Parser.Error ->
         let info = !Lexer.curr_info |> Option.get in
         Error.top info Parser_Unexpected
-
-  (** lexbuf ではなくパスを渡すと load してくれる便利なやつ *)
-  let load_by_path path =
-    FS.open_file path (load path)
 
   (**
     importing path から、必要に応じてライブラリディレクトリを検索してファイルを探す
@@ -164,7 +158,10 @@ module Make(FS: FileSystem) = struct
               lib_dirs = ctx.lib_dirs;
               filemap = FileMap.add path Loading ctx.filemap;
             } in
-            let prog = load_by_path path in
+            let prog = match FS.open_file path (load path) with
+              | Ok p -> p
+              | Error reason -> Error.top mod_expr.i (File_Failed_to_read { reason })
+            in
             let ctx' = eval_decls ctx' prog in
             let envs = ctx'.ex_envs in
             let filemap = FileMap.add path (Loaded envs) ctx'.filemap in

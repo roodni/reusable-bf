@@ -69,7 +69,7 @@ module FileSystem : (Metalang.Program.FileSystem with module FileId = FileId) = 
     let file_id = path_to_file_id path in
     let content = Hashtbl.find file_tbl file_id in
     let lexbuf = Lexing.from_string content in
-    f lexbuf 
+    Ok (f lexbuf)
 end
 
 module Program = Metalang.Program.Make(FileSystem)
@@ -92,7 +92,10 @@ let handler (req: Message.req) =
     try
       let ir =
         try
-          let program = Program.load_by_path entrypoint in
+          let program =
+            FileSystem.open_file entrypoint (Program.load entrypoint)
+            |> Result.get_ok
+          in
           Program.gen_ir ~lib_dirs:["/"] ~base_dir program
         with
         | Metalang.Error.Exn_at e -> begin
