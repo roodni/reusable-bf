@@ -33,6 +33,15 @@ let gen_const_div n rem_cell quot_code = [
 ]
 
 
+(*
+  条件を満たしていたら内側のコードを生成する。
+  なんか関数名が気に入らないのと、
+  言語自体の文法でうまく表現できるならそうしたいので、
+  miscに置いてある
+*)
+let if_gen cond st =
+  if cond then st else []
+
 let gen_for_index i step_st loop_st = [
   $dive i
   $alloc { cont }

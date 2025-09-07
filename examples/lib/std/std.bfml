@@ -38,9 +38,6 @@ module Int = struct
     ) a 1
 end
 
-let if_gen cond st =
-  if cond then st else []
-
 let gen_del x = [
   ! x [ - x ]
 ]
