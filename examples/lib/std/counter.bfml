@@ -8,7 +8,7 @@
   インデックスは0に戻す
 *)
 
-open import "std.bfml"
+open import "std/std.bfml"
 
 let gen_build st = [
   $build {

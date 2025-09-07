@@ -1,7 +1,7 @@
 // https://atcoder.jp/contests/abc087/tasks/abc087_a
 
-open import "std.bfml"
-module I = import "fixedint.bfml"
+open import "std/std.bfml"
+module I = import "std/integer.bfml"
 
 let main = $
 **I:gen_build 5 @@ fun x -> $

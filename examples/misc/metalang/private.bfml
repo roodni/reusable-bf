@@ -1,4 +1,4 @@
-open import "std.bfml"
+open import "std/std.bfml"
 
 module M = struct
   let a = 1

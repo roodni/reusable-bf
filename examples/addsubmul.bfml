@@ -1,6 +1,6 @@
 // https://atcoder.jp/contests/abc098/tasks/abc098_a
-open import "std.bfml"
-module I = import "fixedint.bfml"
+open import "std/std.bfml"
+module I = import "std/integer.bfml"
 
 let main = $
 

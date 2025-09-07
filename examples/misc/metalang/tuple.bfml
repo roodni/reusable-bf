@@ -3,7 +3,7 @@
   まあいいか...
 *)
 
-open import "std.bfml"
+open import "std/std.bfml"
 
 let main =
   match 1, 2, 3 with

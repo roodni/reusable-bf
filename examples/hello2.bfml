@@ -1,7 +1,7 @@
 // Hello World!
 // 乗算でコード長を短くするバージョン
 
-open import "std.bfml"
+open import "std/std.bfml"
 
 let gen_short_incr x n =
   let score (a, b) = a + abs b + abs (n - a * b) in

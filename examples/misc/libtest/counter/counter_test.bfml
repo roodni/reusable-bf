@@ -1,5 +1,5 @@
-open import "std.bfml"
-open import "counter.bfml"
+open import "std/std.bfml"
+open import "std/counter.bfml"
 
 let main = [
   **gen_build @@ fun cnt -> $

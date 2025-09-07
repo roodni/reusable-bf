@@ -1,4 +1,4 @@
-open import "std.bfml"
+open import "std/std.bfml"
 
 let f l = match l with
   | (a;) -> [*gen_puts a]

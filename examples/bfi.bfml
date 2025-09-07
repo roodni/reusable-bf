@@ -3,7 +3,7 @@
      {brainfuckのコード}\{入力}
 *)
 
-open import "std.bfml"
+open import "std/std.bfml"
 
 let main = $
 

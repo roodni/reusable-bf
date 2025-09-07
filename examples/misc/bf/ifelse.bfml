@@ -1,4 +1,4 @@
-open import "std.bfml"
+open import "std/std.bfml"
 
 let gen_ifelse cond the_st els_st = [
   $alloc { els; bu }

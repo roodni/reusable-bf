@@ -1,5 +1,5 @@
-open import "std.bfml"
-module Counter = import "counter.bfml"
+open import "std/std.bfml"
+module Counter = import "std/counter.bfml"
   (* example/lib 以下のライブラリはimportの検索対象 *)
 
 let main = [

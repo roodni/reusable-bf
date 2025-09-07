@@ -66,7 +66,7 @@ let cases =
       [ ("", "ABCC") ];
     case "examples/misc/bug/const_analyze_loop.bfml"
       [ ("A", "A"); ("B", "") ];
-    case "examples/lib/counter.bfml"
+    case "examples/lib/std/counter.bfml"
       [ ("A", "65"); ("0", "48"); ("{", "123") ];
     case "examples/misc/libtest/counter/counter_test.bfml"
       [ ("", "0\n123\n0\n4") ];
