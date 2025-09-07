@@ -108,37 +108,6 @@ module Envs = struct
       module_env = UVE.empty;
       trace = empty_trace;
     }
-  let initial =
-    let add_builtin name fn env =
-      VE.extend (Var.of_string name) (VaBuiltin fn) env
-    in
-    { empty with
-      va_env = empty.va_env
-        |> add_builtin "string_length" (fun trace s ->
-            let l = 
-              Va.to_string trace s.i s.v
-              |> String.length
-            in
-            VaInt l
-          )
-        |> add_builtin "string_get" (fun trace s ->
-            let s = Va.to_string trace s.i s.v in
-            VaBuiltin (fun trace i ->
-              let i = Va.to_int trace i.i i.v in
-              let c =
-                try int_of_char s.[i] with
-                | Invalid_argument _ ->
-                    Error.at trace (Eval_Exception "index out of bounds")
-              in
-              VaInt c
-            )
-          )
-        |> add_builtin "failwith" (fun trace msg ->
-            let msg = Va.to_string trace msg.i msg.v in
-            Error.at trace (Eval_Exception msg)
-          )
-      ;
-    }
 
   let extend_with_value_env va_env envs =
     { envs with va_env = VE.merge va_env envs.va_env }

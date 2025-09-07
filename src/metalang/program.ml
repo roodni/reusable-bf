@@ -163,7 +163,7 @@ module Make(FS: FileSystem) = struct
         | Some (Loaded envs) -> (ctx, envs)
         | None ->
             let ctx' = {
-              envs = Envs.initial;
+              envs = Builtin.envs_with_builtin_values;
               ex_envs = Envs.empty;
               base_dir = Filename.dirname path;
               lib_dirs = ctx.lib_dirs;
@@ -201,7 +201,7 @@ module Make(FS: FileSystem) = struct
   let gen_ir ~lib_dirs ~base_dir (program: program)
       : Ir.Field.main * 'a Ir.Code.t =
     let ctx = {
-      envs = Envs.initial;
+      envs = Builtin.envs_with_builtin_values;
       ex_envs = Envs.empty;
       base_dir;
       lib_dirs;

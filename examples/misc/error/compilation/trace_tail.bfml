@@ -1,3 +1,5 @@
+open import "std/std.bfml"
+
 let f () = failwith "f"
 
 let g () = f ()

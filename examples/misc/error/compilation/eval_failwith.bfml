@@ -1,3 +1,5 @@
+open import "std/std.bfml"
+
 let _ = failwith "Failed"
 
 let main = $

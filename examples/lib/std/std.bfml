@@ -1,3 +1,20 @@
+let failwith = __failwith__
+
+module String = struct
+  let get = __string_get__
+
+  let length = __string_length__
+
+  let to_list s =
+    let rec loop i accu =
+      if i < 0 then accu
+      else
+        let c = get s i in
+        loop (i - 1) (c :: accu)
+    in
+    loop (length s - 1) nil
+end
+
 let rec fix f x = f (fix f) x
 
 // falseのとき落ちる
@@ -74,15 +91,6 @@ let gen_geti dest ed = [
   ]
 ]
 
-let string_to_list s =
-  let rec loop i accu =
-    if i < 0 then accu
-    else
-      let c = string_get s i in
-      loop (i - 1) (c :: accu)
-  in
-  loop (string_length s - 1) nil
-
 let gen_puts s = [
   $alloc { c }
   *fix
@@ -95,7 +103,7 @@ let gen_puts s = [
               else [ *gen_del c  + c curr ]
           in
           [ *out  . c  *loop curr rest ]
-    ) 0 (string_to_list s)
+    ) 0 (String:to_list s)
 ]
 
 // リスト l を比較関数 compare でソートする

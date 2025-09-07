@@ -40,7 +40,7 @@ let gen_puts2 s = [
             ]
           in
           [ *out  . c  *loop curr rest ]
-    ) 0 (string_to_list s)
+    ) 0 (String:to_list s)
 ]
 
 let main = [ *gen_puts2 "Hello World!\n" ]
