@@ -38,17 +38,8 @@ module Int = struct
     ) a 1
 end
 
-(* $dive のラップ
-   有効範囲を限りたいときに使う
-*)
-let dive i st = [
-  $dive i
-  *st
-]
-
 let if_gen cond st =
   if cond then st else []
-
 
 let gen_del x = [
   ! x [ - x ]

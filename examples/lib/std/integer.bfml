@@ -198,7 +198,8 @@ let gen_print_destructive fi = [
   **let _, arr = fi in $
   ? arr@i:digit
     [
-      *dive arr@i [
+      *[
+        $dive arr@i
         $alloc { minus }
         + minus '-'  . minus
       ]
