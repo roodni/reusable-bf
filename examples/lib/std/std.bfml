@@ -1,5 +1,13 @@
 let failwith = __failwith__
 
+let rec fix f x = f (fix f) x
+
+// falseのとき落ちる
+let verify cond =
+  if cond then ()
+  else failwith "Verification failed"
+
+
 module String = struct
   let get = __string_get__
 
@@ -15,24 +23,20 @@ module String = struct
     loop (length s - 1) nil
 end
 
-let rec fix f x = f (fix f) x
 
-// falseのとき落ちる
-let verify cond =
-  if cond then ()
-  else failwith "Verification failed"
+module Int = struct
+  let abs i = if i < 0 then -i else i
 
-let abs i = if i < 0 then -i else i
+  let max a b = if a < b then b else a
+  let min a b = if a < b then a else b
 
-let max a b = if a < b then b else a
-let min a b = if a < b then a else b
-
-let power x a =
-  fix (fun loop a accu ->
-    if a < 0 then failwith "Expotent must be non-negative"
-    else if a = 0 then accu
-    else loop (a - 1) (x * accu)
-  ) a 1
+  let power x a =
+    fix (fun loop a accu ->
+      if a < 0 then failwith "Expotent must be non-negative"
+      else if a = 0 then accu
+      else loop (a - 1) (x * accu)
+    ) a 1
+end
 
 (* $dive のラップ
    有効範囲を限りたいときに使う
@@ -98,7 +102,7 @@ let gen_puts s = [
       | nil -> []
       | curr :: rest ->
           let out =
-            if abs (curr - prev) <= 3 + curr
+            if Int:abs (curr - prev) <= 3 + curr
               then [ + c (curr - prev) ]
               else [ *gen_del c  + c curr ]
           in

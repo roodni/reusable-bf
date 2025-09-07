@@ -4,20 +4,20 @@
 open import "std/std.bfml"
 
 let gen_short_incr x n =
-  let score (a, b) = a + abs b + abs (n - a * b) in
+  let score (a, b) = a + Int:abs b + Int:abs (n - a * b) in
   let min_ab ab1 ab2 =
     if score ab1 < score ab2 then ab1 else ab2
   in
   let a, b =
     fix
       (fun loop prev a ->
-        if abs n <= a then prev
+        if Int:abs n <= a then prev
         else
           let curr = min_ab (a, n / a) (a, n / a + 1) in
           loop (min_ab prev curr) (a + 1)
       ) (1, n) 2
   in
-  if abs n <= score (a, b) + 10 then [ + x n ]
+  if Int:abs n <= score (a, b) + 10 then [ + x n ]
   else
     [ $alloc { y }
       + y a
@@ -32,7 +32,7 @@ let gen_puts2 s = [
       | nil -> []
       | curr :: rest ->
           let out =
-            if abs (curr - prev) <= 3 + curr then [
+            if Int:abs (curr - prev) <= 3 + curr then [
               *gen_short_incr c (curr - prev)
             ] else [
               *gen_del c
