@@ -1,3 +1,8 @@
+(*
+  標準ライブラリ。
+  openして使うことを想定している
+*)
+
 let failwith = __failwith__
 
 let rec fix f x = f (fix f) x
