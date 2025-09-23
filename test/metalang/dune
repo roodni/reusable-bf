@@ -1,5 +1,5 @@
 (tests
- (names output_test bfi_test error_test iri_test)
+ (names error_test iri_test)
  (libraries bf ir metalang cli helper ounit2)
  (deps
   (source_tree %{project_root}/examples)))

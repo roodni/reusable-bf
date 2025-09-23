@@ -1,0 +1,5 @@
+(tests
+ (names output_test bfi_test)
+ (libraries bf ir metalang cli helper ounit2)
+ (deps
+  (source_tree %{project_root}/examples)))
