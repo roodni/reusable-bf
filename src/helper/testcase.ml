@@ -106,4 +106,6 @@ let cases =
       [ ("", "OK") ];
     case "examples/misc/metalang/tuple.bfml"
       [ ("", "NONASSOC") ];
+    case "examples/geti.bfml"
+      [ ("65\n", "A") ];
   ]

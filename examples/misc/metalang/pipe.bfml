@@ -7,4 +7,4 @@ let exp = (((0, 1), 2), 3)
 
 let main =
   verify (act = exp);
-  [ *gen_puts "OK" ]
+  [ *IO:gen_puts "OK" ]

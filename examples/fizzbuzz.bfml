@@ -11,7 +11,7 @@ let main = [
     buzz: cell;
   }
 
-  *gen_geti n '\n'
+  *IO:gen_geti n '\n'
   + fizz 3
   + buzz 5
   ! n [
@@ -20,10 +20,10 @@ let main = [
     $alloc { fb: cell; }
     + fb 2
     - fizz
-    ? fizz [ - fb ] [ + fizz 3  *gen_puts "Fizz" ]
+    ? fizz [ - fb ] [ + fizz 3  *IO:gen_puts "Fizz" ]
     - buzz
-    ? buzz [ - fb ] [ + buzz 5  *gen_puts "Buzz" ]
+    ? buzz [ - fb ] [ + buzz 5  *IO:gen_puts "Buzz" ]
     ? fb [] [ *Counter:gen_print counter ]
-    *gen_puts " "
+    *IO:gen_puts " "
   ]
 ]

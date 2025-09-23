@@ -9,4 +9,4 @@ let main =
   match 1, 2, 3 with
   | 1, (2, 3) -> failwith "RIGHT"
   | (1, 2), 3 -> failwith "LEFT"
-  | 1, 2, 3 -> gen_puts "NONASSOC"
+  | 1, 2, 3 -> IO:gen_puts "NONASSOC"

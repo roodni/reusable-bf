@@ -5,17 +5,17 @@ let main = [
   **gen_build @@ fun cnt -> $
 
   *gen_print cnt
-  *gen_puts "\n"
+  *IO:gen_puts "\n"
 
   $build { a }
   + a 123
   *gen_repeat a [ *gen_incr cnt ]
   *gen_print cnt
-  *gen_puts "\n"
+  *IO:gen_puts "\n"
 
   *gen_reset cnt
   *gen_print cnt
-  *gen_puts "\n"
+  *IO:gen_puts "\n"
 
   $build { a }
   + a 4

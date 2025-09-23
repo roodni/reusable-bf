@@ -1,9 +1,9 @@
 open import "std/std.bfml"
 
 let f l = match l with
-  | (a;) -> [*gen_puts a]
-  | (a; b) -> [*gen_puts a  *gen_puts b]
-  | (a; b; c;) -> [*gen_puts a  *gen_puts b  *gen_puts c]
+  | (a;) -> [*IO:gen_puts a]
+  | (a; b) -> [*IO:gen_puts a  *IO:gen_puts b]
+  | (a; b; c;) -> [*IO:gen_puts a  *IO:gen_puts b  *IO:gen_puts c]
   | _ -> []
 
 let main = [

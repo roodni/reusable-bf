@@ -16,6 +16,6 @@ let main = [
   *gen_add a b
 
   *gen_print b
-  *gen_puts " "
+  *IO:gen_puts " "
   *gen_print c
 ]

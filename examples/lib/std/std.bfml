@@ -43,6 +43,24 @@ module Int = struct
     ) a 1
 end
 
+// リスト l を比較関数 compare でソートする
+let sort compare l =
+  fix
+    (fun sort -> fun rest sorted ->
+      match rest with
+      | nil -> sorted
+      | pivot :: rest ->
+          fix
+            (fun partition -> fun left right l ->
+              match l with
+              | nil -> sort left (pivot :: sort right sorted)
+              | hd :: tl ->
+                  if compare hd pivot < 0
+                  then partition (hd :: left) right tl
+                  else partition left (hd :: right) tl)
+            nil nil rest)
+    l nil
+
 let gen_del x = [
   ! x [ - x ]
 ]
@@ -73,53 +91,6 @@ let gen_if_restore c st = [
 let gen_reset_index i = [
   <!> i [ < i ]
 ]
-
-
-let gen_geti dest ed = [
-  $alloc { x: cell; }
-  , x
-  - x ed
-  ! x [
-    - x ('0' - ed)
-    *gen_repeat dest [ + x 10 ]
-    *gen_repeat x [ + dest ]
-    , x
-    - x ed
-  ]
-]
-
-let gen_puts s = [
-  $alloc { c }
-  *fix
-    (fun loop prev l -> match l with
-      | nil -> []
-      | curr :: rest ->
-          let out =
-            if Int:abs (curr - prev) <= 3 + curr
-              then [ + c (curr - prev) ]
-              else [ *gen_del c  + c curr ]
-          in
-          [ *out  . c  *loop curr rest ]
-    ) 0 (String:to_list s)
-]
-
-// リスト l を比較関数 compare でソートする
-let sort compare l =
-  fix
-    (fun sort -> fun rest sorted ->
-      match rest with
-      | nil -> sorted
-      | pivot :: rest ->
-          fix
-            (fun partition -> fun left right l ->
-              match l with
-              | nil -> sort left (pivot :: sort right sorted)
-              | hd :: tl ->
-                  if compare hd pivot < 0
-                  then partition (hd :: left) right tl
-                  else partition left (hd :: right) tl)
-            nil nil rest)
-    l nil
 
 // セル dest からセル src の中身だけ引く
 // src はゼロになる
@@ -197,3 +168,33 @@ let gen_switch_nat sel blocks default = [
         ])
     0 blocks
 ]
+
+module IO = struct
+  let gen_geti dest ed = [
+    $alloc { x: cell; }
+    , x
+    - x ed
+    ! x [
+      - x ('0' - ed)
+      *gen_repeat dest [ + x 10 ]
+      *gen_repeat x [ + dest ]
+      , x
+      - x ed
+    ]
+  ]
+
+  let gen_puts s = [
+    $alloc { c }
+    *fix
+      (fun loop prev l -> match l with
+        | nil -> []
+        | curr :: rest ->
+            let out =
+              if Int:abs (curr - prev) <= 3 + curr
+                then [ + c (curr - prev) ]
+                else [ *gen_del c  + c curr ]
+            in
+            [ *out  . c  *loop curr rest ]
+      ) 0 (String:to_list s)
+  ]
+end

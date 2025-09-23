@@ -23,4 +23,4 @@ let main = $
 ;verify (A:x = 2)
 ;verify (B:x = 1)
 
-*gen_puts "OK"
+*IO:gen_puts "OK"

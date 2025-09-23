@@ -21,7 +21,7 @@ $build { x; a }
 
 + a '0'
 
-*gen_geti x '\n'
+*IO:gen_geti x '\n'
 
 *gen_ifelse x
   [ - x
@@ -30,7 +30,7 @@ $build { x; a }
       [ + a 1  . a ]
   ]
   [
-    *gen_geti x '\n'
+    *IO:gen_geti x '\n'
     *gen_ifelse x
       [ + a 2  . a ]
       [ + a 3  . a ]

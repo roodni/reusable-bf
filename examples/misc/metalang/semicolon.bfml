@@ -18,5 +18,5 @@ let main =
   verify (d = 0);
   verify (list_length e = 1);
   verify (f = 0);
-  gen_puts "OK";
+  IO:gen_puts "OK";
 ;;

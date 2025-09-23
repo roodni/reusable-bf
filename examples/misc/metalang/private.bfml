@@ -20,4 +20,4 @@ let main = $
 ;verify (M:f () = 10)
 ;verify (M:X:x = 100)
 
-*gen_puts "OK"
+*IO:gen_puts "OK"

@@ -34,4 +34,4 @@ let main = $
     *I:gen_print_destructive x
   ]
 
-*gen_puts "\n"
+*IO:gen_puts "\n"

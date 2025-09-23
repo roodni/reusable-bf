@@ -10,10 +10,10 @@
 ```
 // Hello World!
 
-module Std = import "std/std.bfml"
+open import "std/std.bfml"
 
 let main = [
-  *Std:gen_puts "Hello World!\n"
+  *IO:gen_puts "Hello World!\n"
 ]
 ```
 
