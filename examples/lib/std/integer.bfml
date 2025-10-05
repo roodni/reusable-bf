@@ -1,6 +1,8 @@
 (* 固定長10進整数 *)
 
 open import "std/std.bfml"
+open Ctrl
+
 open import "__misc__.bfml"
 
 let base = 10

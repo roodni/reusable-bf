@@ -27,7 +27,7 @@ $alloc {
 ! cont [
   , p:inst
   + flag_next
-  *gen_switch p:inst
+  *Ctrl:gen_switch p:inst
     ( ('+', [ + p:inst 1 ]);
       ('-', [ + p:inst 2 ]);
       ('>', [ + p:inst 3 ]);
@@ -50,12 +50,12 @@ $alloc {
     [ - flag_next ]
   ! flag_next [
     - flag_next
-    *gen_repeat_restore p:depth [ + p:(1)depth ]
+    *Ctrl:gen_repeat_restore p:depth [ + p:(1)depth ]
     > p
   ]
 ]
 
-*gen_reset_index code@p
+*Ctrl:gen_reset_index code@p
 
 // 実行
 $build {
@@ -71,7 +71,7 @@ $dive p
 $alloc { depth_cur }
 
 ! p:inst [
-  *gen_switch_nat p:inst
+  *Ctrl:gen_switch_nat p:inst
     ( [];
       [ + tape@p:v ];
       [ - tape@p:v ];
@@ -79,27 +79,27 @@ $alloc { depth_cur }
       [ < tape@p ];
       [ // while
         ? tape@p:v [] [
-          *gen_repeat_restore p:depth
+          *Ctrl:gen_repeat_restore p:depth
             [ + depth_cur  - p:(1)depth ]
           > p
           ! p:depth [
-            *gen_repeat_restore depth_cur
+            *Ctrl:gen_repeat_restore depth_cur
               [ + p:depth  - p:(1)depth ]
             > p
           ]
-          *gen_repeat depth_cur [ + p:depth ]
+          *Ctrl:gen_repeat depth_cur [ + p:depth ]
         ]
       ];
       [ // wend
-        *gen_repeat_restore p:depth
+        *Ctrl:gen_repeat_restore p:depth
           [ + depth_cur  - p:(-1)depth ]
         < p
         ! p:depth [
-          *gen_repeat_restore depth_cur
+          *Ctrl:gen_repeat_restore depth_cur
             [ + p:depth  - p:(-1)depth ]
           < p
         ]
-        *gen_repeat depth_cur [ + p:depth ]
+        *Ctrl:gen_repeat depth_cur [ + p:depth ]
         < p
       ];
       [ . tape@p:v ];

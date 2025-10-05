@@ -21,7 +21,7 @@ let gen_short_incr x n =
   else
     [ $alloc { y }
       + y a
-      *gen_repeat y [ + x b ]
+      *Ctrl:gen_repeat y [ + x b ]
       + x (n - a * b)
     ]
 
@@ -35,7 +35,7 @@ let gen_puts2 s = [
             if Int:abs (curr - prev) <= 3 + curr then [
               *gen_short_incr c (curr - prev)
             ] else [
-              *gen_del c
+              *Ctrl:gen_del c
               *gen_short_incr c curr
             ]
           in

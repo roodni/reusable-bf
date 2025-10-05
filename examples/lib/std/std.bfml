@@ -61,115 +61,117 @@ let sort compare l =
             nil nil rest)
     l nil
 
-let gen_del x = [
-  ! x [ - x ]
-]
-
-let gen_repeat c loop = [
-  ! c [ - c  *loop ]
-]
-
-let gen_repeat_restore src block = [
-  $alloc { backup: cell; }
-  *gen_repeat src [
-    + backup
-    *block
+// 制御（繰り返しや分岐）を行う命令列を生成する関数をまとめたモジュール
+module Ctrl = struct
+  // セルの中身をゼロにする
+  let gen_del x = [
+    ! x [ - x ]
   ]
-  *gen_repeat backup [ + src ]
-]
 
-let gen_if_restore c st = [
-  $alloc { bu }
-  ! c [
-    *gen_repeat c [ + bu ]
-    *st
+  // セル c の中身の数だけ命令列 loop を繰り返す。セル c の中身はゼロになる
+  let gen_repeat c loop = [
+    ! c [ - c  *loop ]
   ]
-  *gen_repeat bu [ + c ]
-]
 
+  let gen_repeat_restore src block = [
+    $alloc { backup: cell; }
+    *gen_repeat src [
+      + backup
+      *block
+    ]
+    *gen_repeat backup [ + src ]
+  ]
 
-let gen_reset_index i = [
-  <!> i [ < i ]
-]
+  let gen_if_restore c st = [
+    $alloc { bu }
+    ! c [
+      *gen_repeat c [ + bu ]
+      *st
+    ]
+    *gen_repeat bu [ + c ]
+  ]
 
-// セル dest からセル src の中身だけ引く
-// src はゼロになる
-// オーバーフローするとき文列 overflow を実行する
-let gen_sub_safe src dest overflow = [
-  ! src [
-    - src
-    ? dest [ - dest ] [
-      *overflow
-      *gen_del src
+  let gen_reset_index i = [
+    <!> i [ < i ]
+  ]
+
+  // セル dest からセル src の中身だけ引く
+  // src はゼロになる
+  // オーバーフローするとき命令列 overflow を実行する
+  private let gen_sub_safe src dest overflow = [
+    ! src [
+      - src
+      ? dest [ - dest ] [
+        *overflow
+        *gen_del src
+      ]
     ]
   ]
-]
 
-(* セル sel の中身で分岐する
-   sel は破壊される
-   整数と文列のペアのリスト cases の各要素のペアの整数を小さい順に見て
-   sel の中身と同じであれば文列を実行する
-   該当するものがなければ文列 default を実行する
-   文列中で sel の中身が変化しても良い
-*)
-let gen_switch sel cases default = [
-  **let cases =
-    sort (fun (n1, _) (n2, _) -> n1 - n2) cases
-  in $
-  $alloc {
-    sub_src; flag_eq; flag_els
-  }
-  *fix
-    (fun loop prev cases ->
-      match cases with
-      | nil -> default
-      | (num, block) :: cases -> [
-          + sub_src (num - prev)
-          + flag_eq
-          *gen_sub_safe sub_src sel [ - flag_eq ]
-          ? sel [ - flag_eq ] []
-          + flag_els
-          ! flag_eq [
-            - flag_eq
-            - flag_els
-            *block
-          ]
-          ! flag_els [
-            - flag_els
-            *loop num cases
-          ]
-        ])
-    0 cases
-]
+  (* セル sel の中身で分岐する。sel は破壊される。
+    整数と命令列のペアのリスト cases の各要素のペアの整数を小さい順に見て sel の中身と同じであれば命令列を実行する。
+    該当するものがなければ命令列 default を実行する。
+    命令列中で sel の中身が変化しても制御に影響を与えない。
+  *)
+  let gen_switch sel cases default = [
+    **let cases =
+      sort (fun (n1, _) (n2, _) -> n1 - n2) cases
+    in $
+    $alloc {
+      sub_src; flag_eq; flag_els
+    }
+    *fix
+      (fun loop prev cases ->
+        match cases with
+        | nil -> default
+        | (num, block) :: cases -> [
+            + sub_src (num - prev)
+            + flag_eq
+            *gen_sub_safe sub_src sel [ - flag_eq ]
+            ? sel [ - flag_eq ] []
+            + flag_els
+            ! flag_eq [
+              - flag_eq
+              - flag_els
+              *block
+            ]
+            ! flag_els [
+              - flag_els
+              *loop num cases
+            ]
+          ])
+      0 cases
+  ]
 
-(* セル sel の中身で分岐する
-   sel は分岐の前に復元される
-   sel の中身を i とする。文列のリスト blocks の
-   第 i 要素が存在する場合それを実行する
-   第 i 要素が存在しない場合文列 default を実行する
-   文列中で sel の中身が変化しても良い
-*)
-let gen_switch_nat sel blocks default = [
-  *fix
-    (fun loop i blocks ->
-      match blocks with
-      | nil -> [
-          + sel i
-          *default
-        ]
-      | block :: rest -> [
-          ? sel [
-            - sel
-            *loop (i + 1) rest
-          ] [
+  (* セル sel の中身で分岐する。sel は分岐の前に復元される。
+    sel の中身の数が i のとき、命令列のリスト blocks の第 i 要素が存在する場合それを実行する。
+    第 i 要素が存在しない場合は命令列 default を実行する。
+    命令列中で sel の中身が変化しても制御に影響を与えない。
+  *)
+  let gen_switch_nat sel blocks default = [
+    *fix
+      (fun loop i blocks ->
+        match blocks with
+        | nil -> [
             + sel i
-            *block
+            *default
           ]
-        ])
-    0 blocks
-]
+        | block :: rest -> [
+            ? sel [
+              - sel
+              *loop (i + 1) rest
+            ] [
+              + sel i
+              *block
+            ]
+          ])
+      0 blocks
+  ]
+end
 
 module IO = struct
+  open Ctrl
+
   let gen_geti dest ed = [
     $alloc { x: cell; }
     , x

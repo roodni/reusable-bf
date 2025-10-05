@@ -1,4 +1,5 @@
 open import "std/std.bfml"
+open Ctrl
 
 let main = $
 

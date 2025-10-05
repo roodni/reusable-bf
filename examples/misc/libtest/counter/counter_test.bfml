@@ -9,7 +9,7 @@ let main = [
 
   $build { a }
   + a 123
-  *gen_repeat a [ *gen_incr cnt ]
+  *Ctrl:gen_repeat a [ *gen_incr cnt ]
   *gen_print cnt
   *IO:gen_puts "\n"
 
@@ -19,6 +19,6 @@ let main = [
 
   $build { a }
   + a 4
-  *gen_repeat a [ *gen_incr cnt ]
+  *Ctrl:gen_repeat a [ *gen_incr cnt ]
   *gen_print cnt
 ]

@@ -5,7 +5,7 @@ let main = $
 $build { x }
 , x
 
-*gen_switch x
+*Ctrl:gen_switch x
   ( ('+', [ *IO:gen_puts "INC" ]);
     ('-', [ *IO:gen_puts "DEC" ]);
     ('.', [ *IO:gen_puts "PUT" ]);

@@ -16,7 +16,7 @@ $build {
 , x
 - x '0'
 
-*gen_switch_nat x
+*Ctrl:gen_switch_nat x
   ( [ . b ];  // case 0
     [ . f ];  // case 1
     [ . r ];  // case 2

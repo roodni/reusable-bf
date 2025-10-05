@@ -9,6 +9,7 @@
 *)
 
 open import "std/std.bfml"
+open Ctrl
 
 let gen_build st = [
   $build {
