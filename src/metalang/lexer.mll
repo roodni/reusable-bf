@@ -21,7 +21,6 @@ let reserved = [
   ("match", fun i -> P.MATCH i);
   ("mod", fun i -> P.MOD i);
   ("module", fun i -> P.MODULE i);
-  ("nil", fun i -> P.NIL i);
   ("open", fun i -> P.OPEN i);
   ("private", fun i -> P.PRIVATE i);
   ("rec", fun i -> P.REC i);

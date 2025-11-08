@@ -6,7 +6,7 @@ $build { x }
 , x
 
 *Ctrl:gen_switch x
-  ( ('+', { *IO:gen_puts "INC" });
+  [ ('+', { *IO:gen_puts "INC" });
     ('-', { *IO:gen_puts "DEC" });
     ('.', { *IO:gen_puts "PUT" });
     (',', { *IO:gen_puts "GET" });
@@ -14,5 +14,5 @@ $build { x }
     (']', { *IO:gen_puts "WEND" });
     ('>', { *IO:gen_puts "SHR" });
     ('<', { *IO:gen_puts "SHL" });
-  )
+  ]
   { *IO:gen_puts "OTHER" }

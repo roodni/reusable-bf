@@ -1,5 +1,5 @@
 let _ =
-  let a :: b = nil in
+  let a :: b = [] in
   a
 
 let main = {}

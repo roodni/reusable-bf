@@ -69,13 +69,13 @@ let gen_add_const m fi =
       (fun get_digits m n li ->
         if n = 0 then li
         else get_digits (m / base) (n - 1) (m mod base :: li)
-      ) m n nil
+      ) m n []
   in
   {
     *fix
       (fun loop li -> match li with
-        | nil -> failwith "never"
-        | d :: nil -> { + arr@i:digit d }
+        | [] -> failwith "never"
+        | d :: [] -> { + arr@i:digit d }
         | d :: l -> {
             + arr@i:digit d  > arr@i
             *loop l

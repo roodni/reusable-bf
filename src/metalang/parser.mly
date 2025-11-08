@@ -54,7 +54,6 @@ open Syntax
 %token <Syntax.Var.t Info.withinfo> VAR
 %token <Syntax.UVar.t Info.withinfo> UVAR
 %token <Info.info> TRUE FALSE
-%token <Info.info> NIL
 
 %nonassoc prec_stmts
 %nonassoc prec_fun prec_let prec_match prec_last_semi
@@ -184,14 +183,15 @@ expr:
     }
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
   | i1=LBRACE sl=stmts i2=RBRACE { withinfo2 i1 i2 @@ ExBlock sl }
-  | i1=LPAREN e=expr_full i2=RPAREN {
-      match e.v with
-      | ExSemicolon l -> withinfo2 i1 i2 @@ ExList l
-      | _ -> withinfo2 i1 i2 e.v |> Withinfo.enparen
-    }
+  | i1=LPAREN e=expr_full i2=RPAREN { withinfo2 i1 i2 e.v |> Withinfo.enparen }
   | i1=BEGIN e=expr_full i2=END { withinfo2 i1 i2 e.v |> Withinfo.enparen }
-  | i=NIL { withinfo i @@ ExList [] }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 ExUnit }
+  | i1=LBRACKET e=expr_full i2=RBRACKET {
+      match e.v with
+      | ExSemicolon l when not (I.is_parened e.i) -> withinfo2 i1 i2 @@ ExList l
+      | _ -> withinfo2 i1 i2 @@ ExList [e]
+    }
+  | i1=LBRACKET i2=RBRACKET { withinfo2 i1 i2  @@ ExList [] }
 
 uvar_list:
   | uv=UVAR COLON l=uvar_list { uv :: l }
@@ -277,11 +277,10 @@ pat_simple:
   | i=TRUE { withinfo i @@ PatBool true }
   | i=FALSE { withinfo i @@ PatBool false }
   | i1=LPAREN p=pat_full i2=RPAREN { withinfo2 i1 i2 @@ p.v |> Withinfo.enparen }
-  | i=NIL { withinfo i @@ PatList [] }
-  | i1=LPAREN p=pat_full SEMI l=pat_semi_list i2=RPAREN {
-      withinfo2 i1 i2 @@ PatList (p :: l)
-    }
   | i1=LPAREN i2=RPAREN { withinfo2 i1 i2 @@ PatUnit }
+  | i1=LBRACKET l=pat_semi_list i2=RBRACKET {
+      withinfo2 i1 i2 @@ PatList l
+    }
 
 pat_semi_list:
   | p=pat_full SEMI l=pat_semi_list { p :: l }

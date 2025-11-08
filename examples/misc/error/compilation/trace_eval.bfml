@@ -1,12 +1,12 @@
 open import "std/std.bfml"
 
 let f l = match l with
-  | (a;) -> {*IO:gen_puts a}
-  | (a; b) -> {*IO:gen_puts a  *IO:gen_puts b}
-  | (a; b; c;) -> {*IO:gen_puts a  *IO:gen_puts b  *IO:gen_puts c}
+  | [a] -> {*IO:gen_puts a}
+  | [a; b] -> {*IO:gen_puts a  *IO:gen_puts b}
+  | [a; b; c;] -> {*IO:gen_puts a  *IO:gen_puts b  *IO:gen_puts c}
 
 let main = {
   *f ("1")  // 型が違う
-  *f ("2"; "3")
-  *f ("4"; "5"; "6")
+  *f ["2"; "3"]
+  *f ["4"; "5"; "6"]
 }

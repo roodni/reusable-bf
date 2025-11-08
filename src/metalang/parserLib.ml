@@ -23,4 +23,4 @@ let info_of_token = function
   | IF i | THEN i | ELSE i | MATCH i | WITH i -> i
   | PRIVATE i | IMPORT i | MODULE i | OPEN i -> i
   | INCLUDE i | STRUCT i | END i | BEGIN i -> i
-  | TRUE i | FALSE i | NIL i -> i
+  | TRUE i | FALSE i -> i

@@ -28,7 +28,7 @@ $alloc {
   , p:inst
   + flag_next
   *Ctrl:gen_switch p:inst
-    ( ('+', { + p:inst 1 });
+    [ ('+', { + p:inst 1 });
       ('-', { + p:inst 2 });
       ('>', { + p:inst 3 });
       ('<', { + p:inst 4 });
@@ -46,7 +46,7 @@ $alloc {
         - flag_next
         - cont
       });
-    )
+    ]
     { - flag_next }
   ! flag_next {
     - flag_next
@@ -72,7 +72,7 @@ $alloc { depth_cur }
 
 ! p:inst {
   *Ctrl:gen_switch_nat p:inst
-    ( {};
+    [ {};
       { + tape@p:v };
       { - tape@p:v };
       { > tape@p };
@@ -103,7 +103,7 @@ $alloc { depth_cur }
         < p
       };
       { . tape@p:v };
-    )
+    ]
     { , tape@p:v }
   > p
 }

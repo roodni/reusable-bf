@@ -25,7 +25,7 @@ module String = struct
         let c = get s i in
         loop (i - 1) (c :: accu)
     in
-    loop (length s - 1) nil
+    loop (length s - 1) []
 end
 
 
@@ -48,18 +48,18 @@ let sort compare l =
   fix
     (fun sort -> fun rest sorted ->
       match rest with
-      | nil -> sorted
+      | [] -> sorted
       | pivot :: rest ->
           fix
             (fun partition -> fun left right l ->
               match l with
-              | nil -> sort left (pivot :: sort right sorted)
+              | [] -> sort left (pivot :: sort right sorted)
               | hd :: tl ->
                   if compare hd pivot < 0
                   then partition (hd :: left) right tl
                   else partition left (hd :: right) tl)
-            nil nil rest)
-    l nil
+            [] [] rest)
+    l []
 
 // 制御（繰り返しや分岐）を行う命令列を生成する関数をまとめたモジュール
 module Ctrl = struct
@@ -123,7 +123,7 @@ module Ctrl = struct
     *fix
       (fun loop prev cases ->
         match cases with
-        | nil -> default
+        | [] -> default
         | (num, block) :: cases -> {
             + sub_src (num - prev)
             + flag_eq
@@ -152,7 +152,7 @@ module Ctrl = struct
     *fix
       (fun loop i blocks ->
         match blocks with
-        | nil -> {
+        | [] -> {
             + sel i
             *default
           }
@@ -189,7 +189,7 @@ module IO = struct
     $alloc { c }
     *fix
       (fun loop prev l -> match l with
-        | nil -> {}
+        | [] -> {}
         | curr :: rest ->
             let out =
               if Int:abs (curr - prev) <= 3 + curr
