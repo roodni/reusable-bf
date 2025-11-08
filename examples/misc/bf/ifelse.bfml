@@ -1,19 +1,19 @@
 open import "std/std.bfml"
 
-let gen_ifelse cond the_st els_st = [
+let gen_ifelse cond the_st els_st = {
   $alloc { els; bu }
   + els
-  ! cond [
+  ! cond {
     - els
     *the_st
-    *gen_repeat cond [ + bu ]
-  ]
-  *gen_repeat bu [ + cond ]
-  ! els [
+    *gen_repeat cond { + bu }
+  }
+  *gen_repeat bu { + cond }
+  ! els {
     - els
     *els_st
-  ]
-]
+  }
+}
 
 let main = $
 
@@ -24,14 +24,14 @@ $build { x; a }
 *IO:gen_geti x '\n'
 
 *gen_ifelse x
-  [ - x
+  { - x
     *gen_ifelse x
-      [ . a ]
-      [ + a 1  . a ]
-  ]
-  [
+      { . a }
+      { + a 1  . a }
+  }
+  {
     *IO:gen_geti x '\n'
     *gen_ifelse x
-      [ + a 2  . a ]
-      [ + a 3  . a ]
-  ]
+      { + a 2  . a }
+      { + a 3  . a }
+  }

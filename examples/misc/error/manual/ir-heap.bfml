@@ -8,11 +8,11 @@ let main = $
 
 *fix
   (fun f n ->
-    if n <= 0 then []
+    if n <= 0 then {}
     else
-      [ $build { x }
+      { $build { x }
         + x
         *f (n - 1)
         *f (n - 1)
-      ]
+      }
   ) 16

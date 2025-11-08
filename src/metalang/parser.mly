@@ -7,9 +7,9 @@ open Syntax
 %token <Info.info> PLUS MINUS
 %token <Info.info> DOT COMMA
 %token <Info.info> RSHIFT LSHIFT  // > <
-%token <Info.info> LBRACKET RBRACKET
+%token <Info.info> LBRACKET RBRACKET  // [ ]
 %token <Info.info> EXCL QUES
-%token <Info.info> LBRACE RBRACE
+%token <Info.info> LBRACE RBRACE  // { }
 %token <Info.info> COLON
 %token <Info.info> COLONCOLON
 %token <Info.info> AT
@@ -156,12 +156,12 @@ stmt:
   | i=COMMA e=expr { withinfo i @@ StGet e }
   | i=RSHIFT ep=expr ei=expr? { withinfo i @@ StShift (1, ep, ei) }
   | i=LSHIFT ep=expr ei=expr? { withinfo i @@ StShift (-1, ep, ei) }
-  | i=EXCL e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StWhile (e, sl) }
-  | i=QUES e=expr LBRACKET sl_t=stmts RBRACKET LBRACKET sl_e=stmts RBRACKET {
+  | i=EXCL e=expr LBRACE sl=stmts RBRACE { withinfo i @@ StWhile (e, sl) }
+  | i=QUES e=expr LBRACE sl_t=stmts RBRACE LBRACE sl_e=stmts RBRACE {
       withinfo i @@ StIf (e, sl_t, Some sl_e)
     }
-  | i=INDEX_LOOP e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexLoop (e, sl) }
-  | i=INDEX_IF e=expr LBRACKET sl=stmts RBRACKET { withinfo i @@ StIndexIf (e, sl) }
+  | i=INDEX_LOOP e=expr LBRACE sl=stmts RBRACE { withinfo i @@ StIndexLoop (e, sl) }
+  | i=INDEX_IF e=expr LBRACE sl=stmts RBRACE { withinfo i @@ StIndexIf (e, sl) }
   | i=ASTER e=expr_appable { withinfo i @@ StExpand {ex_stmts=e; req_trace=true} }
   | i=SEMI e=expr_appable { withinfo i @@ StUnit e }
 
@@ -183,7 +183,7 @@ expr:
       withinfo2 es.i v.i @@ ExSelMem (es, Some ei, v.v)
     }
   | e=expr AT v=VAR { withinfo2 e.i v.i @@ ExSelIdx (e, v.v) }
-  | i1=LBRACKET sl=stmts i2=RBRACKET { withinfo2 i1 i2 @@ ExBlock sl }
+  | i1=LBRACE sl=stmts i2=RBRACE { withinfo2 i1 i2 @@ ExBlock sl }
   | i1=LPAREN e=expr_full i2=RPAREN {
       match e.v with
       | ExSemicolon l -> withinfo2 i1 i2 @@ ExList l

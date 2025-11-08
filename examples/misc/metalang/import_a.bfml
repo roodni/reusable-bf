@@ -1,8 +1,8 @@
-let gen_putc c = [
+let gen_putc c = {
   $alloc { x: cell; }
   + x c
   . x
-]
+}
 
 let x = '1'
 
@@ -13,10 +13,10 @@ module C = import "./import_c.bfml"
 
 let p2 = gen_putc x
 
-let main = [
+let main = {
   *gen_putc b
   *gen_putc C:c
   *p1
   *p2
   *gen_putc C:x
-]
+}

@@ -1,7 +1,7 @@
 open import "std/std.bfml"
 open import "std/counter.bfml"
 
-let main = [
+let main = {
   **gen_build @@ fun cnt -> $
 
   *gen_print cnt
@@ -9,7 +9,7 @@ let main = [
 
   $build { a }
   + a 123
-  *Ctrl:gen_repeat a [ *gen_incr cnt ]
+  *Ctrl:gen_repeat a { *gen_incr cnt }
   *gen_print cnt
   *IO:gen_puts "\n"
 
@@ -19,6 +19,6 @@ let main = [
 
   $build { a }
   + a 4
-  *Ctrl:gen_repeat a [ *gen_incr cnt ]
+  *Ctrl:gen_repeat a { *gen_incr cnt }
   *gen_print cnt
-]
+}

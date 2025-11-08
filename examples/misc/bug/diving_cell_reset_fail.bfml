@@ -8,16 +8,16 @@ $build {
 > a@i
 
 + n 2
-! n [
+! n {
   - n
 
-  *[
+  *{
     $dive a@i
     $alloc { x: cell; }
     < a@i
     + x '!'
     . x
-  ]
+  }
 
   > a@i
-]
+}

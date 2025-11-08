@@ -1,7 +1,7 @@
 let f (a, b) c = a * b * 10 + c
 
-let main = [
+let main = {
   $build {x}
   + x (f (2, 3) 5)
   . x
-]
+}

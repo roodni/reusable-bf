@@ -1,6 +1,6 @@
-let main = [
+let main = {
   $build {
     arr: array(3) { x }
   }
   + arr
-]
+}

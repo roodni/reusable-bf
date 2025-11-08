@@ -13,30 +13,30 @@ open Ctrl
    rem_cell には余りが残る
    (rem_cell に対して非破壊分岐を使用)
 *)
-let gen_div_skelton divisor_cell rem_cell quot_code = [
+let gen_div_skelton divisor_cell rem_cell quot_code = {
   $alloc { bu }
-  ! divisor_cell [
-    ! divisor_cell [
+  ! divisor_cell {
+    ! divisor_cell {
       - divisor_cell
       ? rem_cell
-        [ - rem_cell  + bu ]
-        [ *gen_del divisor_cell
-          *gen_repeat bu [ + rem_cell ]
-        ]
-    ]
-    ! bu [
-      *gen_repeat bu [ + divisor_cell ]
+        { - rem_cell  + bu }
+        { *gen_del divisor_cell
+          *gen_repeat bu { + rem_cell }
+        }
+    }
+    ! bu {
+      *gen_repeat bu { + divisor_cell }
       *quot_code
-    ]
-  ]
-]
+    }
+  }
+}
 
 // 定数除算
-let gen_const_div n rem_cell quot_code = [
+let gen_const_div n rem_cell quot_code = {
   $alloc { divisor }
   + divisor n
   *gen_div_skelton divisor rem_cell quot_code
-]
+}
 
 
 (*
@@ -46,22 +46,22 @@ let gen_const_div n rem_cell quot_code = [
   miscに置いてある
 *)
 let if_gen cond st =
-  if cond then st else []
+  if cond then st else {}
 
-let gen_for_index i step_st loop_st = [
+let gen_for_index i step_st loop_st = {
   $dive i
   $alloc { cont }
   + cont
-  ! cont [
+  ! cont {
     - cont
     *loop_st
-    <?> i [ *step_st  + cont ]
-  ]
-]
+    <?> i { *step_st  + cont }
+  }
+}
 
 (* i を 0 まで下げながら各配列要素について文列 st を繰り返す
    i が最初に指していた要素も含む
    st は i へのdive下で展開されることに注意
 *)
 let gen_foreach i st =
-  gen_for_index i [ < i ] st
+  gen_for_index i { < i } st

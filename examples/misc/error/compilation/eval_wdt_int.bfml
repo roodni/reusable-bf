@@ -1,4 +1,4 @@
-let main = [
+let main = {
   $alloc {x}
   + x x
-]
+}

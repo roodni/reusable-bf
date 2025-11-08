@@ -14,16 +14,16 @@ $build {
 $dive p
 $alloc { f }
 + f
-! f [
+! f {
   , c
   - c input_end
-  ? c [] [ - f ]
+  ? c {} { - f }
   + c input_end
   > p
-]
+}
 
 < p
-<!> p [
+<!> p {
   < p
   . c
-]
+}

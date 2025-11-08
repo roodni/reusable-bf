@@ -12,9 +12,9 @@
 
 open import "std/std.bfml"
 
-let main = [
+let main = {
   *IO:gen_puts "Hello World!\n"
-]
+}
 ```
 
 ## インストール
@@ -91,8 +91,8 @@ $alloc { x }
 - x 'A'
 
 ? x
-  [ (* 入力された文字は A でない *) ]
-  [ (* 入力された文字は A である *) ]
+  { (* 入力された文字は A でない *) }
+  { (* 入力された文字は A である *) }
 
 + x 'A'  (* 非負になるように足す *)
 ```

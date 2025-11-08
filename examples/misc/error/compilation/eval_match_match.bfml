@@ -3,4 +3,4 @@ let _ =
   | _ :: _ :: nil -> 2
   | _ :: nil -> 1
 
-let main = []
+let main = {}

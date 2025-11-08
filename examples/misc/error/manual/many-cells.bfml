@@ -9,9 +9,9 @@ let main = $
 
 *fix
   (fun f n ->
-    if n <= 0 then []
+    if n <= 0 then {}
     else
-      [ $alloc { x }
+      { $alloc { x }
         *f (n - 1)
         *f (n - 1)
         *f (n - 1)
@@ -22,5 +22,5 @@ let main = $
         *f (n - 1)
         *f (n - 1)
         *f (n - 1)
-      ]
+      }
   ) 7

@@ -2,34 +2,34 @@
 // ? <- if (non-destructive)
 // * <- block expansion
 
-let del = fun x -> [
-  ! x [ - x ]
-]
+let del = fun x -> {
+  ! x { - x }
+}
 
-let if_eq = fun a -> fun b -> fun thn -> [
-  ! a [
+let if_eq = fun a -> fun b -> fun thn -> {
+  ! a {
     - a
-    ? b [ - b ] [
+    ? b { - b } {
       *del a
       *thn
-    ]
-  ]
-  ! b [
+    }
+  }
+  ! b {
     *del b
     *thn
-  ]
-]
+  }
+}
 
 
 let main = $
 
 $build { cont }
 + cont
-! cont [
+! cont {
   - cont
   $alloc { input; diff; }
   , input
   . input
   + diff '#'
-  *if_eq input diff [ + cont ]
-]
+  *if_eq input diff { + cont }
+}

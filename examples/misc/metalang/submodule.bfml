@@ -15,11 +15,11 @@ module Alpha = struct
   module X = Beta:Gamma
 end
 
-let gen_put n = [
+let gen_put n = {
   $alloc { c }
   + c ('A' + n)
   . c
-]
+}
 
 let main = $
 *gen_put Alpha:a

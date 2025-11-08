@@ -7,7 +7,7 @@ open import "__misc__.bfml"
 
 let base = 10
 
-let gen_build n st = [
+let gen_build n st = {
   $build {
     fixed: array(n) {
       digit: cell;  // ビッグエンディアン
@@ -15,7 +15,7 @@ let gen_build n st = [
     }
   }
   *st (n, fixed)
-]
+}
 
 
 // 指定した桁にアクセスする。0-indexed
@@ -25,37 +25,37 @@ let get_digit_cell i src =
   arr:(n - i - 1)digit
 
 private
-let gen_move_last (n, arr) = [
+let gen_move_last (n, arr) = {
   > arr@i (n - 1)
-]
+}
 
 // 数値をゼロにする
 let gen_zero dest =
-  let (n, arr) = dest in [
+  let (n, arr) = dest in {
     *gen_move_last dest
-    *gen_foreach arr@i [
+    *gen_foreach arr@i {
       *gen_del arr@i:digit
-    ]
-  ]
+    }
+  }
 
 
 // 現在のインデックスのある桁からdigitを繰り上げる
 // インデックスはゼロになる
 // オーバーフロー時、溢れた数だけoverflowを実行する
 private
-let gen_carry_from_curr (_, arr) overflow = [
+let gen_carry_from_curr (_, arr) overflow = {
   **let i = arr@i in $
   $dive i
 
   // i=1 まで繰り上げ
-  <!> i [
+  <!> i {
     *gen_const_div
-      base i:digit [ + i:(-1)digit ]
+      base i:digit { + i:(-1)digit }
     < i
-  ]
+  }
   // i=0の桁は繰り上げない
-  *gen_const_div base i:digit [ *overflow ]
-]
+  *gen_const_div base i:digit { *overflow }
+}
 
 let gen_add_const m fi =
   let n, arr = fi in
@@ -71,18 +71,18 @@ let gen_add_const m fi =
         else get_digits (m / base) (n - 1) (m mod base :: li)
       ) m n nil
   in
-  [
+  {
     *fix
       (fun loop li -> match li with
         | nil -> failwith "never"
-        | d :: nil -> [ + arr@i:digit d ]
-        | d :: l -> [
+        | d :: nil -> { + arr@i:digit d }
+        | d :: l -> {
             + arr@i:digit d  > arr@i
             *loop l
-          ]
+          }
       ) digits
-    *gen_carry_from_curr fi []
-  ]
+    *gen_carry_from_curr fi {}
+  }
 
 let gen_incr fi = gen_add_const 1 fi
 
@@ -91,132 +91,132 @@ let gen_incr fi = gen_add_const 1 fi
 let gen_mul_const a dest =
   let () = verify (a >= 0) in
   let _, arr = dest in
-  [
+  {
     *gen_move_last dest
-    *gen_foreach arr@i [
+    *gen_foreach arr@i {
       $dive arr@i
       $alloc { bu }
-      *gen_repeat arr@i:digit [ + bu a ]
-      *gen_repeat bu [ + arr@i:digit ]
-    ]
+      *gen_repeat arr@i:digit { + bu a }
+      *gen_repeat bu { + arr@i:digit }
+    }
     *gen_move_last dest
-    *gen_carry_from_curr dest []
-  ]
+    *gen_carry_from_curr dest {}
+  }
 
 
-let gen_print_unsigned (n, arr) = [
+let gen_print_unsigned (n, arr) = {
   **let i = arr@i in $
   $dive i
   $alloc { zc; c }
   + zc (n - 1)
   // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
-  ! zc [
+  ! zc {
     ? i:digit
-      [ *gen_repeat zc [ + c ] ]
-      [ - zc  > i ]
-  ]
+      { *gen_repeat zc { + c } }
+      { - zc  > i }
+  }
   // 残りの桁を出力する
   + c
-  ! c [
+  ! c {
     + i:digit '0'
     . i:digit
     - i:digit '0'
     - c
-    ! c [ *gen_repeat c [ + zc ]  > i ]
-    *gen_repeat zc [ + c ]
-  ]
+    ! c { *gen_repeat c { + zc }  > i }
+    *gen_repeat zc { + c }
+  }
   *gen_reset_index i
-]
+}
 
-let gen_print_unsigned_destructive (n, arr) = [
+let gen_print_unsigned_destructive (n, arr) = {
   **let i = arr@i in $
   $dive i
   $alloc { zc; c }
   + zc (n - 1)
   // ゼロ以外の桁が現れる・最後の桁に到達するまで出力しない
-  ! zc [
+  ! zc {
     ? i:digit
-      [ *gen_repeat zc [ + c ] ]
-      [ - zc  > i ]
-  ]
+      { *gen_repeat zc { + c } }
+      { - zc  > i }
+  }
   // 残りの桁を出力する
   + c
-  ! c [
+  ! c {
     + i:digit '0'
     . i:digit
     - c
-    ! c [ *gen_repeat c [ + zc ]  > i ]
-    *gen_repeat zc [ + c ]
-  ]
+    ! c { *gen_repeat c { + zc }  > i }
+    *gen_repeat zc { + c }
+  }
   *gen_reset_index i
-]
+}
 
 
 // 各桁反転
-let gen_flip fi = [
+let gen_flip fi = {
   **let n, arr = fi in $
   *gen_move_last fi
-  *gen_foreach arr@i [
+  *gen_foreach arr@i {
     $dive arr@i
     $alloc { nc }
     + nc (base - 1)
-    *gen_repeat arr@i:digit [ - nc ]
-    *gen_repeat nc [ + arr@i:digit ]
-  ]
-]
+    *gen_repeat arr@i:digit { - nc }
+    *gen_repeat nc { + arr@i:digit }
+  }
+}
 
-let gen_neg fi = [
+let gen_neg fi = {
   *gen_flip fi
   *gen_incr fi
-]
+}
 
-let gen_if_neg (_, arr) neg non_neg = [
-  ? arr:(0)digit [ *neg ] [ *non_neg ]
-]
+let gen_if_neg (_, arr) neg non_neg = {
+  ? arr:(0)digit { *neg } { *non_neg }
+}
 
-let gen_abs fi = [
+let gen_abs fi = {
   *gen_if_neg fi
-    [ *gen_neg fi ]
-    []
-]
+    { *gen_neg fi }
+    {}
+}
 
 
-let gen_print fi = [
+let gen_print fi = {
   **let _, arr = fi in $
   $alloc { is_neg }
   ? arr:(0)digit
-    [ + is_neg '-'  . is_neg
+    { + is_neg '-'  . is_neg
       *gen_neg fi
-    ]
-    []
+    }
+    {}
   *gen_print_unsigned fi
-  ! is_neg [
+  ! is_neg {
     *gen_del is_neg
     *gen_neg fi
-  ]
-]
+  }
+}
 
-let gen_print_destructive fi = [
+let gen_print_destructive fi = {
   **let _, arr = fi in $
   ? arr@i:digit
-    [
-      *[
+    {
+      *{
         $dive arr@i
         $alloc { minus }
         + minus '-'  . minus
-      ]
+      }
       *gen_neg fi
-    ]
-    []
+    }
+    {}
   *gen_print_unsigned_destructive fi
-]
+}
 
 
 (* 左シフト
    ただしインデックスが右に残る
 *)
 private
-let gen_lshift_to_right (n, arr) = [
+let gen_lshift_to_right (n, arr) = {
   **let i = arr@i in $
   $dive i
   $alloc { c }
@@ -224,52 +224,52 @@ let gen_lshift_to_right (n, arr) = [
   // 左端の桁は削除する
   *gen_del i:digit
   // それ以降の桁を左にずらす
-  ! c [
-    *gen_repeat i:(1)digit [ + i:digit ]
+  ! c {
+    *gen_repeat i:(1)digit { + i:digit }
     > i
     - c
-  ]
-]
+  }
+}
 
 (* 桁数だけ左シフトして入力された数を格納する
    元の数がゼロでないと入力を正しく受けられないことに留意
 *)
-let gen_input_unsigned ed fi = [
+let gen_input_unsigned ed fi = {
   $alloc { ip }
   , ip
   - ip ed
-  ! ip [
+  ! ip {
     - ip ('0' - ed)
     *gen_lshift_to_right fi
     **let _, arr = fi in $
-    *gen_repeat ip [ + arr@i:digit ]
+    *gen_repeat ip { + arr@i:digit }
     *gen_reset_index arr@i
     , ip
     - ip ed
-  ]
-]
+  }
+}
 
-let gen_input ed fi = [
+let gen_input ed fi = {
   $alloc { is_neg; ip }
   + is_neg
   , ip  - ip '-'
-  ! ip [
+  ! ip {
     - ip ('0' - '-')
     - is_neg
     *gen_move_last fi
     **let _, arr = fi in $
-    *gen_repeat ip [ + arr@i:digit ]
+    *gen_repeat ip { + arr@i:digit }
     *gen_reset_index arr@i
-  ]
+  }
   *gen_input_unsigned ed fi
-  ! is_neg [
+  ! is_neg {
     - is_neg
     *gen_neg fi
-  ]
-]
+  }
+}
 
 // dest <- dest + src
-let gen_add src dest = [
+let gen_add src dest = {
   **let sn, sarr = src in
     let dn, darr = dest in $
   ;verify (sn <= dn)
@@ -279,48 +279,48 @@ let gen_add src dest = [
 
   // 足す
   *gen_for_index sarr@i
-    [ < sarr@i  < darr@i ]
-    [
+    { < sarr@i  < darr@i }
+    {
       *gen_repeat_restore sarr@i:digit
-        [ + darr@i:digit ]
-    ]
+        { + darr@i:digit }
+    }
   // 桁が違う場合に符号拡張
   *if_gen (sn < dn)
-    [
+    {
       ? sarr:(0)digit
-        [ <!> darr@i
-            [ < darr@i  + darr@i:digit (base - 1) ]
-        ]
-        [ *gen_reset_index darr@i ]
-    ]
+        { <!> darr@i
+            { < darr@i  + darr@i:digit (base - 1) }
+        }
+        { *gen_reset_index darr@i }
+    }
   // 繰り上げ
   *gen_move_last dest
-  *gen_carry_from_curr dest []
-]
+  *gen_carry_from_curr dest {}
+}
 
-let gen_add_unsigned src dest = [
+let gen_add_unsigned src dest = {
   **let sn, sarr = src in
     let dn, darr = dest in $
   ;verify (sn <= dn)
   *gen_move_last dest
   *gen_move_last src
   *gen_for_index sarr@i
-    [ < sarr@i  < darr@i ]
-    [
+    { < sarr@i  < darr@i }
+    {
       *gen_repeat_restore sarr@i:digit
-        [ + darr@i:digit ]
-    ]
+        { + darr@i:digit }
+    }
   *if_gen (sn < dn)
-    [ *gen_reset_index darr@i ]
+    { *gen_reset_index darr@i }
   *gen_move_last dest
-  *gen_carry_from_curr dest []
-]
+  *gen_carry_from_curr dest {}
+}
 
 
 // dest <- dest - src
 // overflow はキャリー演算のもの
 // 減算がオーバーフロー "しないとき" に限り1回実行される
-let gen_sub_unsigned src dest overflow = [
+let gen_sub_unsigned src dest overflow = {
   **let sn, sarr = src in
     let dn, darr = dest in $
   ;verify (sn <= dn)
@@ -329,24 +329,24 @@ let gen_sub_unsigned src dest overflow = [
   *gen_move_last src
 
   *gen_for_index sarr@i
-    [ < sarr@i  < darr@i ]
-    [
+    { < sarr@i  < darr@i }
+    {
       + darr@i:digit 9
       *gen_repeat_restore sarr@i:digit
-        [ - darr@i:digit ]
-    ]
+        { - darr@i:digit }
+    }
 
   *if_gen (sn < dn)
-    [
-      <!> darr@i [ < darr@i  + darr@i:digit 9 ]
-    ]
+    {
+      <!> darr@i { < darr@i  + darr@i:digit 9 }
+    }
 
   *gen_move_last dest
   + darr@i:digit
-  *gen_carry_from_curr dest [ *overflow ]
-]
+  *gen_carry_from_curr dest { *overflow }
+}
 
-let gen_mul a b dest = [
+let gen_mul a b dest = {
   **let an, aarr = a in
     let bn, barr = b in
     let dn, darr = dest in $
@@ -359,67 +359,67 @@ let gen_mul a b dest = [
 
   // a * ...
   *gen_move_last a
-  *gen_foreach aarr@i [
+  *gen_foreach aarr@i {
     // a * b
     *gen_move_last b
     *gen_for_index barr@i
-      [ < barr@i  < darr@i ]
-      [
+      { < barr@i  < darr@i }
+      {
         $dive barr@i
-        *gen_repeat_restore barr@i:digit [
+        *gen_repeat_restore barr@i:digit {
           $dive aarr@i
-          *gen_repeat_restore aarr@i:digit [
+          *gen_repeat_restore aarr@i:digit {
             + darr@i:digit
-          ]
-        ]
-      ]
+          }
+        }
+      }
     // a * (b の符号拡張)
     ? barr@i:digit
-      [
-        <!> darr@i [
+      {
+        <!> darr@i {
           < darr@i  + dc
           $dive aarr@i
-          *gen_repeat_restore aarr@i:digit [
+          *gen_repeat_restore aarr@i:digit {
             + darr@i:digit (base - 1)
-          ]
-        ]
-      ]
-      [
-        <!> darr@i [ < darr@i  + dc ]
-      ]
+          }
+        }
+      }
+      {
+        <!> darr@i { < darr@i  + dc }
+      }
     // 繰り上げ
     // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
     *gen_move_last dest
-    *gen_carry_from_curr dest []
+    *gen_carry_from_curr dest {}
     + dc (bn - 2)
-    *gen_repeat dc [ > darr@i ]
-  ]
+    *gen_repeat dc { > darr@i }
+  }
   // (a の符号拡張) * b
   ? aarr@i:digit
-    [
+    {
       // * b
       > darr@i
-      <!> darr@i [
+      <!> darr@i {
         < darr@i
         *gen_move_last b
         *gen_for_index darr@i
-          [ < barr@i  < darr@i  + dc ]
-          [
+          { < barr@i  < darr@i  + dc }
+          {
             $dive barr@i
-            *gen_repeat_restore barr@i:digit [
+            *gen_repeat_restore barr@i:digit {
               + darr@i:digit (base - 1)
-            ]
-          ]
+            }
+          }
         *gen_move_last dest
-        *gen_carry_from_curr dest []
-        *gen_repeat dc [ > darr@i ]
+        *gen_carry_from_curr dest {}
+        *gen_repeat dc { > darr@i }
         *gen_reset_index barr@i
-      ]
-    ]
-    [ *gen_reset_index darr@i ]
-]
+      }
+    }
+    { *gen_reset_index darr@i }
+}
 
-let gen_mul_unsigned a b dest = [
+let gen_mul_unsigned a b dest = {
   **let an, aarr = a in
     let bn, barr = b in
     let dn, darr = dest in $
@@ -431,35 +431,35 @@ let gen_mul_unsigned a b dest = [
   $alloc { dc }
 
   *gen_move_last a
-  *gen_foreach aarr@i [
+  *gen_foreach aarr@i {
     // a * b
     *gen_move_last b
     *gen_for_index barr@i
-      [ < barr@i  < darr@i ]
-      [
+      { < barr@i  < darr@i }
+      {
         $dive barr@i
-        *gen_repeat_restore barr@i:digit [
+        *gen_repeat_restore barr@i:digit {
           $dive aarr@i
-          *gen_repeat_restore aarr@i:digit [
+          *gen_repeat_restore aarr@i:digit {
             + darr@i:digit
-          ]
-        ]
-      ]
-    <!> darr@i [ < darr@i  + dc ]
+          }
+        }
+      }
+    <!> darr@i { < darr@i  + dc }
 
     // 繰り上げ
     // 本当はまとめて繰り上げたかったが、オーバーフローするのでやむなし
     *gen_move_last dest
-    *gen_carry_from_curr dest []
+    *gen_carry_from_curr dest {}
     + dc (bn - 2)
-    *gen_repeat dc [ > darr@i ]
-  ]
+    *gen_repeat dc { > darr@i }
+  }
   *gen_reset_index darr@i
-]
+}
 
 
 // (dest, rem) <- (dest / src, dest % src)
-let gen_div_unsigned src dest rem = [
+let gen_div_unsigned src dest rem = {
   **let sn, sarr = src in
     let dn, darr = dest in
     let rn, rarr = rem in $
@@ -468,25 +468,25 @@ let gen_div_unsigned src dest rem = [
   $dive darr@i
   $alloc { dloop }
   + dloop dn
-  ! dloop [
+  ! dloop {
     - dloop
     *gen_lshift_to_right rem
     *gen_reset_index rarr@i
-    *gen_repeat darr@i:digit [ + rarr:(rn - 1)digit ]
+    *gen_repeat darr@i:digit { + rarr:(rn - 1)digit }
 
     $alloc { cont }
     + cont
-    ! cont [
+    ! cont {
       - cont
       *gen_sub_unsigned src rem
-        [ + darr@i:digit  + cont ]
-    ]
+        { + darr@i:digit  + cont }
+    }
     *gen_add_unsigned src rem
 
-    *gen_if_restore dloop [ > darr@i ]
-  ]
+    *gen_if_restore dloop { > darr@i }
+  }
   *gen_reset_index darr@i
-]
+}
 
 
 // dest <- src
@@ -494,26 +494,26 @@ let gen_div_unsigned src dest rem = [
 (*
 let gen_copy src dest =
   let (sn, sarr) = src in
-  let (dn, darr) = dest in [
+  let (dn, darr) = dest in {
     // TODO: 複数行シフトを実装したらまともな実装にする
     *gen_zero dest
     *gen_add_unsigned src dest
-  ]
+  }
 *)
 
 // dest <- min(src, dest)
 //   dest's digits must be bigger than src's digits
-let gen_min_unsigned src dest = [
+let gen_min_unsigned src dest = {
   *gen_sub_unsigned src dest
-    [
+    {
       // dest is bigger
       *gen_zero dest
-    ]
+    }
   *gen_add_unsigned src dest
-]
+}
 
 
-let main = [
+let main = {
   **gen_build 4 @@ fun n -> $
   **gen_build 1 @@ fun three -> $
   **gen_build 2 @@ fun rem -> $
@@ -523,4 +523,4 @@ let main = [
 
   *gen_div_unsigned three n rem
   *gen_print_unsigned_destructive n
-]
+}

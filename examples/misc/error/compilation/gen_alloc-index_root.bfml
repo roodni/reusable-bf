@@ -1,6 +1,6 @@
-let main = [
+let main = {
   $alloc {
     i: index;
   }
   > i
-]
+}

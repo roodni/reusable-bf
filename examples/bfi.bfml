@@ -24,36 +24,36 @@ $alloc {
 }
 
 + cont
-! cont [
+! cont {
   , p:inst
   + flag_next
   *Ctrl:gen_switch p:inst
-    ( ('+', [ + p:inst 1 ]);
-      ('-', [ + p:inst 2 ]);
-      ('>', [ + p:inst 3 ]);
-      ('<', [ + p:inst 4 ]);
-      ('[', [
+    ( ('+', { + p:inst 1 });
+      ('-', { + p:inst 2 });
+      ('>', { + p:inst 3 });
+      ('<', { + p:inst 4 });
+      ('[', {
         + p:inst 5
         + p:(1)depth
-      ]);
-      (']', [
+      });
+      (']', {
         + p:inst 6
         - p:depth
-      ]);
-      ('.', [ + p:inst 7 ]);
-      (',', [ + p:inst 8 ]);
-      ('\\', [
+      });
+      ('.', { + p:inst 7 });
+      (',', { + p:inst 8 });
+      ('\\', {
         - flag_next
         - cont
-      ]);
+      });
     )
-    [ - flag_next ]
-  ! flag_next [
+    { - flag_next }
+  ! flag_next {
     - flag_next
-    *Ctrl:gen_repeat_restore p:depth [ + p:(1)depth ]
+    *Ctrl:gen_repeat_restore p:depth { + p:(1)depth }
     > p
-  ]
-]
+  }
+}
 
 *Ctrl:gen_reset_index code@p
 
@@ -70,40 +70,40 @@ $build {
 $dive p
 $alloc { depth_cur }
 
-! p:inst [
+! p:inst {
   *Ctrl:gen_switch_nat p:inst
-    ( [];
-      [ + tape@p:v ];
-      [ - tape@p:v ];
-      [ > tape@p ];
-      [ < tape@p ];
-      [ // while
-        ? tape@p:v [] [
+    ( {};
+      { + tape@p:v };
+      { - tape@p:v };
+      { > tape@p };
+      { < tape@p };
+      { // while
+        ? tape@p:v {} {
           *Ctrl:gen_repeat_restore p:depth
-            [ + depth_cur  - p:(1)depth ]
+            { + depth_cur  - p:(1)depth }
           > p
-          ! p:depth [
+          ! p:depth {
             *Ctrl:gen_repeat_restore depth_cur
-              [ + p:depth  - p:(1)depth ]
+              { + p:depth  - p:(1)depth }
             > p
-          ]
-          *Ctrl:gen_repeat depth_cur [ + p:depth ]
-        ]
-      ];
-      [ // wend
+          }
+          *Ctrl:gen_repeat depth_cur { + p:depth }
+        }
+      };
+      { // wend
         *Ctrl:gen_repeat_restore p:depth
-          [ + depth_cur  - p:(-1)depth ]
+          { + depth_cur  - p:(-1)depth }
         < p
-        ! p:depth [
+        ! p:depth {
           *Ctrl:gen_repeat_restore depth_cur
-            [ + p:depth  - p:(-1)depth ]
+            { + p:depth  - p:(-1)depth }
           < p
-        ]
-        *Ctrl:gen_repeat depth_cur [ + p:depth ]
+        }
+        *Ctrl:gen_repeat depth_cur { + p:depth }
         < p
-      ];
-      [ . tape@p:v ];
+      };
+      { . tape@p:v };
     )
-    [ , tape@p:v ]
+    { , tape@p:v }
   > p
-]
+}

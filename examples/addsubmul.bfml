@@ -24,14 +24,14 @@ let main = $
 *I:gen_neg b
 
 *I:gen_if_neg x
-  [
+  {
     // x < b
     *I:gen_print_destructive b
-  ]
-  [
+  }
+  {
     // x >= b
     *I:gen_add b x
     *I:gen_print_destructive x
-  ]
+  }
 
 *IO:gen_puts "\n"

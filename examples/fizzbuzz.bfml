@@ -2,7 +2,7 @@ open import "std/std.bfml"
 module Counter = import "std/counter.bfml"
   (* example/lib 以下のライブラリはimportの検索対象 *)
 
-let main = [
+let main = {
   **Counter:gen_build @@ fun counter -> $
 
   $build {
@@ -14,16 +14,16 @@ let main = [
   *IO:gen_geti n '\n'
   + fizz 3
   + buzz 5
-  ! n [
+  ! n {
     - n
     *Counter:gen_incr counter
     $alloc { fb: cell; }
     + fb 2
     - fizz
-    ? fizz [ - fb ] [ + fizz 3  *IO:gen_puts "Fizz" ]
+    ? fizz { - fb } { + fizz 3  *IO:gen_puts "Fizz" }
     - buzz
-    ? buzz [ - fb ] [ + buzz 5  *IO:gen_puts "Buzz" ]
-    ? fb [] [ *Counter:gen_print counter ]
+    ? buzz { - fb } { + buzz 5  *IO:gen_puts "Buzz" }
+    ? fb {} { *Counter:gen_print counter }
     *IO:gen_puts " "
-  ]
-]
+  }
+}

@@ -11,7 +11,7 @@
 open import "std/std.bfml"
 open Ctrl
 
-let gen_build st = [
+let gen_build st = {
   $build {
     counter: array(_) {
       n: cell;
@@ -20,62 +20,62 @@ let gen_build st = [
   }
   + counter:(1)n 10
   *st counter
-]
+}
 
-let gen_incr counter = [
+let gen_incr counter = {
   **let i = counter@i in
     let n = i:n in $
   > i
-  <!> i [
-    ? n [] [ + n 10 ]
+  <!> i {
+    ? n {} { + n 10 }
     - n
     ? n
-      [ *gen_reset_index i ]
-      [ + n 10  > i ]
-  ]
-]
+      { *gen_reset_index i }
+      { + n 10  > i }
+  }
+}
 
-let gen_print counter = [
+let gen_print counter = {
   **let i = counter@i in $
   $dive i
-  ! i:(1)n [ > i ]
+  ! i:(1)n { > i }
   ! i:n
-    [ $alloc { x: cell; }
+    { $alloc { x: cell; }
       + x ('9' + 1)
-      *gen_repeat i:n [ - x ]
+      *gen_repeat i:n { - x }
       . x
       + i:n ('9' + 1)
-      *gen_repeat x [ - i:n ]
+      *gen_repeat x { - i:n }
       < i
-    ]
-]
+    }
+}
 
-let gen_reset counter = [
+let gen_reset counter = {
   **let i = counter@i in $
-  ! i:(1)n [ > i ]
-  ! i:n [
+  ! i:(1)n { > i }
+  ! i:n {
     *gen_del i:n
     < i
-  ]
+  }
   + counter:(1)n 10
-]
+}
 
-let gen_print_cell c counter = [
+let gen_print_cell c counter = {
   *gen_reset counter
-  *gen_repeat c [
+  *gen_repeat c {
     *gen_incr counter
-  ]
+  }
   *gen_print counter
-]
+}
 
 // 例: 入力された文字のASCIIコードを10進数で出力
-let main = [
+let main = {
   **gen_build @@ fun cnt -> $
 
   $build { x }
   , x
-  *gen_repeat x [
+  *gen_repeat x {
     *gen_incr cnt
-  ]
+  }
   *gen_print cnt
-]
+}

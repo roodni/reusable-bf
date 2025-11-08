@@ -1,6 +1,6 @@
-let main = [
+let main = {
   $build {
     a: array(3) {}
   }
   + a:mem
-]
+}

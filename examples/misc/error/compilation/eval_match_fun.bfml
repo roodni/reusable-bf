@@ -1,7 +1,7 @@
 let f (a, b) =
   a + b
 
-let main = [
+let main = {
   $build { x }
   + x (f 1 2)
-]
+}

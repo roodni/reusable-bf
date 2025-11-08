@@ -1,6 +1,6 @@
-let main = [
+let main = {
   $alloc {
     a: array(3) { x }
   }
   + a:x
-]
+}

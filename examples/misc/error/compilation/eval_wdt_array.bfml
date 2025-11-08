@@ -1,6 +1,6 @@
-let main = [
+let main = {
   $build {
     a: array(_) { x;  i: index; }
   }
   > a@i@i
-]
+}

@@ -6,6 +6,6 @@ let () =
       then failwith "never"
       else failwith "never"
 
-let main = [
+let main = {
   *IO:gen_puts "OK"
-]
+}

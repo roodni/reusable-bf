@@ -3,4 +3,4 @@ module B = import "../../metalang/import_b.bfml"
 
 let _ = B:c
 
-let main = []
+let main = {}

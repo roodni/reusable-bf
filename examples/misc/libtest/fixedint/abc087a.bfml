@@ -13,7 +13,7 @@ let main = $
 *I:gen_input_unsigned '\n' a
 *I:gen_input_unsigned '\n' b
 
-*I:gen_sub_unsigned a x []
+*I:gen_sub_unsigned a x {}
 *I:gen_div_unsigned b x res
 
 *I:gen_print_unsigned_destructive res

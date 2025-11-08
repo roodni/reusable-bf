@@ -1,4 +1,4 @@
-let main = [
+let main = {
   $build {
     a: array(_) {
       b: array(_) {
@@ -8,4 +8,4 @@ let main = [
   }
 
   + a:b:x
-]
+}

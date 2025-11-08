@@ -17,30 +17,30 @@ let gen_short_incr x n =
           loop (min_ab prev curr) (a + 1)
       ) (1, n) 2
   in
-  if Int:abs n <= score (a, b) + 10 then [ + x n ]
+  if Int:abs n <= score (a, b) + 10 then { + x n }
   else
-    [ $alloc { y }
+    { $alloc { y }
       + y a
-      *Ctrl:gen_repeat y [ + x b ]
+      *Ctrl:gen_repeat y { + x b }
       + x (n - a * b)
-    ]
+    }
 
-let gen_puts2 s = [
+let gen_puts2 s = {
   $alloc { c }
   *fix
     (fun loop prev l -> match l with
-      | nil -> []
+      | nil -> {}
       | curr :: rest ->
           let out =
-            if Int:abs (curr - prev) <= 3 + curr then [
+            if Int:abs (curr - prev) <= 3 + curr then {
               *gen_short_incr c (curr - prev)
-            ] else [
+            } else {
               *Ctrl:gen_del c
               *gen_short_incr c curr
-            ]
+            }
           in
-          [ *out  . c  *loop curr rest ]
+          { *out  . c  *loop curr rest }
     ) 0 (String:to_list s)
-]
+}
 
-let main = [ *gen_puts2 "Hello World!\n" ]
+let main = { *gen_puts2 "Hello World!\n" }

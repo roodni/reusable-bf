@@ -14,18 +14,18 @@ $alloc { f }
   let c = p:c in $
 
 + f
-! f [
+! f {
   , c
   - c input_end
-  ? c [] [
+  ? c {} {
     - f
-  ]
+  }
   + c input_end
   > p
-]
+}
 
 < p
-<!> p [
+<!> p {
   < p
   . c
-]
+}

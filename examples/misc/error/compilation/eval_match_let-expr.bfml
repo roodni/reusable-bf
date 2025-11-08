@@ -2,4 +2,4 @@ let _ =
   let a :: b = nil in
   a
 
-let main = []
+let main = {}
